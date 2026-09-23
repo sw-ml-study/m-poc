@@ -1,0 +1,121 @@
+# The text faces of the stone as SVG. The glyphs are laid out upstream by sw-MLPL's equation renderer (svg(text, "equation")): one text element per line, one tspan holding the line. This module renders a face's text through it and then wraps every token of the line in its own tspan carrying the token's symbol id, so a page can find a token without doing any layout of its own. The wrapped tspans concatenate to exactly the line the renderer laid out, and the render fails closed if they would not.
+include "ir.mlpl";
+
+def u:rs_svg_text_safe(text) {
+  "Token text may be placed inside SVG markup verbatim: no angle brackets, ampersands, or quotes.";
+  eq(str_find(text, "<"), -1) * eq(str_find(text, ">"), -1) * eq(str_find(text, "&"), -1) * eq(str_find(text, "\""), -1)
+}
+
+def u:rs_face_line_tspans(face, line) {
+  "One line of a face as tspans: every token wrapped with its symbol id, and a bare space between tokens that asked for one.";
+  out = "";
+  first = 1;
+  texts = str_split(face.texts, "|");
+  ids = str_split(face.ids, "|");
+  index = 0;
+  while lt(index, face.count) {
+    if eq(take(face.lines, 0, index), line) {
+      if (1 - first) * take(face.seps, 0, index) {
+        out = str_concat(out, " ")
+      };
+      out = str_concat(out, "<tspan class=\"rs-token\" data-id=\"");
+      out = str_concat(out, unwrap(list_get(ids, index)));
+      out = str_concat(out, "\">");
+      out = str_concat(out, unwrap(list_get(texts, index)));
+      out = str_concat(out, "</tspan>");
+      first = 0
+    };
+    index = index + 1
+  };
+  out
+}
+
+def u:rs_face_unsafe_text(face) {
+  "The first token text of a face that cannot be placed in SVG markup, or the empty string.";
+  texts = str_split(face.texts, "|");
+  index = 0;
+  unsafe = "";
+  while lt(index, face.count) {
+    text = unwrap(list_get(texts, index));
+    if 1 - u:rs_svg_text_safe(text) {
+      unsafe = text
+    };
+    index = index + 1
+  };
+  unsafe
+}
+
+def u:rs_face_svg(ir, face_name) {
+  "Render one face of a record to SVG: the upstream equation renderer lays the text out, then each line's single tspan is replaced by one tspan per token carrying data-id. Fails closed if the renderer did not emit one plain tspan per line holding exactly the line's text, or if a token text is not safe in markup.";
+  face = u:rs_face_named(ir, face_name)?;
+  unsafe = u:rs_face_unsafe_text(face);
+  if gt(str_len(unsafe), 0) {
+    err({kind: "rosetta_svg", message: str_concat("token text is not safe in markup: ", unsafe)})
+  } else {
+    text = u:rs_face_text(face);
+    raw = svg(text, "equation");
+    lines = str_split(text, "\n");
+    out = "";
+    cursor = 0;
+    line = 0;
+    failure = "";
+    while lt(line, face.line_count) * eq(str_len(failure), 0) {
+      rest = str_slice(raw, cursor, str_len(raw));
+      open = str_find(rest, "<tspan>");
+      close = str_find(rest, "</tspan>");
+      if lt(open, 0) + lt(close, open) {
+        failure = "the renderer emitted fewer plain tspans than the face has lines"
+      } else {
+        inner = str_slice(rest, open + 7, close - open - 7);
+        if 1 - str_eq(inner, unwrap(list_get(lines, line))) {
+          failure = str_concat("the renderer changed a line: ", inner)
+        } else {
+          out = str_concat(out, str_slice(rest, 0, open));
+          out = str_concat(out, u:rs_face_line_tspans(face, line));
+          cursor = cursor + close + 8;
+          line = line + 1
+        }
+      }
+    };
+    if gt(str_len(failure), 0) {
+      err({kind: "rosetta_svg", message: failure})
+    } else {
+      ok(str_concat(out, str_slice(raw, cursor, str_len(raw))))
+    }
+  }
+}
+
+def u:rs_svg_strip_tags(markup) {
+  "The text of a piece of markup with every tag removed; what a reader sees.";
+  out = "";
+  rest = markup;
+  while gt(str_len(rest), 0) {
+    open = str_find(rest, "<");
+    if lt(open, 0) {
+      out = str_concat(out, rest);
+      rest = ""
+    } else {
+      out = str_concat(out, str_slice(rest, 0, open));
+      close = str_find(rest, ">");
+      rest = if lt(close, open) {
+        ""
+      } else {
+        str_slice(rest, close + 1, str_len(rest))
+      }
+    }
+  };
+  out
+}
+
+def u:rs_svg_count(markup, needle) {
+  "How many times a piece of text occurs in markup.";
+  count = 0;
+  rest = markup;
+  found = str_find(rest, needle);
+  while gt(found, -1) {
+    count = count + 1;
+    rest = str_slice(rest, found + str_len(needle), str_len(rest));
+    found = str_find(rest, needle)
+  };
+  count
+}

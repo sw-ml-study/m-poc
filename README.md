@@ -63,21 +63,35 @@ just serve-site   # the committed pages/ at http://127.0.0.1:8765/
 
 ## Status
 
-Steps 1–3 of [the plan](docs/plan.md) are done: the gate (structure,
-gitignore, abstraction, links, style, fixtures, mlplunit, reg-rs), the
-equation IR with the one-neuron instance, whose Math and M faces are pinned
-by tests and a reg-rs baseline, and the training trace.
-[`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
-neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
-full-batch epochs at η = 0.1 over four points) and writes
-[`fixtures/one-neuron/trace.json`](fixtures/one-neuron/trace.json): per
-epoch `w`, `b`, the loss, both gradients and every prediction, keyed by the
-equation's symbol ids. [`docs/trace.md`](docs/trace.md) is the schema. The
-loss goes from 20.5 to 0.013 and never rises; tests check that, that `grad`
-matches the closed-form gradient at every epoch, and that the committed
-fixture is what the program emits. Next: the faces
-(`lib/rosetta/faces.mlpl` through `svg(…, "equation")`, and the Visual face
-as line-scene arrays in `scene.json`).
+Steps 1–4 of [the plan](docs/plan.md) are done: the gate (structure,
+gitignore, abstraction, links, style, fixtures, mlplunit, reg-rs); the
+equation IR with the one-neuron instance; the training trace; and the three
+faces as fixtures.
+
+- [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
+  neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
+  full-batch epochs at η = 0.1 over four points) and writes
+  [`fixtures/one-neuron/trace.json`](fixtures/one-neuron/trace.json): per
+  epoch `w`, `b`, the loss, both gradients and every prediction, keyed by
+  the equation's symbol ids. [`docs/trace.md`](docs/trace.md) is the schema.
+  The loss goes from 20.5 to 0.013 and never rises.
+- [`demos/one-neuron/faces.mlpl`](demos/one-neuron/faces.mlpl) renders the
+  Math and proposed-M faces to
+  [`fixtures/one-neuron/faces/`](fixtures/one-neuron/faces) through
+  sw-MLPL's `svg(…, "equation")`, with every token wrapped in a tspan
+  carrying its symbol id.
+- [`demos/one-neuron/scene.mlpl`](demos/one-neuron/scene.mlpl) builds the
+  Visual face from the trace as a line scene,
+  [`fixtures/one-neuron/scene.json`](fixtures/one-neuron/scene.json): the
+  dataflow as labelled boxes with the gradient paths, the data with the
+  fitted line and residuals, and parameter space with the path and the
+  update arrow, one frame per epoch. [`docs/scene.md`](docs/scene.md) is the
+  contract for both.
+
+Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
+Next: the page (`pages/`: the CSS 3D stone with the three faces, the epoch
+scrubber replaying the trace, and the generic line projector for the
+scene).
 
 ## License
 

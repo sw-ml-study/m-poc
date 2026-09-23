@@ -1,0 +1,81 @@
+# The SVG text faces: the upstream equation renderer lays the glyphs out, and lib/rosetta/faces.mlpl wraps each token in a tspan carrying its symbol id without changing a character of any line; unknown faces and unsafe token texts fail closed.
+include "lib/rosetta/faces.mlpl";
+include "demos/one-neuron/equation.mlpl";
+
+def u:t_tiny_face() {
+  "A two-line record whose tokens exercise both spacing rules.";
+  ir = u:rs_ir_new("tiny", "a tiny equation");
+  ir = u:rs_ir_symbol(ir, "a", "var", "left")?;
+  ir = u:rs_ir_symbol(ir, "eq", "op", "definition")?;
+  ir = u:rs_ir_symbol(ir, "b", "var", "right")?;
+  ir = u:rs_ir_symbol(ir, "sq", "op", "square")?;
+  ir = u:rs_ir_line(ir, "math", "a:a|eq:=|b:b|sq:~²")?;
+  ir = u:rs_ir_line(ir, "math", "b:b|eq:=|a:a")?;
+  ir = u:rs_ir_line(ir, "m", "a:A|eq:←|b:~B|sq:~*2")?;
+  ir = u:rs_ir_line(ir, "m", "b:B|eq:←|a:A")?;
+  ok(ir)
+}
+
+@test {name: "a face renders to an SVG whose visible text is exactly the face text", tags: ["faces", "svg"]}
+def u:test_face_text_preserved() {
+  "The tagging must not change what the renderer laid out, or the layout would be wrong for the text shown.";
+  ir = unwrap(u:t_tiny_face());
+  out = unwrap(u:rs_face_svg(ir, "math"));
+  u:assert_text_eq(str_slice(out, 0, 4), "<svg", "an SVG document")?;
+  u:assert_text_eq(u:rs_svg_strip_tags(out), "a = b²b = a", "the lines' text, and nothing else, survives stripping the tags")?;
+  u:assert_eq(u:rs_svg_count(out, "<text "), 2, "one text element per line")?;
+  u:assert_eq(u:rs_svg_count(out, "<tspan>"), 0, "no untagged tspan remains")
+}
+
+@test {name: "every token is a tspan carrying its symbol id, in face order", tags: ["faces", "svg"]}
+def u:test_tokens_tagged() {
+  "The page finds tokens by data-id; there must be one tagged tspan per token and the ids must be the face's ids.";
+  ir = unwrap(u:t_tiny_face());
+  out = unwrap(u:rs_face_svg(ir, "m"));
+  u:assert_eq(u:rs_svg_count(out, "<tspan class=\"rs-token\" data-id=\""), ir.faces.m.count, "one tagged tspan per token")?;
+  u:assert_gt(str_find(out, "<tspan class=\"rs-token\" data-id=\"a\">A</tspan> <tspan class=\"rs-token\" data-id=\"eq\">←</tspan><tspan class=\"rs-token\" data-id=\"b\">B</tspan><tspan class=\"rs-token\" data-id=\"sq\">*2</tspan>"), -1, "the first line, with the spaces the tokens asked for")?;
+  u:assert_gt(str_find(out, "data-id=\"b\">B</tspan> <tspan class=\"rs-token\" data-id=\"eq\">←</tspan> <tspan class=\"rs-token\" data-id=\"a\">A</tspan></text>"), -1, "the second line")
+}
+
+@test {name: "rendering fails closed on an unknown face and on token text that is not safe in markup", tags: ["faces", "validation"]}
+def u:test_face_svg_validation() {
+  "A token holding markup characters could break the document or smuggle tags in; it is refused rather than escaped.";
+  ir = unwrap(u:t_tiny_face());
+  u:assert_eq(is_err(u:rs_face_svg(ir, "visual")), 1, "unknown face")?;
+  bad = u:rs_ir_new("bad", "markup in a token");
+  bad = unwrap(u:rs_ir_symbol(bad, "a", "var", "left"));
+  bad = unwrap(u:rs_ir_symbol(bad, "lt", "op", "less than"));
+  bad = unwrap(u:rs_ir_line(bad, "math", "a:a|lt:<|a:a"));
+  bad = unwrap(u:rs_ir_line(bad, "m", "a:A|lt:<|a:A"));
+  u:assert_eq(is_err(u:rs_face_svg(bad, "math")), 1, "an angle bracket in a token")?;
+  u:assert_eq(u:rs_svg_text_safe("∂L/∂w"), 1, "ordinary glyphs are safe")?;
+  u:assert_eq(u:rs_svg_text_safe("a&b"), 0, "an ampersand is not")
+}
+
+@test {name: "the helpers strip tags and count occurrences the way the tests rely on", tags: ["faces", "helpers"]}
+def u:test_markup_helpers() {
+  "These two helpers are the tests' only view into the markup, so they are tested themselves.";
+  u:assert_text_eq(u:rs_svg_strip_tags("<a x=\"1\">hi</a> <b>there</b>"), "hi there", "tags removed, text and spaces kept")?;
+  u:assert_text_eq(u:rs_svg_strip_tags("plain"), "plain", "no tags")?;
+  u:assert_text_eq(u:rs_svg_strip_tags("<open"), "", "an unclosed tag swallows the rest")?;
+  u:assert_eq(u:rs_svg_count("abcabcab", "ab"), 3, "three occurrences")?;
+  u:assert_eq(u:rs_svg_count("abc", "zz"), 0, "none")
+}
+
+@test {name: "the one-neuron faces tag all seventeen symbols and the committed SVGs are what the program emits", tags: ["one-neuron", "faces", "fixture"]}
+def u:test_one_neuron_faces() {
+  "Both text faces of the stone come from the one record, and the page loads the committed files.";
+  ir = unwrap(u:on_equation());
+  math = unwrap(u:rs_face_svg(ir, "math"));
+  m = unwrap(u:rs_face_svg(ir, "m"));
+  u:assert_text_eq(u:rs_svg_strip_tags(math), "ŷ = w⁢x + bL = (y − ŷ)²w ← w − η⁢ ∂L/∂wb ← b − η⁢ ∂L/∂b", "math face text")?;
+  u:assert_text_eq(u:rs_svg_strip_tags(m), "Ŷ ← B + W×XL ← (Y−Ŷ)*2W ← W − η×∇W LB ← B − η×∇B L", "m face text")?;
+  u:assert_eq(u:rs_svg_count(math, "data-id=\""), ir.faces.math.count, "every math token tagged")?;
+  u:assert_eq(u:rs_svg_count(m, "data-id=\""), ir.faces.m.count, "every m token tagged")?;
+  u:assert_eq(u:rs_svg_count(math, "data-id=\"grad_w\""), 1, "the gradient symbol is findable on the math face")?;
+  u:assert_eq(u:rs_svg_count(m, "data-id=\"grad_w\""), 1, "and on the m face")?;
+  u:assert_eq(str_eq(read_text("fixtures/one-neuron/faces/math.svg")?, math), 1, "math.svg is fresh")?;
+  u:assert_eq(str_eq(read_text("fixtures/one-neuron/faces/m.svg")?, m), 1, "m.svg is fresh")
+}
+
+u:run_registered_tests()

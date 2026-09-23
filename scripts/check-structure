@@ -27,6 +27,20 @@ for path in \
     tests/test_one_neuron_trace.mlpl \
     tests/reg/rosetta_one_neuron_trace.rgt \
     docs/trace.md \
+    lib/rosetta/faces.mlpl \
+    lib/rosetta/scene.mlpl \
+    demos/one-neuron/visual.mlpl \
+    demos/one-neuron/scene.mlpl \
+    demos/one-neuron/faces.mlpl \
+    fixtures/one-neuron/scene.json \
+    fixtures/one-neuron/faces/math.svg \
+    fixtures/one-neuron/faces/m.svg \
+    tests/test_faces.mlpl \
+    tests/test_scene.mlpl \
+    tests/test_one_neuron_visual.mlpl \
+    tests/reg/rosetta_one_neuron_faces.rgt \
+    tests/reg/rosetta_one_neuron_scene.rgt \
+    docs/scene.md \
     pages/index.html \
     .github/workflows/pages.yml
 do

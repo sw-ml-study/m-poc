@@ -1,0 +1,14 @@
+# Build the Visual face of the one neuron from the committed trace and write it: fixtures/one-neuron/scene.json by default, or the path given as the script's argument (scripts/check-fixtures uses that). The JSON written is also printed; the reg-rs baseline rosetta_one_neuron_scene pins it.
+include "visual.mlpl";
+
+on_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/one-neuron/scene.json"
+};
+
+trace = unwrap(u:on_read_trace("fixtures/one-neuron/trace.json"));
+scene = unwrap(u:on_scene(trace));
+text = unwrap(u:rs_write_json(on_path, unwrap(u:rs_scene_export(scene, 4))));
+print(text);
+str_concat("wrote ", on_path)

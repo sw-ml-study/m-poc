@@ -1,0 +1,88 @@
+# The line-scene builder in lib/rosetta/scene.mlpl: vertices, edges with ids and colors, polylines, labels and frames accumulate as the schema requires; every malformed input fails closed; the export carries the shapes the projector and the native viewer expect.
+include "lib/rosetta/scene.mlpl";
+
+def u:t_square() {
+  "A closed unit square with one label and no frames.";
+  scene = u:rs_scene_new("t");
+  scene = u:rs_scene_polyline(scene, reshape([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0], [4, 3]), 1, "sq", [1, 0.5, 0, 1])?;
+  u:rs_scene_label(scene, [0.5, 0.5, 0], "sq", "□")
+}
+
+@test {name: "vertices, edges, polylines and labels accumulate with running indices", tags: ["scene", "build"]}
+def u:test_scene_build() {
+  "Indices are assigned in order of insertion; a closed polyline adds one more edge than an open one.";
+  scene = unwrap(u:t_square());
+  u:assert_eq(scene.vertex_count, 4, "four vertices")?;
+  u:assert_eq(scene.edge_count, 4, "four edges closed")?;
+  u:assert_eq(scene.edges, [0, 1, 1, 2, 2, 3, 3, 0], "edges in order, closing back to the first")?;
+  u:assert_text_eq(scene.edge_ids, "sq|sq|sq|sq", "one id per edge")?;
+  u:assert_shape(scene.edge_colors, [16], "one RGBA per edge")?;
+  scene = unwrap(u:rs_scene_polyline(scene, reshape([2, 0, 0, 3, 0, 0, 3, 1, 0], [3, 3]), 0, "path", [0, 0, 1, 1]));
+  u:assert_eq(scene.vertex_count, 7, "three more vertices")?;
+  u:assert_eq(scene.edge_count, 6, "two more edges, open")?;
+  u:assert_eq(take(scene.edges, 0, 8), 4, "the new run starts at the next index")?;
+  u:assert_eq(scene.label_count, 1, "one label")?;
+  u:assert_text_eq(scene.label_texts, "□", "label text")
+}
+
+@test {name: "edges, labels and frames fail closed on bad indices, ids, colors, shapes and non-finite values", tags: ["scene", "validation"]}
+def u:test_scene_validation() {
+  "The Rust viewer rejects these too; failing here keeps a bad scene out of the fixtures.";
+  scene = unwrap(u:t_square());
+  u:assert_eq(is_err(u:rs_scene_edges(scene, reshape([0, 4], [1, 2]), "e", [1, 1, 1, 1])), 1, "index past the last vertex")?;
+  u:assert_eq(is_err(u:rs_scene_edges(scene, reshape([0, 1.5], [1, 2]), "e", [1, 1, 1, 1])), 1, "fractional index")?;
+  u:assert_eq(is_err(u:rs_scene_edges(scene, reshape([0, -1], [1, 2]), "e", [1, 1, 1, 1])), 1, "negative index")?;
+  u:assert_eq(is_err(u:rs_scene_edges(scene, [0, 1], "e", [1, 1, 1, 1])), 1, "edges must be [k, 2]")?;
+  u:assert_eq(is_err(u:rs_scene_edges(scene, reshape([0, 1], [1, 2]), "a|b", [1, 1, 1, 1])), 1, "id with a delimiter")?;
+  u:assert_eq(is_err(u:rs_scene_edges(scene, reshape([0, 1], [1, 2]), "e", [1, 1, 1])), 1, "color needs four channels")?;
+  u:assert_eq(is_err(u:rs_scene_edges(scene, reshape([0, 1], [1, 2]), "e", [1, 2, 1, 1])), 1, "color channel above one")?;
+  u:assert_eq(is_err(u:rs_scene_vertices(scene, [0, 0, 0])), 1, "vertices must be [k, 3]")?;
+  u:assert_eq(is_err(u:rs_scene_vertices(scene, reshape([0, 0, 1 / 0], [1, 3]))), 1, "infinite position")?;
+  u:assert_eq(is_err(u:rs_scene_vertices(scene, reshape([0, 0, 0 / 0], [1, 3]))), 1, "not-a-number position")?;
+  u:assert_eq(is_err(u:rs_scene_polyline(scene, reshape([0, 0, 0], [1, 3]), 0, "p", [1, 1, 1, 1])), 1, "a one-point polyline")?;
+  u:assert_eq(is_err(u:rs_scene_label(scene, [0, 0], "l", "x")), 1, "label anchor needs three numbers")?;
+  u:assert_eq(is_err(u:rs_scene_label(scene, [0, 0, 0], "l", "")), 1, "label needs text")?;
+  u:assert_eq(is_err(u:rs_scene_label(scene, [0, 0, 0], "l", "a|b")), 1, "label text with the delimiter")?;
+  u:assert_eq(is_err(u:rs_scene_frame(scene, reshape(fill([9], 0), [3, 3]))), 1, "a frame with the wrong vertex count")?;
+  u:assert_eq(is_err(u:rs_scene_frame(scene, reshape(concat(fill([11], 0), 1 / 0), [4, 3]))), 1, "a frame with an infinite position")?;
+  framed = unwrap(u:rs_scene_frame(scene, reshape(fill([12], 0), [4, 3])));
+  u:assert_eq(is_err(u:rs_scene_vertices(framed, reshape([0, 0, 0], [1, 3]))), 1, "no vertices after frames")?;
+  u:assert_eq(is_err(u:rs_scene_export(u:rs_scene_new("t"), 4)), 1, "an empty scene does not export")
+}
+
+@test {name: "the export is a line-scene record with shape-and-values arrays, ids, colors, labels and frames", tags: ["scene", "json"]}
+def u:test_scene_export() {
+  "positions, edges and controls are what the native viewer parses; ids, colors, labels and frames are the extensions the page uses.";
+  scene = unwrap(u:t_square());
+  scene = unwrap(u:rs_scene_frame(scene, reshape(scene.positions, [4, 3])));
+  scene = unwrap(u:rs_scene_frame(scene, reshape(scene.positions, [4, 3]) + 0.123456));
+  out = unwrap(u:rs_scene_export(scene, 3));
+  u:assert_text_eq(out.schema, "sw-ml-study.native3d.line-scene", "schema")?;
+  u:assert_eq(out.positions.shape, [4, 3], "positions shape")?;
+  u:assert_eq(out.edges.shape, [4, 2], "edges shape")?;
+  u:assert_eq(out.colors.shape, [4, 4], "colors shape")?;
+  u:assert_eq(list_len(out.ids), 4, "one id per edge")?;
+  u:assert_eq(out.labels.count, 1, "one label")?;
+  u:assert_eq(out.labels.positions.shape, [1, 3], "label anchors")?;
+  u:assert_text_eq(out.frames.axis, "t", "the frame axis")?;
+  u:assert_eq(out.frames.count, 2, "two frames")?;
+  u:assert_eq(out.frames.positions.shape, [2, 4, 3], "frames shape")?;
+  u:assert_eq(take(out.frames.positions.values, 0, 12), 0.123, "rounded to three places")?;
+  u:assert_eq(u:rs_color_valid(out.controls.line_color), 1, "controls carry a valid color")?;
+  back = unwrap(parse_json(unwrap(u:rs_json(out))));
+  u:assert_eq(back.frames.positions.shape, [2, 4, 3], "the record round-trips through JSON")
+}
+
+@test {name: "finiteness and color checks are exact", tags: ["scene", "helpers"]}
+def u:test_scene_helpers() {
+  "The validators the builder relies on.";
+  u:assert_eq(u:rs_finite([1, -2.5, 0]), 1, "finite")?;
+  u:assert_eq(u:rs_finite([1, 1 / 0]), 0, "infinity")?;
+  u:assert_eq(u:rs_finite([0 / 0]), 0, "not a number")?;
+  u:assert_eq(u:rs_finite(fill([0], 0)), 1, "empty is finite")?;
+  u:assert_eq(u:rs_color_valid([0, 0.5, 1, 1]), 1, "a color")?;
+  u:assert_eq(u:rs_color_valid([0, 0.5, 1]), 0, "three channels")?;
+  u:assert_eq(u:rs_color_valid([0, -0.1, 1, 1]), 0, "below zero")
+}
+
+u:run_registered_tests()

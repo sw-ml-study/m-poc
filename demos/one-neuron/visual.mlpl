@@ -1,0 +1,158 @@
+# The Visual face of the first stone, as a line scene built from the trace: MLPL owns the geometry, the page only projects it. Three panels side by side on the z = 0 plane. Left, the dataflow of the equation as labelled boxes (x, w → × → + ← b → ŷ; ŷ, y → − → ² → L) with the two gradient paths routed back from L to w and b. Middle, the data: the four points, the line the neuron fits at this epoch, and each point's residual. Right, parameter space: the path (w, b) has taken so far, the current point, and the update arrow whose legs are η times the two gradients. Every edge and label carries a symbol id of the equation record, so focus on a token finds its counterpart here. Coordinates are scene units, roughly 16 wide by 9 high.
+include "../../lib/rosetta/scene.mlpl";
+include "equation.mlpl";
+
+def u:on_palette() {
+  "The RGBA colors of the face: one per kind of thing drawn.";
+  {structure: [0.78, 0.8, 0.88, 1], param: [0.4, 0.85, 0.95, 1], flow: [0.55, 0.58, 0.68, 1], grad: [1, 0.6, 0.25, 1], data: [0.95, 0.85, 0.4, 1], fit: [0.4, 0.85, 0.95, 1], residual: [0.95, 0.5, 0.45, 1], path: [0.72, 0.58, 0.95, 1]}
+}
+
+def u:on_points(xs, ys) {
+  "Points on the z = 0 plane from parallel x and y vectors, as a [k, 3] array.";
+  k = len(xs);
+  reshape(flatten(transpose(reshape(concat(concat(xs, ys), fill([k], 0)), [3, k]))), [k, 3])
+}
+
+def u:on_segment(scene, from_x, from_y, to_x, to_y, id, color) {
+  "One straight edge between two points on the plane.";
+  u:rs_scene_polyline(scene, u:on_points([from_x, to_x], [from_y, to_y]), 0, id, color)
+}
+
+def u:on_diamond(scene, cx, cy, r, id, color) {
+  "A small closed diamond marking a point.";
+  u:rs_scene_polyline(scene, u:on_points([cx - r, cx, cx + r, cx], [cy, cy + r, cy, cy - r]), 1, id, color)
+}
+
+def u:on_box(scene, cx, cy, id, text, color) {
+  "A labelled box of the dataflow: a closed rectangle 0.9 wide and 0.6 high around its center, and the label at the center.";
+  scene = u:rs_scene_polyline(scene, u:on_points([cx - 0.45, cx + 0.45, cx + 0.45, cx - 0.45], [cy - 0.3, cy - 0.3, cy + 0.3, cy + 0.3]), 1, id, color)?;
+  u:rs_scene_label(scene, [cx, cy, 0], id, text)
+}
+
+def u:on_dataflow(scene) {
+  "The structure panel: the equation as boxes and the edges the values flow along, each edge carrying the id of the value it carries; the gradient paths carry the gradient ids.";
+  c = u:on_palette();
+  scene = u:on_box(scene, 1, 8.4, "x", "x", c.structure)?;
+  scene = u:on_box(scene, 1, 7, "w", "w", c.param)?;
+  scene = u:on_box(scene, 1, 5.6, "b", "b", c.param)?;
+  scene = u:on_box(scene, 2.8, 7.7, "mul", "×", c.structure)?;
+  scene = u:on_box(scene, 4.6, 6.65, "add", "+", c.structure)?;
+  scene = u:on_box(scene, 6.4, 6.65, "yhat", "ŷ", c.structure)?;
+  scene = u:on_box(scene, 4.6, 4.4, "y", "y", c.structure)?;
+  scene = u:on_box(scene, 6.4, 4.4, "sub", "−", c.structure)?;
+  scene = u:on_box(scene, 6.4, 2.9, "sq", "²", c.structure)?;
+  scene = u:on_box(scene, 6.4, 1.4, "L", "L", c.structure)?;
+  scene = u:on_segment(scene, 1.45, 8.4, 2.35, 7.7, "x", c.flow)?;
+  scene = u:on_segment(scene, 1.45, 7, 2.35, 7.7, "w", c.flow)?;
+  scene = u:on_segment(scene, 3.25, 7.7, 4.15, 6.65, "mul", c.flow)?;
+  scene = u:on_segment(scene, 1.45, 5.6, 4.15, 6.65, "b", c.flow)?;
+  scene = u:on_segment(scene, 5.05, 6.65, 5.95, 6.65, "add", c.flow)?;
+  scene = u:on_segment(scene, 6.4, 6.35, 6.4, 4.7, "yhat", c.flow)?;
+  scene = u:on_segment(scene, 5.05, 4.4, 5.95, 4.4, "y", c.flow)?;
+  scene = u:on_segment(scene, 6.4, 4.1, 6.4, 3.2, "sub", c.flow)?;
+  scene = u:on_segment(scene, 6.4, 2.6, 6.4, 1.7, "sq", c.flow)?;
+  scene = u:rs_scene_polyline(scene, u:on_points([5.95, 0.3, 0.3, 0.55], [1.55, 1.55, 7, 7]), 0, "grad_w", c.grad)?;
+  scene = u:rs_scene_polyline(scene, u:on_points([5.95, 0.75, 0.75], [1.25, 1.25, 5.3]), 0, "grad_b", c.grad)?;
+  u:rs_scene_label(scene, [0.52, 3.3, 0], "eta", "η")
+}
+
+def u:on_plot_x(x) {
+  "Data x to scene x in the data panel.";
+  8.6 + x * 1.1
+}
+
+def u:on_plot_y(y) {
+  "Data y to scene y in the data panel.";
+  1.4 + y * 0.85
+}
+
+def u:on_data_panel(scene, trace, t) {
+  "The data panel at epoch t: axes, the four points, the fitted line through ŷ at the first and last x, and a residual from every point to the line.";
+  c = u:on_palette();
+  xs = trace.constants.x;
+  ys = trace.constants.y;
+  k = len(xs);
+  yhat = take(reshape(trace.channels.yhat.values, trace.channels.yhat.shape), 0, t);
+  scene = u:on_segment(scene, u:on_plot_x(0), u:on_plot_y(0), u:on_plot_x(3.2), u:on_plot_y(0), "x", c.structure)?;
+  scene = u:on_segment(scene, u:on_plot_x(0), u:on_plot_y(0), u:on_plot_x(0), u:on_plot_y(8.2), "y", c.structure)?;
+  scene = u:rs_scene_label(scene, [u:on_plot_x(3.45), u:on_plot_y(0), 0], "x", "x")?;
+  scene = u:rs_scene_label(scene, [u:on_plot_x(0), u:on_plot_y(8.55), 0], "y", "y")?;
+  index = 0;
+  while lt(index, k) {
+    px = u:on_plot_x(take(xs, 0, index));
+    scene = u:on_diamond(scene, px, u:on_plot_y(take(ys, 0, index)), 0.12, "y", c.data)?;
+    scene = u:on_segment(scene, px, u:on_plot_y(take(ys, 0, index)), px, u:on_plot_y(take(yhat, 0, index)), "sub", c.residual)?;
+    index = index + 1
+  };
+  u:on_segment(scene, u:on_plot_x(take(xs, 0, 0)), u:on_plot_y(take(yhat, 0, 0)), u:on_plot_x(take(xs, 0, k - 1)), u:on_plot_y(take(yhat, 0, k - 1)), "yhat", c.fit)
+}
+
+def u:on_param_w(w) {
+  "Parameter w to scene x in the parameter panel.";
+  13.4 + w
+}
+
+def u:on_param_b(b) {
+  "Parameter b to scene y in the parameter panel.";
+  1.4 + b * 5.4
+}
+
+def u:on_param_panel(scene, trace, t) {
+  "The parameter panel at epoch t: axes, the path (w, b) has taken up to t (later points folded onto the current one so every frame has the same vertices), the current point, and the update arrow: a leg of −η ∂L/∂w, a leg of −η ∂L/∂b, and the resultant with its head.";
+  c = u:on_palette();
+  ws = trace.channels.w;
+  bs = trace.channels.b;
+  n = len(ws);
+  eta = trace.constants.eta;
+  wt = take(ws, 0, t);
+  bt = take(bs, 0, t);
+  seen = range(n) <= t;
+  scene = u:on_segment(scene, u:on_param_w(0), u:on_param_b(0), u:on_param_w(2.3), u:on_param_b(0), "w", c.param)?;
+  scene = u:on_segment(scene, u:on_param_w(0), u:on_param_b(0), u:on_param_w(0), u:on_param_b(1.3), "b", c.param)?;
+  scene = u:rs_scene_label(scene, [u:on_param_w(2.5), u:on_param_b(0), 0], "w", "w")?;
+  scene = u:rs_scene_label(scene, [u:on_param_w(0), u:on_param_b(1.37), 0], "b", "b")?;
+  scene = u:rs_scene_polyline(scene, u:on_points(u:on_param_w(ws * seen + wt * (1 - seen)), u:on_param_b(bs * seen + bt * (1 - seen))), 0, "assign", c.path)?;
+  px = u:on_param_w(wt);
+  py = u:on_param_b(bt);
+  nx = u:on_param_w(wt - eta * take(trace.channels.grad_w, 0, t));
+  ny = u:on_param_b(bt - eta * take(trace.channels.grad_b, 0, t));
+  scene = u:on_diamond(scene, px, py, 0.12, "assign", c.path)?;
+  scene = u:on_segment(scene, px, py, nx, py, "grad_w", c.grad)?;
+  scene = u:on_segment(scene, nx, py, nx, ny, "grad_b", c.grad)?;
+  scene = u:on_segment(scene, px, py, nx, ny, "assign", c.path)?;
+  dx = nx - px;
+  dy = ny - py;
+  length = sqrt(dx * dx + dy * dy);
+  back = if lt(length, 0.000001) {
+    0
+  } else {
+    0.2 / length
+  };
+  side = back / 2;
+  u:rs_scene_polyline(scene, u:on_points([nx - dx * back - dy * side, nx, nx - dx * back + dy * side], [ny - dy * back + dx * side, ny, ny - dy * back - dx * side]), 0, "assign", c.path)
+}
+
+def u:on_visual(trace, t) {
+  "The whole Visual face at epoch t of a parsed trace record.";
+  scene = u:rs_scene_new(trace.axis.name);
+  scene = u:on_dataflow(scene)?;
+  scene = u:on_data_panel(scene, trace, t)?;
+  u:on_param_panel(scene, trace, t)
+}
+
+def u:on_scene(trace) {
+  "The Visual face with one frame per epoch of the trace: the geometry at epoch zero, then every epoch's positions.";
+  scene = u:on_visual(trace, 0)?;
+  t = 0;
+  while lt(t, trace.axis.count) {
+    frame = u:on_visual(trace, t)?;
+    scene = u:rs_scene_frame(scene, reshape(frame.positions, [frame.vertex_count, 3]))?;
+    t = t + 1
+  };
+  ok(scene)
+}
+
+def u:on_read_trace(path) {
+  "The trace record from its fixture.";
+  parse_json(read_text(path)?)
+}

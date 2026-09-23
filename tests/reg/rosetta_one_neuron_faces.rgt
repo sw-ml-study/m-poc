@@ -1,0 +1,3 @@
+command = """sh -c "./scripts/run-mlpl demos/one-neuron/faces.mlpl | grep -v '^viz: '""""
+exit_code = 0
+desc = "The one-neuron Math and proposed-M faces as SVG, glyphs laid out by sw-MLPL's equation renderer and every token tagged with its symbol id. The renderer's cache-path line is filtered out. A change here is a change to a text face of the stone."

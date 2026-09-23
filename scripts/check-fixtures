@@ -9,18 +9,30 @@ cd "$repo_root"
 mkdir -p tmp/fixtures
 
 status=0
+# check SCRIPT OUTPUT FIXTURE...: run SCRIPT with OUTPUT as its argument (a
+# file, or a directory the script fills), then compare each FIXTURE with the
+# file of the same name that the run produced.
 check() {
     script=$1
-    fixture=$2
-    fresh="tmp/fixtures/$(basename "$fixture")"
-    ./scripts/run-mlpl "$script" -- "$fresh" >/dev/null
-    if ! cmp -s "$fresh" "$fixture"; then
-        echo "stale fixture: $fixture differs from a fresh run of $script (regenerate with: just mlpl $script)" >&2
-        status=1
-    fi
+    output=$2
+    shift 2
+    ./scripts/run-mlpl "$script" -- "$output" >/dev/null
+    for fixture in "$@"; do
+        if [ -d "$output" ]; then
+            fresh="$output/$(basename "$fixture")"
+        else
+            fresh=$output
+        fi
+        if ! cmp -s "$fresh" "$fixture"; then
+            echo "stale fixture: $fixture differs from a fresh run of $script (regenerate with: just mlpl $script)" >&2
+            status=1
+        fi
+    done
 }
 
-check demos/one-neuron/train.mlpl fixtures/one-neuron/trace.json
+check demos/one-neuron/train.mlpl tmp/fixtures/trace.json fixtures/one-neuron/trace.json
+check demos/one-neuron/faces.mlpl tmp/fixtures/faces fixtures/one-neuron/faces/math.svg fixtures/one-neuron/faces/m.svg
+check demos/one-neuron/scene.mlpl tmp/fixtures/scene.json fixtures/one-neuron/scene.json
 
 [ "$status" -eq 0 ] || exit 1
 echo "PASS fixtures are fresh"

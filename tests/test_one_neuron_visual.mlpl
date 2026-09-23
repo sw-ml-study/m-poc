@@ -1,0 +1,83 @@
+# The one-neuron Visual face: built from the committed trace, every edge and label id is a symbol of the equation record, the geometry follows the numbers (the fitted line passes through ŷ at every epoch, the update arrow lands on the next epoch's parameters), every epoch is a frame with the same vertex set, and the committed scene.json is what the program emits.
+include "demos/one-neuron/visual.mlpl";
+
+def u:t_trace() {
+  "The committed trace, parsed.";
+  unwrap(u:on_read_trace("fixtures/one-neuron/trace.json"))
+}
+
+def u:t_last_edge(scene, id) {
+  "The index of the last edge carrying an id, or negative one.";
+  ids = str_split(scene.edge_ids, "|");
+  index = 0;
+  found = -1;
+  while lt(index, scene.edge_count) {
+    if str_eq(unwrap(list_get(ids, index)), id) {
+      found = index
+    };
+    index = index + 1
+  };
+  found
+}
+
+def u:t_unknown_id(ir, ids) {
+  "The first id in a string list that is not a symbol of the record, or the empty string.";
+  index = 0;
+  unknown = "";
+  while lt(index, list_len(ids)) {
+    id = unwrap(list_get(ids, index));
+    if eq(u:rs_ir_symbol_index(ir, id), -1) {
+      unknown = id
+    };
+    index = index + 1
+  };
+  unknown
+}
+
+@test {name: "every edge and label of the Visual face carries a symbol id of the equation", tags: ["one-neuron", "visual"]}
+def u:test_visual_ids() {
+  "Focus crosses from a text face to the Visual face by id; an id that is not a symbol would never light up.";
+  ir = unwrap(u:on_equation());
+  out = unwrap(u:rs_scene_export(unwrap(u:on_visual(u:t_trace(), 0)), 4));
+  u:assert_text_eq(u:t_unknown_id(ir, out.ids), "", "edge ids")?;
+  u:assert_text_eq(u:t_unknown_id(ir, out.labels.ids), "", "label ids")?;
+  u:assert_gt(out.labels.count, 10, "the dataflow boxes and the axes are labelled")
+}
+
+@test {name: "the fitted line and the update arrow follow the trace at every epoch", tags: ["one-neuron", "visual"]}
+def u:test_visual_follows_trace() {
+  "The geometry is the numbers: the line's ends sit at ŷ for the first and last x, and the arrow's tip sits at the next epoch's (w, b).";
+  trace = u:t_trace();
+  yhat = reshape(trace.channels.yhat.values, trace.channels.yhat.shape);
+  t = 0;
+  worst = 0;
+  while lt(t, trace.axis.count - 1) {
+    scene = unwrap(u:on_visual(trace, t));
+    positions = reshape(scene.positions, [scene.vertex_count, 3]);
+    line = u:t_last_edge(scene, "yhat");
+    line_start = take(positions, 0, take(scene.edges, 0, 2 * line));
+    line_end = take(positions, 0, take(scene.edges, 0, 2 * line + 1));
+    worst = reduce(:max, [worst, abs(take(line_start, 0, 1) - u:on_plot_y(take(take(yhat, 0, t), 0, 0))), abs(take(line_end, 0, 1) - u:on_plot_y(take(take(yhat, 0, t), 0, 3)))]);
+    arrow_tip = take(positions, 0, scene.vertex_count - 2);
+    worst = reduce(:max, [worst, abs(take(arrow_tip, 0, 0) - u:on_param_w(take(trace.channels.w, 0, t + 1))), abs(take(arrow_tip, 0, 1) - u:on_param_b(take(trace.channels.b, 0, t + 1)))]);
+    t = t + 1
+  };
+  u:assert_lt(worst, 0.00001, "line ends and arrow tips match the trace at every epoch")
+}
+
+@test {name: "the scene has one frame per epoch over one vertex set, and the committed scene.json is what the program emits", tags: ["one-neuron", "visual", "fixture"]}
+def u:test_visual_fixture() {
+  "The page replays frames; each must hold every vertex, and the file it loads must be fresh.";
+  trace = u:t_trace();
+  scene = unwrap(u:on_scene(trace));
+  out = unwrap(u:rs_scene_export(scene, 4));
+  u:assert_eq(out.frames.count, trace.axis.count, "one frame per epoch")?;
+  u:assert_text_eq(out.frames.axis, "epoch", "along the epoch axis")?;
+  u:assert_eq(take(out.frames.positions.shape, 0, 1), take(out.positions.shape, 0, 0), "vertex count agrees")?;
+  first = take(reshape(out.frames.positions.values, out.frames.positions.shape), 0, 0);
+  u:assert_eq(reduce(:max, abs(flatten(first) - out.positions.values)), 0, "frame zero is the resting geometry")?;
+  on_disk = read_text("fixtures/one-neuron/scene.json")?;
+  u:assert_eq(str_eq(on_disk, unwrap(u:rs_json(out))), 1, "scene.json is fresh")
+}
+
+u:run_registered_tests()

@@ -1,6 +1,6 @@
 number = 4
 slug = "faces"
-status = "pending"
+status = "in-progress"
 description = 'lib/rosetta/faces.mlpl renders Math and M faces via svg(...,"equation"); demos/one-neuron/scene.mlpl builds the Visual face as line-scene arrays into scene.json; schema tests; baselines'
 role = "legacy"
 context_files = []
