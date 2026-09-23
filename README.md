@@ -1,5 +1,9 @@
 # m-poc — Rosetta M
 
+**Live demo: <https://sw-ml-study.github.io/m-poc/>** — the committed
+`pages/` directory, published as is on every push to `main`. Until step 5
+of the plan lands it is a placeholder; after that it is the stone.
+
 A mock-up of **Rosetta M**: a 4D Rosetta Stone for a proposed array language
 for machine learning. One small computation — a single neuron trained by
 gradient descent — is shown as a 3D stone whose faces are the **Math**, the
@@ -12,8 +16,19 @@ equation, the M source and the dataflow stay put.
 Math                         proposed M                 animates over epochs
 ŷ = wx + b                   Ŷ ← B + W×X                ŷ for every x
 L = (y − ŷ)²                 L ← (Y−Ŷ)*2                L
-w ← w − η ∂L/∂w              W ← W − η×∇W L             w, b, ∂L/∂w, ∂L/∂b
+w ← w − η ∂L/∂w              W ← W − η×∇W L             w, ∂L/∂w
+b ← b − η ∂L/∂b              B ← B − η×∇B L             b, ∂L/∂b
 ```
+
+Both columns are rendered from one record,
+[`demos/one-neuron/equation.mlpl`](demos/one-neuron/equation.mlpl), built
+with the IR in [`lib/rosetta/ir.mlpl`](lib/rosetta/ir.mlpl): seventeen
+symbols (each with a role and a name), and per face an ordered list of
+tokens that render them. `=` on the Math face and `←` on the M face are the
+same symbol; so are `²` and `*2`; and the multiplication that paper notation
+leaves invisible in `wx` is carried on the Math face by U+2062 INVISIBLE
+TIMES so a click on `×` has somewhere to land. `just mlpl
+demos/one-neuron/show.mlpl` prints both faces and the token table as JSON.
 
 **M code here is proposed, not run.** There is no M parser or evaluator in
 this repository, and the glyphs are placeholders. Everything that executes is
@@ -48,11 +63,11 @@ just serve-site   # the committed pages/ at http://127.0.0.1:8765/
 
 ## Status
 
-Scaffold in place: the gate runs end to end over a smoke suite that pins
-the two interpreter capabilities the plan rests on (`svg(…, "equation")`
-renders Unicode math and proposed-M glyphs; `grad` trains a `param`) and a
-reg-rs baseline that pins the interpreter version. Next: the equation IR
-(`lib/rosetta/ir.mlpl`).
+Steps 1–2 of [the plan](docs/plan.md) are done: the gate (structure,
+gitignore, abstraction, links, style, mlplunit, reg-rs) and the equation IR
+with the one-neuron instance, whose Math and M faces are pinned by tests and
+a reg-rs baseline. Next: the training trace (`demos/one-neuron/train.mlpl`,
+real gradient descent with `grad`, replayed by the page).
 
 ## License
 

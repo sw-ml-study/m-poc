@@ -1,0 +1,10 @@
+# Print the one-neuron equation's faces and token table; the reg-rs baseline rosetta_one_neuron_equation pins this output.
+include "equation.mlpl";
+
+ir = unwrap(u:on_equation());
+print("MATH");
+print(u:rs_ir_math_text(ir));
+print("M (proposed)");
+print(u:rs_ir_m_text(ir));
+print("IR");
+print(unwrap(u:rs_ir_json(ir)))

@@ -1,0 +1,113 @@
+# The equation IR: symbols, faces built from token specs, text rendering, validation, JSON export, and the one-neuron instance's exact faces.
+include "lib/rosetta/ir.mlpl";
+include "demos/one-neuron/equation.mlpl";
+
+def u:t_tiny() {
+  "A two-symbol, one-line record used by the library tests.";
+  ir = u:rs_ir_new("tiny", "a tiny equation");
+  ir = u:rs_ir_symbol(ir, "a", "var", "left")?;
+  ir = u:rs_ir_symbol(ir, "eq", "op", "definition")?;
+  ir = u:rs_ir_symbol(ir, "b", "var", "right")?;
+  ir = u:rs_ir_line(ir, "math", "a:a|eq:=|b:b")?;
+  ir = u:rs_ir_line(ir, "m", "a:A|eq:←|b:~B")?;
+  ok(ir)
+}
+
+@test {name: "tokens join with the spaces they asked for, and lines with newlines", tags: ["ir", "render"]}
+def u:test_render_spacing() {
+  "A tilde prefix suppresses the space before a token; a new line starts without a space.";
+  ir = unwrap(u:t_tiny());
+  u:assert_text_eq(u:rs_ir_math_text(ir), "a = b", "math face")?;
+  u:assert_text_eq(u:rs_ir_m_text(ir), "A ←B", "m face honors the tilde")?;
+  ir = unwrap(u:rs_ir_line(ir, "math", "b:b|eq:=|a:a"));
+  u:assert_text_eq(u:rs_ir_math_text(ir), "a = b\nb = a", "second line")?;
+  u:assert_eq(ir.faces.math.line_count, 2, "two lines")?;
+  u:assert_eq(ir.faces.math.count, 6, "six tokens")
+}
+
+@test {name: "symbols fail closed on bad ids, roles, names, and duplicates", tags: ["ir", "validation"]}
+def u:test_symbol_validation() {
+  "The delimiter characters and the role vocabulary are the contract every face relies on.";
+  ir = u:rs_ir_new("t", "t");
+  u:assert_eq(is_err(u:rs_ir_symbol(ir, "", "var", "n")), 1, "empty id")?;
+  u:assert_eq(is_err(u:rs_ir_symbol(ir, "a|b", "var", "n")), 1, "pipe in id")?;
+  u:assert_eq(is_err(u:rs_ir_symbol(ir, "a:b", "var", "n")), 1, "colon in id")?;
+  u:assert_eq(is_err(u:rs_ir_symbol(ir, "a", "tensor", "n")), 1, "unknown role")?;
+  u:assert_eq(is_err(u:rs_ir_symbol(ir, "a", "var", "x|y")), 1, "pipe in name")?;
+  ir = unwrap(u:rs_ir_symbol(ir, "a", "var", "n"));
+  u:assert_eq(is_err(u:rs_ir_symbol(ir, "a", "op", "again")), 1, "duplicate id")?;
+  u:assert_eq(ir.symbol_count, 1, "one symbol")
+}
+
+@test {name: "lines fail closed on unknown symbols, missing ids, empty text, and unknown faces", tags: ["ir", "validation"]}
+def u:test_line_validation() {
+  "A face may only render declared symbols, so focus links can never dangle.";
+  ir = unwrap(u:t_tiny());
+  u:assert_eq(is_err(u:rs_ir_line(ir, "math", "a:a|zz:?")), 1, "unknown symbol")?;
+  u:assert_eq(is_err(u:rs_ir_line(ir, "math", "noid")), 1, "missing id")?;
+  u:assert_eq(is_err(u:rs_ir_line(ir, "math", "a:")), 1, "empty text")?;
+  u:assert_eq(is_err(u:rs_ir_line(ir, "math", "a:~")), 1, "tilde alone")?;
+  u:assert_eq(is_err(u:rs_ir_line(ir, "visual", "a:a")), 1, "unknown face")?;
+  u:assert_eq(ir.faces.math.count, 3, "a failed line leaves the record untouched")
+}
+
+@test {name: "validation requires symbols, both faces, equal line counts, and every symbol on every face", tags: ["ir", "validation"]}
+def u:test_record_validation() {
+  "An exported record is complete or it is not exported.";
+  u:assert_eq(is_err(u:rs_ir_validate(u:rs_ir_new("e", "e"))), 1, "no symbols")?;
+  ir = u:rs_ir_new("t", "t");
+  ir = unwrap(u:rs_ir_symbol(ir, "a", "var", "n"));
+  ir = unwrap(u:rs_ir_symbol(ir, "c", "var", "unused"));
+  u:assert_eq(is_err(u:rs_ir_validate(ir)), 1, "no tokens")?;
+  ir = unwrap(u:rs_ir_line(ir, "math", "a:a"));
+  ir = unwrap(u:rs_ir_line(ir, "math", "a:a"));
+  ir = unwrap(u:rs_ir_line(ir, "m", "a:A"));
+  u:assert_eq(is_err(u:rs_ir_validate(ir)), 1, "line counts differ")?;
+  ir = unwrap(u:rs_ir_line(ir, "m", "a:A"));
+  u:assert_eq(is_err(u:rs_ir_validate(ir)), 1, "symbol c is on no face")?;
+  u:assert_eq(is_err(u:rs_ir_json(ir)), 1, "an incomplete record does not export")?;
+  u:assert_eq(is_ok(u:rs_ir_validate(unwrap(u:t_tiny()))), 1, "the tiny record is complete")
+}
+
+@test {name: "the export carries symbols and per-face token tables that round-trip through JSON", tags: ["ir", "json"]}
+def u:test_export_json() {
+  "The page reads this JSON; ids on both faces must be drawn from the symbol table.";
+  ir = unwrap(u:t_tiny());
+  json = unwrap(u:rs_ir_json(ir));
+  back = unwrap(parse_json(json));
+  u:assert_text_eq(back.schema, "sw-ml-study.rosetta.equation", "schema")?;
+  u:assert_eq(back.symbols.count, 3, "three symbols")?;
+  u:assert_text_eq(str_join(back.symbols.ids, ","), "a,eq,b", "symbol ids in declaration order")?;
+  u:assert_text_eq(str_join(back.faces.m.ids, ","), "a,eq,b", "m face ids")?;
+  u:assert_text_eq(str_join(back.faces.m.texts, ","), "A,←,B", "m face texts without the tilde")?;
+  u:assert_eq(back.faces.m.seps, [1, 1, 0], "m face spacing")?;
+  u:assert_eq(back.faces.math.lines, [0, 0, 0], "one line")?;
+  u:assert_text_eq(back.faces.math.text, "a = b", "rendered text travels with the table")
+}
+
+@test {name: "the one-neuron record renders the exact Math and proposed-M faces", tags: ["one-neuron", "render"]}
+def u:test_one_neuron_faces() {
+  "These strings are the stone's two text faces; the reg-rs baseline pins the same output from show.mlpl.";
+  ir = unwrap(u:on_equation());
+  u:assert_text_eq(u:rs_ir_math_text(ir), "ŷ = w⁢x + b\nL = (y − ŷ)²\nw ← w − η⁢ ∂L/∂w\nb ← b − η⁢ ∂L/∂b", "math face, with U+2062 invisible times after w and η")?;
+  u:assert_text_eq(u:rs_ir_m_text(ir), "Ŷ ← B + W×X\nL ← (Y−Ŷ)*2\nW ← W − η×∇W L\nB ← B − η×∇B L", "m face")?;
+  u:assert_eq(ir.symbol_count, 17, "seventeen symbols")?;
+  u:assert_eq(ir.faces.math.line_count, 4, "four lines")
+}
+
+@test {name: "every one-neuron symbol is rendered on both faces so focus can always cross over", tags: ["one-neuron", "json"]}
+def u:test_one_neuron_links() {
+  "Definition on the Math face is assignment on the M face: the same symbol, different glyph.";
+  ir = unwrap(u:on_equation());
+  back = unwrap(parse_json(unwrap(u:rs_ir_json(ir))));
+  u:assert_eq(is_ok(u:rs_ir_validate(ir)), 1, "complete")?;
+  u:assert_eq(u:rs_face_uses(ir.faces.math, "eq") * u:rs_face_uses(ir.faces.m, "eq"), 1, "definition symbol on both faces")?;
+  u:assert_eq(len(back.faces.math.ids), ir.faces.math.count, "math table length")?;
+  u:assert_eq(len(back.faces.m.ids), ir.faces.m.count, "m table length")?;
+  u:assert_text_eq(unwrap(list_get(back.faces.m.texts, 1)), "←", "the m face spells definition as an arrow")?;
+  u:assert_text_eq(unwrap(list_get(back.faces.math.texts, 1)), "=", "the math face spells it as equals")?;
+  u:assert_text_eq(unwrap(list_get(back.faces.math.ids, 3)), "mul", "juxtaposition carries the multiply symbol")?;
+  u:assert_eq(str_len(unwrap(list_get(back.faces.math.texts, 3))), 1, "as one invisible character")
+}
+
+u:run_registered_tests()

@@ -1,0 +1,3 @@
+command = "./scripts/run-mlpl demos/one-neuron/show.mlpl"
+exit_code = 0
+desc = "The one-neuron equation's Math face, proposed-M face, and IR JSON, exactly as rendered from lib/rosetta/ir.mlpl. A change here is a change to a face of the stone."

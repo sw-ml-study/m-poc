@@ -1,0 +1,34 @@
+# The first stone's equation: one neuron, a linear fit trained by gradient descent, as one IR record. The Math face is paper notation; the M face is proposed notation whose glyphs are placeholders (see docs/plan.md). Both are rendered from the symbols declared here. Paper notation multiplies by juxtaposition, so on the Math face the multiply symbol is carried by U+2062 INVISIBLE TIMES (the character MathML uses for it): it renders as nothing and still gives focus something to find.
+include "../../lib/rosetta/ir.mlpl";
+
+def u:on_equation() {
+  "Build the one-neuron equation record: prediction, squared loss, and the gradient-descent updates of the weight and the bias.";
+  ir = u:rs_ir_new("one-neuron", "One neuron: a linear fit ŷ = wx + b trained by gradient descent on the squared error.");
+  ir = u:rs_ir_symbol(ir, "yhat", "var", "prediction")?;
+  ir = u:rs_ir_symbol(ir, "w", "param", "weight")?;
+  ir = u:rs_ir_symbol(ir, "x", "var", "input")?;
+  ir = u:rs_ir_symbol(ir, "b", "param", "bias")?;
+  ir = u:rs_ir_symbol(ir, "L", "var", "loss")?;
+  ir = u:rs_ir_symbol(ir, "y", "var", "target")?;
+  ir = u:rs_ir_symbol(ir, "eta", "hyper", "learning rate")?;
+  ir = u:rs_ir_symbol(ir, "grad_w", "op", "gradient of the loss with respect to the weight")?;
+  ir = u:rs_ir_symbol(ir, "grad_b", "op", "gradient of the loss with respect to the bias")?;
+  ir = u:rs_ir_symbol(ir, "eq", "op", "definition")?;
+  ir = u:rs_ir_symbol(ir, "assign", "op", "update")?;
+  ir = u:rs_ir_symbol(ir, "add", "op", "add")?;
+  ir = u:rs_ir_symbol(ir, "sub", "op", "subtract")?;
+  ir = u:rs_ir_symbol(ir, "mul", "op", "multiply")?;
+  ir = u:rs_ir_symbol(ir, "sq", "op", "square")?;
+  ir = u:rs_ir_symbol(ir, "lp", "punct", "open")?;
+  ir = u:rs_ir_symbol(ir, "rp", "punct", "close")?;
+  ir = u:rs_ir_line(ir, "math", "yhat:ŷ|eq:=|w:w|mul:~⁢|x:~x|add:+|b:b")?;
+  ir = u:rs_ir_line(ir, "math", "L:L|eq:=|lp:(|y:~y|sub:−|yhat:ŷ|rp:~)|sq:~²")?;
+  ir = u:rs_ir_line(ir, "math", "w:w|assign:←|w:w|sub:−|eta:η|mul:~⁢|grad_w:∂L/∂w")?;
+  ir = u:rs_ir_line(ir, "math", "b:b|assign:←|b:b|sub:−|eta:η|mul:~⁢|grad_b:∂L/∂b")?;
+  ir = u:rs_ir_line(ir, "m", "yhat:Ŷ|eq:←|b:B|add:+|w:W|mul:~×|x:~X")?;
+  ir = u:rs_ir_line(ir, "m", "L:L|eq:←|lp:(|y:~Y|sub:~−|yhat:~Ŷ|rp:~)|sq:~*2")?;
+  ir = u:rs_ir_line(ir, "m", "w:W|assign:←|w:W|sub:−|eta:η|mul:~×|grad_w:~∇W L")?;
+  ir = u:rs_ir_line(ir, "m", "b:B|assign:←|b:B|sub:−|eta:η|mul:~×|grad_b:~∇B L")?;
+  u:rs_ir_validate(ir)?;
+  ok(ir)
+}

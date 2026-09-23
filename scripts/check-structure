@@ -15,6 +15,11 @@ for path in \
     docs/plan.md \
     docs/research.txt \
     tests/test_smoke.mlpl \
+    lib/rosetta/ir.mlpl \
+    demos/one-neuron/equation.mlpl \
+    demos/one-neuron/show.mlpl \
+    tests/test_equation_ir.mlpl \
+    tests/reg/rosetta_one_neuron_equation.rgt \
     pages/index.html \
     .github/workflows/pages.yml
 do
