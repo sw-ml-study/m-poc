@@ -1,0 +1,8 @@
+number = 6
+slug = "focus"
+status = "pending"
+description = "click a token on any face and linked ids highlight on all faces incl. the Visual face; epoch readout of the focused value"
+role = "legacy"
+context_files = []
+created_at = "2026-09-23T15:13:52"
+commits = []
