@@ -1,0 +1,112 @@
+# The one-neuron training trace: the loop trains for real (grad against the closed-form gradient, the update rule, ŷ = wx + b in every row), the loss falls monotonically to below its threshold, the trace record is keyed by the equation's symbol ids, and the committed fixture is what the program emits.
+include "demos/one-neuron/neuron.mlpl";
+
+def u:t_rows() {
+  "The rows the fixture is built from: the same learning rate and epoch count as train.mlpl.";
+  u:on_train(0.1, 30)
+}
+
+def u:t_unknown_key(ir, keys) {
+  "The first key in a string list that is not a symbol of the record, or the empty string.";
+  index = 0;
+  unknown = "";
+  while lt(index, list_len(keys)) {
+    key = unwrap(list_get(keys, index));
+    if eq(u:rs_ir_symbol_index(ir, key), -1) {
+      unknown = key
+    };
+    index = index + 1
+  };
+  unknown
+}
+
+def u:t_max_abs(v) {
+  "The largest absolute value in an array, for tolerance checks over whole channels.";
+  reduce(:max, abs(v))
+}
+
+def u:t_step(v) {
+  "The change from each row to the next, v[t+1] − v[t], with a zero in the last position instead of the wrap-around.";
+  n = len(v);
+  (rotate(v, 1, 0) - v) * (range(n) < n - 1)
+}
+
+@test {name: "the trace has one row per epoch plus the initial state, with matching channel lengths", tags: ["one-neuron", "trace"]}
+def u:test_trace_shape() {
+  "Row zero is the state before any update and row epochs is the final state, so the scrubber has both ends.";
+  rows = u:t_rows();
+  u:assert_shape(rows.w, [31], "w per epoch")?;
+  u:assert_shape(rows.b, [31], "b per epoch")?;
+  u:assert_shape(rows.L, [31], "loss per epoch")?;
+  u:assert_shape(rows.grad_w, [31], "grad_w per epoch")?;
+  u:assert_shape(rows.grad_b, [31], "grad_b per epoch")?;
+  u:assert_shape(rows.yhat, [31, 4], "a prediction for every point at every epoch")?;
+  u:assert_eq(take(rows.w, 0, 0), 0, "w starts at zero")?;
+  u:assert_eq(take(rows.b, 0, 0), 0, "b starts at zero")
+}
+
+@test {name: "the loss never rises and ends below the threshold", tags: ["one-neuron", "trace", "loss"]}
+def u:test_loss_falls() {
+  "Full-batch gradient descent on a quadratic with a small enough step is monotone; the threshold sits just above the least-squares floor of these four points.";
+  rows = u:t_rows();
+  u:assert_eq(reduce(:max, u:t_step(rows.L)) <= 0, 1, "loss is non-increasing at every epoch")?;
+  u:assert_gt(take(rows.L, 0, 0), 20, "the untrained loss is large")?;
+  u:assert_lt(take(rows.L, 0, 30), 0.015, "the trained loss is near the floor")
+}
+
+@test {name: "grad agrees with the closed-form gradient of the mean squared error at every epoch", tags: ["one-neuron", "trace", "grad"]}
+def u:test_gradients_are_real() {
+  "The numbers are real: ∂L/∂w = mean(2(ŷ − y)x) and ∂L/∂b = mean(2(ŷ − y)), computed by hand from the recorded ŷ, match what grad produced.";
+  rows = u:t_rows();
+  residual = rows.yhat - reshape(rows.y, [1, 4]);
+  by_hand_w = reduce_add(2 * residual * reshape(rows.x, [1, 4]), 1) / 4;
+  by_hand_b = reduce_add(2 * residual, 1) / 4;
+  u:assert_lt(u:t_max_abs(by_hand_w - rows.grad_w), 0.000000001, "gradient with respect to w")?;
+  u:assert_lt(u:t_max_abs(by_hand_b - rows.grad_b), 0.000000001, "gradient with respect to b")?;
+  u:assert_lt(take(rows.grad_w, 0, 0), 0, "the first step moves w up")?;
+  u:assert_lt(take(rows.grad_b, 0, 0), 0, "the first step moves b up")
+}
+
+@test {name: "every row obeys the update rule and the prediction equation", tags: ["one-neuron", "trace"]}
+def u:test_rows_are_consistent() {
+  "w[t+1] = w[t] − η ∂L/∂w[t], the same for b, and ŷ[t] = w[t] x + b[t]: the three faces describe exactly this trace.";
+  rows = u:t_rows();
+  applied = range(31) < 30;
+  u:assert_lt(u:t_max_abs(u:t_step(rows.w) + 0.1 * rows.grad_w * applied), 0.000000001, "w follows the update rule")?;
+  u:assert_lt(u:t_max_abs(u:t_step(rows.b) + 0.1 * rows.grad_b * applied), 0.000000001, "b follows the update rule")?;
+  predicted = reshape(rows.w, [31, 1]) * reshape(rows.x, [1, 4]) + reshape(rows.b, [31, 1]);
+  u:assert_lt(u:t_max_abs(predicted - rows.yhat), 0.000000001, "ŷ = wx + b in every row")
+}
+
+@test {name: "the trace record is keyed by the equation's symbol ids and rounded", tags: ["one-neuron", "trace", "json"]}
+def u:test_trace_record() {
+  "Focus looks a token's value up by its symbol id, so every channel and constant must be a symbol of the one-neuron record; rounding makes the fixture stable across machines.";
+  ir = unwrap(u:on_equation());
+  trace = u:on_trace(u:t_rows(), 6);
+  u:assert_text_eq(trace.schema, "sw-ml-study.rosetta.trace", "schema")?;
+  u:assert_text_eq(trace.equation, ir.name, "names the equation record")?;
+  u:assert_eq(trace.axis.count, 31, "axis count")?;
+  u:assert_text_eq(u:t_unknown_key(ir, record_keys(trace.channels)), "", "every channel is a symbol id")?;
+  u:assert_text_eq(u:t_unknown_key(ir, record_keys(trace.constants)), "", "every constant is a symbol id")?;
+  u:assert_eq(list_len(record_keys(trace.channels)), 6, "six channels")?;
+  u:assert_eq(list_len(record_keys(trace.constants)), 3, "three constants")?;
+  u:assert_eq(trace.channels.yhat.shape, [31, 4], "the prediction channel carries its shape")?;
+  u:assert_shape(trace.channels.yhat.values, [124], "and its values flat, row-major")?;
+  u:assert_eq(u:rs_round(1.23456789, 6), 1.234568, "rounding to six places")?;
+  u:assert_eq(take(trace.channels.L, 0, 0), 20.525, "the first loss, rounded")?;
+  u:assert_eq(is_ok(u:rs_json(trace)), 1, "the record is plain data")
+}
+
+@test {name: "the committed fixture is the trace the program emits", tags: ["one-neuron", "trace", "fixture"]}
+def u:test_fixture_matches() {
+  "The page replays fixtures/one-neuron/trace.json; it must be what train.mlpl writes, not a stale or hand-edited copy.";
+  expected = unwrap(u:rs_json(u:on_trace(u:t_rows(), 6)));
+  on_disk = read_text("fixtures/one-neuron/trace.json")?;
+  u:assert_eq(str_eq(on_disk, expected), 1, "fixture is fresh")?;
+  back = parse_json(on_disk)?;
+  u:assert_eq(back.axis.count, 31, "the fixture parses back")?;
+  u:assert_eq(back.channels.yhat.shape, [31, 4], "with the prediction's shape")?;
+  u:assert_eq(len(back.channels.yhat.values), 124, "and all its values")
+}
+
+u:run_registered_tests()

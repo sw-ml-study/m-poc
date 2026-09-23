@@ -20,13 +20,20 @@ for path in \
     demos/one-neuron/show.mlpl \
     tests/test_equation_ir.mlpl \
     tests/reg/rosetta_one_neuron_equation.rgt \
+    lib/rosetta/emit.mlpl \
+    demos/one-neuron/neuron.mlpl \
+    demos/one-neuron/train.mlpl \
+    fixtures/one-neuron/trace.json \
+    tests/test_one_neuron_trace.mlpl \
+    tests/reg/rosetta_one_neuron_trace.rgt \
+    docs/trace.md \
     pages/index.html \
     .github/workflows/pages.yml
 do
     [ -f "$repo_root/$path" ] || { echo "missing required file: $path" >&2; exit 1; }
 done
 
-for dir in lib/rosetta demos/one-neuron fixtures pages tests tests/reg scripts docs; do
+for dir in lib/rosetta demos/one-neuron fixtures fixtures/one-neuron pages tests tests/reg scripts docs; do
     [ -d "$repo_root/$dir" ] || { echo "missing required directory: $dir" >&2; exit 1; }
 done
 

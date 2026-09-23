@@ -1,6 +1,6 @@
 number = 3
 slug = "one-neuron-trace"
-status = "pending"
+status = "in-progress"
 description = "demos/one-neuron/train.mlpl real gradient-descent loop with grad, per-epoch record to fixtures/one-neuron/trace.json via write_atomic; loss tests; reg-rs baseline"
 role = "legacy"
 context_files = []

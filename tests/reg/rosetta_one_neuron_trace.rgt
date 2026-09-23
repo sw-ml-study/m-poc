@@ -1,0 +1,3 @@
+command = "./scripts/run-mlpl demos/one-neuron/train.mlpl"
+exit_code = 0
+desc = "The one-neuron training trace exactly as train.mlpl emits it: rounded per-epoch w, b, loss, gradients and predictions from a real grad loop. A change here is a change to the numbers the stone animates."

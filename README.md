@@ -63,11 +63,21 @@ just serve-site   # the committed pages/ at http://127.0.0.1:8765/
 
 ## Status
 
-Steps 1–2 of [the plan](docs/plan.md) are done: the gate (structure,
-gitignore, abstraction, links, style, mlplunit, reg-rs) and the equation IR
-with the one-neuron instance, whose Math and M faces are pinned by tests and
-a reg-rs baseline. Next: the training trace (`demos/one-neuron/train.mlpl`,
-real gradient descent with `grad`, replayed by the page).
+Steps 1–3 of [the plan](docs/plan.md) are done: the gate (structure,
+gitignore, abstraction, links, style, fixtures, mlplunit, reg-rs), the
+equation IR with the one-neuron instance, whose Math and M faces are pinned
+by tests and a reg-rs baseline, and the training trace.
+[`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
+neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
+full-batch epochs at η = 0.1 over four points) and writes
+[`fixtures/one-neuron/trace.json`](fixtures/one-neuron/trace.json): per
+epoch `w`, `b`, the loss, both gradients and every prediction, keyed by the
+equation's symbol ids. [`docs/trace.md`](docs/trace.md) is the schema. The
+loss goes from 20.5 to 0.013 and never rises; tests check that, that `grad`
+matches the closed-form gradient at every epoch, and that the committed
+fixture is what the program emits. Next: the faces
+(`lib/rosetta/faces.mlpl` through `svg(…, "equation")`, and the Visual face
+as line-scene arrays in `scene.json`).
 
 ## License
 

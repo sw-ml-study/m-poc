@@ -1,0 +1,24 @@
+# Emitting fixtures: what MLPL computes, the page replays. Values are rounded to a fixed number of decimals before they leave, so a fixture is stable across machines and small enough to read, and every fixture is written crash-safe with write_atomic as deterministic JSON.
+
+def u:rs_round(values, places) {
+  "Round a scalar or an array to a number of decimal places; the result is what the page will show, so a fixture carries no float noise.";
+  scale = pow(10, places);
+  round(values * scale) / scale
+}
+
+def u:rs_json(value) {
+  "A data value as deterministic JSON text: sorted keys, flat rank-1 arrays, nested lists for higher ranks.";
+  to_json(value, {tagged: 0})
+}
+
+def u:rs_write_json(path, value) {
+  "Write a data value as JSON to a sandboxed path, atomically, and return the text written.";
+  text = u:rs_json(value)?;
+  write_atomic(path, text)?;
+  ok(text)
+}
+
+def u:rs_array_json(values) {
+  "An array of any rank as the shape-and-values record the line-scene schema uses (row-major values), so a fixture never holds nested lists and parses back into MLPL.";
+  {shape: shape(values), values: flatten(values)}
+}

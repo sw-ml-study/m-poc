@@ -1,0 +1,26 @@
+#!/bin/sh
+# Every committed fixture is what a fresh MLPL run emits: regenerate each
+# into tmp/ and compare byte for byte. A stale fixture is a page that
+# replays numbers the programs no longer produce.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_root"
+mkdir -p tmp/fixtures
+
+status=0
+check() {
+    script=$1
+    fixture=$2
+    fresh="tmp/fixtures/$(basename "$fixture")"
+    ./scripts/run-mlpl "$script" -- "$fresh" >/dev/null
+    if ! cmp -s "$fresh" "$fixture"; then
+        echo "stale fixture: $fixture differs from a fresh run of $script (regenerate with: just mlpl $script)" >&2
+        status=1
+    fi
+}
+
+check demos/one-neuron/train.mlpl fixtures/one-neuron/trace.json
+
+[ "$status" -eq 0 ] || exit 1
+echo "PASS fixtures are fresh"

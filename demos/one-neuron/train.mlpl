@@ -1,0 +1,16 @@
+# Train the one neuron and write the trace the page replays: fixtures/one-neuron/trace.json by default, or the path given as the script's argument (scripts/check-fixtures uses that to compare a fresh emission against the committed fixture). The JSON written is also printed; the reg-rs baseline rosetta_one_neuron_trace pins it.
+include "neuron.mlpl";
+
+on_eta = 0.1;
+on_epochs = 30;
+on_places = 6;
+on_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/one-neuron/trace.json"
+};
+
+rows = u:on_train(on_eta, on_epochs);
+text = unwrap(u:rs_write_json(on_path, u:on_trace(rows, on_places)));
+print(text);
+str_concat("wrote ", on_path)

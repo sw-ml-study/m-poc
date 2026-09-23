@@ -10,6 +10,7 @@ sh -n "$repo_root"/scripts/*
 "$repo_root/scripts/check-abstraction"
 "$repo_root/scripts/check-doc-links"
 "$repo_root/scripts/check-mlpl-style"
+"$repo_root/scripts/check-fixtures"
 "$repo_root/scripts/run-tests"
 "$repo_root/scripts/run-reg"
 git -C "$repo_root" diff --check
