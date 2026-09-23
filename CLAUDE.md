@@ -325,10 +325,16 @@ counterparts highlight on every face.
 After each planning, implementation, feature, or fix step:
 
 1. Run **all** pre-commit checks (`just check` once it exists): mlplunit
-   tests, reg-rs baselines, structure checks — not just formatting.
-2. Commit to `main` with a detailed message.
-3. Push.
-4. Summarize what was pushed, the next step(s), any choices that need a
+   tests, reg-rs baselines, structure checks — not just formatting. Tests
+   must pass; a failing test is a blocker to report, not a thing to skip.
+2. Update the docs the step touched: README status, `docs/plan.md` if scope
+   moved, any contract document.
+3. Check `.gitignore` is sane: generated or scratch output is ignored,
+   reviewed fixtures and `pages/` are tracked, nothing large or secret is
+   staged (`git status` before `git add`).
+4. Commit to `main` with a detailed message.
+5. Push.
+6. Describe what was pushed, the next step(s), any choices that need a
    decision, and any blockers found.
 
 This project commits to `main` directly; the `feat/` to `pr/` branch-handoff

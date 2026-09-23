@@ -297,7 +297,8 @@ the authority for scope.
 ## Closing every step
 
 Run **all** pre-commit checks including the mlplunit tests and reg-rs
-baselines, commit to `main` with a detailed message, push, then summarize
-what was pushed, the next step(s), any choices needing a decision, and any
-blockers. This project commits to `main` directly; the `feat/` to `pr/`
+baselines (they must pass), update the docs the step touched, check that
+`.gitignore` is sane, commit to `main` with a detailed message, push, then
+describe what was pushed, the next step(s), any choices needing a decision,
+and any blockers. This project commits to `main` directly; the `feat/` to `pr/`
 handoff convention above does not apply unless asked for.
