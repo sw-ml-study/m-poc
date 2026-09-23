@@ -1,0 +1,14 @@
+#!/bin/sh
+# Run one MLPL script with the selected interpreter, sandboxed to the
+# repository root so includes and fixture writes resolve the same way from
+# any working directory. usage: scripts/run-mlpl SCRIPT [-- ARGS]
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+[ "$#" -ge 1 ] || { echo "usage: scripts/run-mlpl SCRIPT [-- ARGS]" >&2; exit 2; }
+
+script=$1
+shift
+mlpl=$("$repo_root/scripts/select-mlpl")
+cd "$repo_root"
+exec "$mlpl" --source-dir . -f "$script" "$@"

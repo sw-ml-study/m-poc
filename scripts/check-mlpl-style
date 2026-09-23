@@ -1,0 +1,34 @@
+#!/bin/sh
+# Every tracked .mlpl file opens with a module-purpose comment and is in
+# canonical format per the adjacent sw-MLPL formatter (or $MLPL_FMT, absolute).
+set -eu
+
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+files=$(find "$repo_dir" -type f -name '*.mlpl' \
+    -not -path "$repo_dir/.git/*" -not -path "$repo_dir/.agentrail/*" \
+    -not -path "$repo_dir/tmp/*" -not -path "$repo_dir/pages/*" | sort)
+
+if [ -z "$files" ]; then
+    echo "MLPL style: no source files yet"
+    exit 0
+fi
+
+formatter=${MLPL_FMT:-"$repo_dir/../sw-mlpl/scripts/mlpl-fmt.sh"}
+case "$formatter" in
+    /*) ;;
+    *) echo "MLPL_FMT must be an absolute path: $formatter" >&2; exit 1 ;;
+esac
+if [ ! -x "$formatter" ]; then
+    echo "missing canonical formatter: $formatter" >&2
+    exit 1
+fi
+
+for file in $files; do
+    first=$(sed -n '/^[[:space:]]*$/d; p; q' "$file")
+    case "$first" in
+        \#*) ;;
+        *) echo "missing module-purpose comment: ${file#"$repo_dir/"}" >&2; exit 1 ;;
+    esac
+    "$formatter" --check "$file"
+done
+echo "PASS MLPL style"

@@ -1,2 +1,5 @@
 /tmp
 *.tmp
+# reg-rs runtime caches; the .rgt/.out/.err baselines beside them are committed
+*.tdb
+*.tdb.lock

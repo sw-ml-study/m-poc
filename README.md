@@ -25,9 +25,34 @@ geometry that the static page replays.
 visualization slice of [`docs/research.txt`](docs/research.txt) and nothing
 of the language.
 
+## Build and test
+
+There is nothing to build. The scripts select existing tools and never
+install them:
+
+- the adjacent `../sw-mlpl` checkout's `target/release/mlpl-repl` (measured
+  against 0.22.0), or an absolute `MLPL` override;
+- `mlplunit` on `PATH`, an absolute `MLPLUNIT` override, or the adjacent
+  `../../softwarewrighter/mlplunit/bin/mlplunit`;
+- `reg-rs` on `PATH`; its baselines live in [`tests/reg/`](tests/reg) and
+  run from the repository root;
+- [`just`](https://github.com/casey/just).
+
+```sh
+just check        # the pre-commit gate: structure, gitignore, abstraction, links, style, mlplunit, reg-rs
+just tests        # the mlplunit suites under tests/
+just reg -vv      # the reg-rs baselines, with full diffs on failure
+just reg-rebase NAME   # accept a changed output as the new baseline (a reviewed change)
+just serve-site   # the committed pages/ at http://127.0.0.1:8765/
+```
+
 ## Status
 
-Planning complete. The first step (`scaffold`) is next.
+Scaffold in place: the gate runs end to end over a smoke suite that pins
+the two interpreter capabilities the plan rests on (`svg(…, "equation")`
+renders Unicode math and proposed-M glyphs; `grad` trains a `param`) and a
+reg-rs baseline that pins the interpreter version. Next: the equation IR
+(`lib/rosetta/ir.mlpl`).
 
 ## License
 

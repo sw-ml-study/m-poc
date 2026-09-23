@@ -1,0 +1,46 @@
+# Pinned outcomes for the two sw-MLPL capabilities the whole plan rests on: `svg(text, "equation")` renders Unicode math and proposed-M glyphs to SVG, and `grad` trains a `param`. If either regresses in the interpreter, it is caught here rather than in a later step.
+
+sm_w = param[1];
+sm_w = [0.0];
+sm_x = [1.0, 2.0, 3.0, 4.0];
+sm_y = [3.0, 5.0, 7.0, 9.0];
+
+def u:sm_loss() {
+  "Mean squared error of a bias-free line through the four smoke points.";
+  d = sm_w * sm_x - sm_y;
+  reduce_add(d * d) / 4
+}
+
+@test {name: "the equation renderer keeps Unicode math glyphs and stacks big-operator limits", tags: ["smoke", "svg"]}
+def u:test_equation_svg() {
+  "The Math face depends on the summation sign, the gradient and the hat surviving the render, and on a lower limit rendering as a stacked (centered) limit.";
+  out = svg("ŷ = wx + b\nL = ∑_{i} (y_i − ŷ_i)^2\nw ← w − η ∇_w L", "equation");
+  u:assert_eq(equal(str_slice(out, 0, 4), "<svg"), 1, "an SVG document")?;
+  u:assert_gt(str_find(out, "ŷ"), -1, "the hat survives")?;
+  u:assert_gt(str_find(out, "∑"), -1, "the summation sign survives")?;
+  u:assert_gt(str_find(out, "∇"), -1, "the gradient sign survives")?;
+  u:assert_gt(str_find(out, "text-anchor=\"middle\""), -1, "a stacked limit is centered")
+}
+
+@test {name: "the equation renderer accepts proposed-M glyphs unchanged", tags: ["smoke", "svg"]}
+def u:test_m_svg() {
+  "The M face is the same renderer over a different string; the assignment arrow and the times sign must pass through.";
+  out = svg("Ŷ ← B + W×X\nL ← (Y−Ŷ)*2\nW ← W − η×∇W L", "equation");
+  u:assert_gt(str_find(out, "←"), -1, "assignment arrow")?;
+  u:assert_gt(str_find(out, "×"), -1, "times sign")?;
+  u:assert_gt(str_find(out, "∇W"), -1, "gradient with respect to W")
+}
+
+@test {name: "grad trains a param and the loss falls", tags: ["smoke", "grad"]}
+def u:test_grad_trains() {
+  "The trace is produced by this exact loop shape: grad of a user function with respect to a global param, then a plain update.";
+  before = u:sm_loss();
+  g = grad(u:sm_loss(), sm_w);
+  u:assert_shape(g, [1], "gradient has the parameter's shape")?;
+  u:assert_lt(take(g, 0, 0), 0, "the gradient points downhill from w = 0")?;
+  sm_w = sm_w - 0.05 * g;
+  after = u:sm_loss();
+  u:assert_lt(after, before, "one step reduces the loss")
+}
+
+u:run_registered_tests()

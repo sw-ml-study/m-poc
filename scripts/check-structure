@@ -1,0 +1,28 @@
+#!/bin/sh
+# The directory contract from docs/plan.md: the files every later step assumes exist.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+for path in \
+    README.md \
+    CLAUDE.md \
+    AGENTS.md \
+    COPYRIGHT \
+    LICENSE \
+    justfile \
+    mlplunit.conf \
+    docs/plan.md \
+    docs/research.txt \
+    tests/test_smoke.mlpl \
+    pages/index.html \
+    .github/workflows/pages.yml
+do
+    [ -f "$repo_root/$path" ] || { echo "missing required file: $path" >&2; exit 1; }
+done
+
+for dir in lib/rosetta demos/one-neuron fixtures pages tests tests/reg scripts docs; do
+    [ -d "$repo_root/$dir" ] || { echo "missing required directory: $dir" >&2; exit 1; }
+done
+
+echo "PASS repository structure"

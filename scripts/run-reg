@@ -1,0 +1,26 @@
+#!/bin/sh
+# Run the reg-rs golden baselines committed under tests/reg/. Baseline
+# commands are stored relative to the repository root, so this always runs
+# from there. Extra arguments go to `reg-rs run` (-v, -vv, -p NAME).
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+command -v reg-rs >/dev/null 2>&1 || { echo "reg-rs not found on PATH" >&2; exit 1; }
+
+if [ -z "$(find "$repo_root/tests/reg" -maxdepth 1 -name '*.rgt' -print -quit 2>/dev/null)" ]; then
+    echo "reg-rs: no baselines yet"
+    exit 0
+fi
+
+cd "$repo_root"
+REG_RS_DATA_DIR="$repo_root/tests/reg"
+export REG_RS_DATA_DIR
+
+pattern_given=0
+for arg in "$@"; do
+    [ "$arg" = "-p" ] && pattern_given=1
+done
+if [ "$pattern_given" -eq 1 ]; then
+    exec reg-rs run "$@"
+fi
+exec reg-rs run -p rosetta "$@"

@@ -1,0 +1,31 @@
+#!/bin/sh
+# The architecture rule from docs/plan.md: lib/rosetta/ knows equations,
+# tokens, faces and scenes; demos/ know their computation. No demo
+# vocabulary may leak into lib/. Checked, not reviewed.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+# Demo vocabulary, matched case-insensitively. Add a demo's words when the demo is added.
+pattern='neuron|epoch|matmul|softmax|gradient descent'
+
+status=0
+if [ -d "$repo_root/lib" ]; then
+    hits=$(grep -rniE "$pattern" "$repo_root/lib" 2>/dev/null || true)
+    if [ -n "$hits" ]; then
+        echo "demo vocabulary leaked into lib/ (see 'Architecture' in docs/plan.md):" >&2
+        echo "$hits" >&2
+        status=1
+    fi
+fi
+
+# The other half of the rule: nothing in the repository evaluates M.
+evalm=$(grep -rnE 'def u:[a-z_]*(eval|parse|lower)_m\b' "$repo_root/lib" "$repo_root/demos" 2>/dev/null || true)
+if [ -n "$evalm" ]; then
+    echo "an M parser/evaluator appeared (M code is proposed, never run; see docs/plan.md):" >&2
+    echo "$evalm" >&2
+    status=1
+fi
+
+[ "$status" -eq 0 ] || exit 1
+echo "PASS abstraction boundary (no demo vocabulary in lib/)"

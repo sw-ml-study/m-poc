@@ -1,0 +1,34 @@
+#!/bin/sh
+# .gitignore is sane: runtime caches are ignored, reviewed outputs are not,
+# and nothing ignored is tracked.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+status=0
+
+# Paths that must be ignored (reg-rs runtime caches, scratch output).
+for probe in tests/reg/x.tdb tests/reg/x.tdb.lock tmp/x scratch.tmp; do
+    if ! git -C "$repo_root" check-ignore -q "$probe"; then
+        echo "not ignored but should be: $probe" >&2
+        status=1
+    fi
+done
+
+# Paths that must NOT be ignored (reviewed baselines, fixtures, the site).
+for probe in tests/reg/x.rgt tests/reg/x.out tests/reg/x.err fixtures/x.json pages/index.html; do
+    if git -C "$repo_root" check-ignore -q "$probe"; then
+        echo "ignored but must be tracked: $probe" >&2
+        status=1
+    fi
+done
+
+# Nothing tracked may match an ignore rule.
+tracked=$(git -C "$repo_root" ls-files -ci --exclude-standard)
+if [ -n "$tracked" ]; then
+    echo "tracked files match .gitignore:" >&2
+    echo "$tracked" >&2
+    status=1
+fi
+
+[ "$status" -eq 0 ] || exit 1
+echo "PASS gitignore"
