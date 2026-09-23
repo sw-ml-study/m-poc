@@ -4,22 +4,67 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rosetta M</title>
-<style>
-  :root { color-scheme: dark; }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center;
-         background: #1e1e2e; color: #cdd6f4; font: 16px/1.5 system-ui, sans-serif; }
-  main { max-width: 36rem; padding: 0 16px; }
-  code { font-size: 1.1em; }
-  a { color: #89b4fa; }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main>
+<header>
   <h1>Rosetta M</h1>
-  <p>A 4D Rosetta Stone for a proposed array language for machine learning.
-     The stone is not built yet; this page holds its place.</p>
-  <p><code>ŷ = wx + b</code> &nbsp;·&nbsp; <code>Ŷ ← B + W×X</code></p>
-  <p><a href="https://github.com/sw-ml-study/m-poc">Repository and plan</a></p>
+  <p class="lede">One computation, three faces, and time. A single neuron
+    <span class="eq">ŷ = wx + b</span> fitted to four points by gradient descent:
+    its <b>Math</b>, the <b>proposed M code</b>, and its <b>Visual</b>
+    (structure and live data), on one stone. Drag to rotate it; scrub the
+    epochs and the numbers move while the equation, the code and the dataflow
+    stay put.</p>
+  <p class="note"><b>M is proposed, not run.</b> The M face is notation rendered
+    from the same record as the Math face; nothing here parses or evaluates it,
+    and its glyphs are placeholders. Every number on the page comes from a real
+    training run in <a href="https://github.com/sw-ml-study/sw-mlpl">sw-MLPL</a>,
+    replayed from a recorded trace.</p>
+</header>
+
+<main>
+  <div class="stage" id="stage" aria-label="The stone: drag to rotate">
+    <div class="stone" id="stone">
+      <section class="face" data-face="math" aria-label="Math face">
+        <h2>Math</h2>
+        <div class="text-face" id="face-math"></div>
+      </section>
+      <section class="face" data-face="m" aria-label="Proposed M face">
+        <h2>M <small>proposed notation · placeholder glyphs</small></h2>
+        <div class="text-face" id="face-m"></div>
+      </section>
+      <section class="face" data-face="visual" aria-label="Visual face">
+        <h2>Visual <small>structure and data at this epoch</small></h2>
+        <svg class="scene" id="face-visual" role="img" aria-label="Dataflow, data fit and parameter space"></svg>
+      </section>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="row faces" role="group" aria-label="Rotate to a face">
+      <span class="verb">Rotate</span>
+      <button type="button" data-turn="math">Math</button>
+      <button type="button" data-turn="m">M</button>
+      <button type="button" data-turn="visual">Visual</button>
+      <button type="button" id="spin" aria-pressed="true">Auto-rotate</button>
+    </div>
+    <div class="row time">
+      <span class="verb">Travel</span>
+      <button type="button" id="play" aria-pressed="false">Play</button>
+      <label for="epoch">epoch <output id="epoch-out" for="epoch">0</output></label>
+      <input type="range" id="epoch" min="0" max="0" value="0" step="1">
+    </div>
+    <dl class="readout" id="readout" aria-live="polite"></dl>
+  </div>
 </main>
+
+<footer>
+  <p>Rendered from one equation record by <a href="https://github.com/sw-ml-study/sw-mlpl">sw-MLPL</a>;
+    the trace was produced by its <code>grad</code>. Source, plan and fixtures:
+    <a href="https://github.com/sw-ml-study/m-poc">sw-ml-study/m-poc</a>.
+    Serve this page over HTTP (<code>just serve-site</code>) if you open it locally: it fetches its data.</p>
+</footer>
+
+<script src="rosetta.js"></script>
 </body>
 </html>

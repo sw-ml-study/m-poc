@@ -35,6 +35,10 @@ mlpl-path:
 mlplunit-path:
     ./scripts/select-mlplunit
 
+# Copy the reviewed fixtures into pages/data/ (nothing is generated).
+build-site:
+    ./scripts/build-site
+
 # Serve the committed pages/ directory at http://127.0.0.1:8765/ exactly as Pages will.
 serve-site:
     cd pages && python3 -m http.server 8765 --bind 127.0.0.1

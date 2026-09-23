@@ -1,6 +1,6 @@
 number = 5
 slug = "stone-page"
-status = "pending"
+status = "in-progress"
 description = "pages/ CSS 3D stone with the three face SVGs, auto-rotate + drag, epoch scrubber replaying trace.json, generic line projector for scene.json; scripts/build-site; just serve-site"
 role = "legacy"
 context_files = []

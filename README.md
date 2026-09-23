@@ -1,8 +1,9 @@
 # m-poc — Rosetta M
 
 **Live demo: <https://sw-ml-study.github.io/m-poc/>** — the committed
-`pages/` directory, published as is on every push to `main`. Until step 5
-of the plan lands it is a placeholder; after that it is the stone.
+`pages/` directory, published as is on every push to `main`. Drag the stone
+to rotate it, press Play or scrub the epochs; `?yaw=DEG&epoch=T` in the URL
+fixes a view for a still.
 
 A mock-up of **Rosetta M**: a 4D Rosetta Stone for a proposed array language
 for machine learning. One small computation — a single neuron trained by
@@ -61,12 +62,34 @@ just reg-rebase NAME   # accept a changed output as the new baseline (a reviewed
 just serve-site   # the committed pages/ at http://127.0.0.1:8765/
 ```
 
+## The page
+
+[`pages/`](pages) is static: `index.html`, `style.css`, `rosetta.js` and,
+under `pages/data/`, a copy of the fixtures made by `just build-site`
+(`scripts/check-site` fails the gate if the copy is stale). No bundler, no
+framework. The script has three parts, none of which knows what a neuron is:
+
+- **the stone**: a CSS 3D triangular prism (`preserve-3d`) whose three
+  faces are the two renderer SVGs, inlined so every token tspan is a DOM
+  node, and the Visual face. It auto-rotates, drags with the pointer, and
+  the Rotate buttons turn it to a face;
+- **a line projector**: draws any line-scene record (see
+  [`docs/scene.md`](docs/scene.md)) into an SVG with a fixed orthographic
+  camera fitted to the scene's bounding box over every frame, one `<line>`
+  per edge carrying its color and id, labels at their anchors;
+- **the time axis**: a scrubber with play/pause over the trace's epochs
+  that sets the projector's frame and fills a readout of every channel,
+  labelled with the Math face's text for that symbol from the equation
+  record.
+
+`just serve-site` serves it at <http://127.0.0.1:8765/>; the page fetches
+its data, so it needs HTTP rather than `file://`.
+
 ## Status
 
-Steps 1–4 of [the plan](docs/plan.md) are done: the gate (structure,
-gitignore, abstraction, links, style, fixtures, mlplunit, reg-rs); the
-equation IR with the one-neuron instance; the training trace; and the three
-faces as fixtures.
+Steps 1–5 of [the plan](docs/plan.md) are done: the gate; the equation IR
+with the one-neuron instance; the training trace; the three faces as
+fixtures; and the page.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -79,7 +102,7 @@ faces as fixtures.
   Math and proposed-M faces to
   [`fixtures/one-neuron/faces/`](fixtures/one-neuron/faces) through
   sw-MLPL's `svg(…, "equation")`, with every token wrapped in a tspan
-  carrying its symbol id.
+  carrying its symbol id, and writes the equation record itself as JSON.
 - [`demos/one-neuron/scene.mlpl`](demos/one-neuron/scene.mlpl) builds the
   Visual face from the trace as a line scene,
   [`fixtures/one-neuron/scene.json`](fixtures/one-neuron/scene.json): the
@@ -87,11 +110,11 @@ faces as fixtures.
   fitted line and residuals, and parameter space with the path and the
   update arrow, one frame per epoch. [`docs/scene.md`](docs/scene.md) is the
   contract for both.
+- [`pages/`](pages) is the stone, described above.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next: the page (`pages/`: the CSS 3D stone with the three faces, the epoch
-scrubber replaying the trace, and the generic line projector for the
-scene).
+Next: focus (click a token on any face and its counterparts light up on
+every face, with the epoch readout of the focused value).
 
 ## License
 

@@ -41,6 +41,16 @@ for path in \
     tests/reg/rosetta_one_neuron_faces.rgt \
     tests/reg/rosetta_one_neuron_scene.rgt \
     docs/scene.md \
+    fixtures/one-neuron/faces/equation.json \
+    scripts/build-site \
+    scripts/check-site \
+    pages/style.css \
+    pages/rosetta.js \
+    pages/data/trace.json \
+    pages/data/scene.json \
+    pages/data/faces/math.svg \
+    pages/data/faces/m.svg \
+    pages/data/faces/equation.json \
     pages/index.html \
     .github/workflows/pages.yml
 do

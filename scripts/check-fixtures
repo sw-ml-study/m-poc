@@ -31,7 +31,7 @@ check() {
 }
 
 check demos/one-neuron/train.mlpl tmp/fixtures/trace.json fixtures/one-neuron/trace.json
-check demos/one-neuron/faces.mlpl tmp/fixtures/faces fixtures/one-neuron/faces/math.svg fixtures/one-neuron/faces/m.svg
+check demos/one-neuron/faces.mlpl tmp/fixtures/faces fixtures/one-neuron/faces/math.svg fixtures/one-neuron/faces/m.svg fixtures/one-neuron/faces/equation.json
 check demos/one-neuron/scene.mlpl tmp/fixtures/scene.json fixtures/one-neuron/scene.json
 
 [ "$status" -eq 0 ] || exit 1

@@ -1,0 +1,15 @@
+#!/bin/sh
+# Assemble the static site: pages/ holds the hand-written page and a copy of
+# the reviewed fixtures under pages/data/. Nothing is generated here; the
+# fixtures are what MLPL emitted and the page replays them. Idempotent.
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_root"
+
+rm -rf pages/data
+mkdir -p pages/data/faces
+cp fixtures/one-neuron/trace.json fixtures/one-neuron/scene.json pages/data/
+cp fixtures/one-neuron/faces/math.svg fixtures/one-neuron/faces/m.svg fixtures/one-neuron/faces/equation.json pages/data/faces/
+
+echo "built pages/ (data from fixtures/one-neuron)"

@@ -1,4 +1,4 @@
-# Render the one neuron's Math and proposed-M faces to SVG and write them: fixtures/one-neuron/faces/math.svg and m.svg by default, or into the directory given as the script's argument (scripts/check-fixtures uses that). Both documents are also printed; the reg-rs baseline rosetta_one_neuron_faces pins them. The glyphs are laid out by sw-MLPL's equation renderer; this repository only tags the tokens.
+# Render the one neuron's Math and proposed-M faces to SVG and write them, with the equation record itself as JSON: fixtures/one-neuron/faces/math.svg, m.svg and equation.json by default, or into the directory given as the script's argument (scripts/check-fixtures uses that). Both documents are also printed; the reg-rs baseline rosetta_one_neuron_faces pins them. The glyphs are laid out by sw-MLPL's equation renderer; this repository only tags the tokens.
 include "../../lib/rosetta/faces.mlpl";
 include "../../lib/rosetta/emit.mlpl";
 include "equation.mlpl";
@@ -15,6 +15,7 @@ math = unwrap(u:rs_face_svg(ir, "math"));
 m = unwrap(u:rs_face_svg(ir, "m"));
 unwrap(write_atomic(str_concat(on_dir, "/math.svg"), math));
 unwrap(write_atomic(str_concat(on_dir, "/m.svg"), m));
+unwrap(u:rs_write_json(str_concat(on_dir, "/equation.json"), unwrap(u:rs_ir_export(ir))));
 print("MATH");
 print(math);
 print("M (proposed)");
