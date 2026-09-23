@@ -1,8 +1,9 @@
 number = 4
 slug = "faces"
-status = "in-progress"
+status = "completed"
 description = 'lib/rosetta/faces.mlpl renders Math and M faces via svg(...,"equation"); demos/one-neuron/scene.mlpl builds the Visual face as line-scene arrays into scene.json; schema tests; baselines'
 role = "legacy"
 context_files = []
 created_at = "2026-09-23T15:13:52"
-commits = []
+completed_at = "2026-09-23T16:47:52"
+commits = ["91acc57ed52dfa256862bacb61b06f15afe40770"]
