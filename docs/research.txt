@@ -1,0 +1,2812 @@
+given my APL-related work: 
+sw-vibe-coding/sw-apl , 
+sw-embed/sw-cor24-apl, 
+sw-embed/web-sw-cor24-apl, and https://mlpl.softwarewrighter.com/ -- I'd like to consider a new approach to the intersection of APL and ML.  So imagine an APL2-inspired language (glyphs, right to left) that has ML primitives, new glyphs.  One approach would be to parse actual math expressions, which can be multi-line, with the notations above and below sums and products.  See also 
+sw-vibe-coding/DiscoveryOne for ideas about parsing Espanso multiline expressions.  (secondary idea: how do tuples as first class language items fit in with an APL-like array language?).   I'm thinking of something like APLML (A Programming Language for Machine Learning) or just M or L in the style of A, J, K.    Also, there could be unicode-based glyphs for ML built-ins in sw-MLPL, like adam, relu, softmax, linear, sigmoid, etc.  --- With espanso, an escaped key stroke could produce a glyph and a smart editor could annotate glyphs with tooltips.  Help me come up with a design and plan for this idea.
+
+You’re describing something more interesting than “APL with a few neural-network functions.” The coherent version is a new array language whose notation deliberately sits between APL and mathematical ML notation:
+
+APL-style right-to-left evaluation and array semantics.
+APL2-style nested arrays as the basis for structured data.
+ML primitives that operate on whole tensors/models/parameter structures.
+A second, spatial mathematical surface syntax for expressions such as sums, products, gradients, losses, and indexed tensor equations.
+Tooling that makes glyph entry practical rather than nostalgic.
+
+I would separate the idea into three layers, because trying to solve all of them in one grammar would likely make the language incoherent.
+
+1. The core language: “APL for tensors”
+
+The core should remain recognizably APL.
+
+That matters because your current sw-apl already gives you the hard parts: a clean-room Rust interpreter, genuine glyph syntax, right-to-left evaluation, arbitrary-rank arrays, a browser implementation, Espanso/Emacs input, workspaces, and regression/conformance infrastructure. Its main historical limitation for this experiment is intentional: it models APL\360 / 5100-era APL rather than APL2, so it currently has flat arrays, no nesting, and no Each.
+
+By contrast, sw-cor24-apl has already explored exactly two features that become important here: nested/boxed arrays and Each, while retaining a right-to-left recursive-descent parser.
+
+That suggests:
+
+Do not mutate historical sw-apl into ML-APL. Fork the semantic architecture and create a new language mode/project.
+
+Call the research language M, L, or APLML; keep sw-apl historically disciplined.
+
+My preference for the actual language name is M.
+
+It fits the Iverson-family tradition:
+
+A → J → K → … → M
+
+and “M” can quietly stand for Machine, Model, Matrix, or ML, without making the language name cumbersome.
+
+APLML would be the better descriptive repo name initially, though:
+
+sw-aplml
+
+with:
+
+Language: M
+Tagline: an array language for machine learning
+
+That avoids trying to own an unsearchable one-letter repository.
+
+2. Don't make relu, softmax, etc. merely funny spellings
+
+This is the most important design decision.
+
+Something like:
+
+Y ← relu W+.×X
+
+becoming:
+
+Y ← ♢ W+.×X
+
+doesn't really create a new language. It saves characters.
+
+Instead, ML primitives should exploit APL-level semantics.
+
+For example, classic APL already gives you a concise linear layer:
+
+B + W +.× X
+
+depending on axis convention.
+
+So Linear does not necessarily deserve a primitive glyph at all. Its value is primarily as a parameterized/model object, not as a mathematical operator.
+
+Likewise ReLU is already conceptually:
+
+0⌈X
+
+and sigmoid can be defined compositionally.
+
+This gives you a useful rule:
+
+A primitive earns a glyph only if it introduces a useful semantic concept that is awkward to express compositionally.
+
+For example:
+
+Concept	Existing array expression	New primitive justified?
+ReLU	0⌈X	probably no
+sigmoid	simple composition	probably no
+softmax	possible but verbose + numerically subtle	yes
+matmul	+.×	no
+convolution	awkward axis/window expression	yes
+gradient	impossible as ordinary array primitive	yes
+loss	could be library function	maybe
+optimizer step	stateful structural transform	yes
+attention	composition of common ops	maybe library first
+stop-gradient	new AD semantics	yes
+parameter	new semantic category	yes
+trainable model	structured value	yes
+
+So rather than inventing twenty pictograms for PyTorch functions, create a small ML glyph vocabulary.
+
+3. A proposed ML glyph vocabulary
+
+Unicode already contains a very large mathematical operator repertoire, but Unicode explicitly does not assign unique semantics to every mathematical use; applications/languages decide those meanings in context.
+
+That means you can use existing Unicode characters rather than inventing a custom font.
+
+I would begin with about six new semantic primitives.
+
+Glyph	Spoken form	Meaning
+∇	grad	derivative / gradient
+⨂	tensor	tensor/outer interaction, if not conflicting with APL outer product
+⧉	window	sliding window / convolution operand
+⌁	soft	normalize logits / softmax-like transform
+⚿ or another safe glyph	param	trainable parameter
+↻	step	optimizer state transition
+
+I'm intentionally not strongly endorsing those exact glyphs yet. Glyph selection should come after the semantic inventory, because visually clever symbols become regrettable language syntax.
+
+One especially good candidate is:
+
+∇
+
+because ML users already understand it.
+
+Example:
+
+G ← ∇ Loss Params
+
+or, preserving stronger APL dyadic structure:
+
+Params ∇ Loss
+
+But I would actually treat ∇ as an operator, not a function:
+
+∇Loss Params
+
+meaning:
+
+derive the gradient function of Loss, then apply it to Params.
+
+That is much more Iversonian.
+
+4. Operators are probably more important than new functions
+
+This is where the language could become genuinely distinctive.
+
+APL's superpower isn't merely arrays. It is that functions can be transformed by operators.
+
+Machine learning is full of function transformations:
+
+differentiate a function
+vectorize a function
+batch a function
+checkpoint a function
+jit/compile a function
+map over devices
+calculate value-and-gradient
+attach trainable parameters
+freeze part of a model
+
+These map beautifully onto the APL operator concept.
+
+For example, conceptually:
+
+∇F
+
+gradient of F
+
+⌸F
+
+batched/vectorized F
+
+F¨
+
+Each, already familiar from modern APL
+
+F⍤R
+
+rank-sensitive application
+
+and potentially:
+
+F⍢
+
+training/update transformation
+
+So an optimizer might not be:
+
+adam(model, gradients)
+
+but:
+
+Params ← Rate Adam Loss Params
+
+or even an operator-derived training verb:
+
+Train ← Adam⍤Loss
+Params ← Train Params Batch
+
+The exact notation needs experimentation, but this direction is stronger than assigning Adam a decorative Unicode glyph.
+
+5. The real breakthrough: make mathematical notation another surface syntax
+
+Your multiline idea is potentially the differentiator.
+
+Don't try to force two-dimensional mathematics directly into the ordinary APL lexer.
+
+Instead build:
+
+          ┌─────────────┐
+APL glyph │             │
+source ──▶│             │
+          │ semantic IR │──▶ evaluator
+Math 2D ─▶│             │
+source    │             │
+          └─────────────┘
+
+APL syntax and mathematical notation are then two parsers for one expression IR.
+
+That is very similar philosophically to what web-sw-cor24-apl already does in the other direction: it can display the same operations as representative ASCII words, APL glyphs, or literate descriptions.
+
+You would extend that idea from display aliases to actual bidirectional notation.
+
+6. Do not encode 2-D math as fake lines of text
+
+For example, this:
+
+$$ \operatorname{softmax}(z)_i = \frac{e^{z_i}} {\sum_{j=1}^{K} e^{z_j}} $$
+
+cannot robustly be represented by counting spaces in:
+
+              e^zᵢ
+    ----------------------
+        K
+        Σ     e^zⱼ
+       j=1
+
+unless the editor owns the layout.
+
+Unicode itself distinguishes between character encoding and higher-level mathematical composition; MathML/TeX-like systems provide structure that plain Unicode doesn't.
+
+So I would borrow the best DiscoveryOne idea:
+
+position is syntax, but serialize position explicitly.
+
+DiscoveryOne already proposes source objects with (x,y,z) coordinates and semantic facets. You only need (x,y) for mathematics.
+
+Internally:
+
+struct MathGlyph {
+    text: String,
+    x: i32,
+    y: i32,
+}
+
+but very quickly parse those into structural nodes:
+
+Fraction
+ ├─ numerator
+ │   └─ Exp(Index(z,i))
+ └─ denominator
+     └─ Sum
+         ├─ binder: j
+         ├─ lower: 1
+         ├─ upper: K
+         └─ Exp(Index(z,j))
+
+That becomes:
+
+Expr::Div(
+    Exp(Index(z,i)),
+    Reduce {
+        op: Add,
+        binder: j,
+        range: 1..K,
+        body: Exp(Index(z,j))
+    }
+)
+
+And then lower it to APL-array semantics.
+
+That separation is crucial.
+
+7. Math notation → array algebra should be visible
+
+This would make an excellent teaching/research environment.
+
+Input:
+
+$$ y_i = \frac{e^{x_i}}{\sum_j e^{x_j}} $$
+
+Compiler interpretation:
+
+index notation
+      ↓
+axis semantics
+      ↓
+array algebra
+      ↓
+M/APL source
+
+For example, conceptually:
+
+E ← * X - ⌈/X
+Y ← E ÷ +/E
+
+The user could switch among:
+
+paper math
+indexed math AST
+APL/M expression
+shape trace
+evaluated arrays
+
+That dovetails extremely well with what you're doing in MLPL and the “learn visually” direction.
+
+And it gives the project an educational purpose larger than “APL with ML built-ins.”
+
+8. Mathematical binders should be first-class compiler constructs
+
+Sums and products are not merely glyphs.
+
+This:
+
+$$ \sum_{i=1}^{n} x_i $$
+
+contains:
+
+operator      Σ
+binder        i
+lower bound   1
+upper bound   n
+body          x_i
+
+So parse it initially as:
+
+Reduce {
+    op: Sum,
+    variable: i,
+    domain: Range(1,n),
+    expr: x[i],
+}
+
+Then perform an arrayification pass.
+
+If i indexes the only axis of x:
+
+Σᵢ xᵢ
+
+becomes:
+
++/X
+
+For:
+
+$$ y_i = \sum_j W_{ij}x_j $$
+
+the compiler can recognize contraction:
+
+contract axis j
+
+and lower to an inner product / matrix-vector operation.
+
+This would be an outstanding feature because users could see:
+
+loops → indexed mathematics → contractions → array combinators
+
+which is essentially the conceptual bridge between conventional ML notation and APL.
+
+9. Add Einstein notation before adding dozens of ML built-ins
+
+I'd prioritize this surprisingly highly.
+
+For example:
+
+$$ C_{ij} = \sum_k A_{ik} B_{kj} $$
+
+should become something structurally equivalent to:
+
+C ← A +.× B
+
+Likewise common tensor contractions could be inferred from repeated bound indices.
+
+That means your language has something resembling:
+
+math compiler
+    ↓
+index contraction
+    ↓
+APL array algebra
+
+This is much more interesting than:
+
+matmul(A,B)
+
+And it fits your previous work translating CNN formulas to MLPL exceptionally well.
+
+10. Tuples: yes—but don't confuse tuples with nested arrays
+
+Your secondary question deserves a firm distinction.
+
+APL2 already provides extremely powerful recursive heterogeneous structure: nested arrays may contain arrays of differing shape, rank, depth, and type.
+
+So this:
+
+(Weights Bias)
+
+can already conceptually be represented as a nested array.
+
+But a tuple should convey something different:
+
+fixed-position product structure whose elements do not participate in ordinary array scalar extension/broadcasting as one homogeneous array.
+
+For ML this matters greatly.
+
+A layer may return:
+
+(output, state)
+
+An optimizer step may return:
+
+(params, optimizer-state)
+
+A training iteration might yield:
+
+(loss, params, metrics)
+
+Treating those as an ordinary nested vector is semantically weak.
+
+So I would have three fundamental structural categories:
+
+Scalar
+Array
+Tuple
+
+with arrays recursively allowed to contain boxed/nested values if desired.
+
+11. Make tuples named products, inspired by DiscoveryOne/Tuplet
+
+DiscoveryOne's ancestry is relevant because Tuplet/DiscoveryOne treats named tuples and multi-output verbs as fundamental.
+
+For M, I would simplify the idea.
+
+For example:
+
+R ← ⟨Loss Params Metrics⟩
+
+or constructor syntax:
+
+⟨loss: L, params: P, metrics: M⟩
+
+and selection:
+
+R.loss
+
+You don't need to force tuple semantics into APL indexing.
+
+The semantic distinction becomes:
+
+Structure	Meaning
+array	many things of the same structural axis space
+nested array	array whose cells may themselves be arrays/objects
+tuple	one product value consisting of distinct roles
+named tuple	tuple with semantic fields
+
+That distinction is extremely useful for ML.
+
+Consider Adam state:
+
+AdamState =
+    ⟨step,
+      first_moment,
+      second_moment⟩
+
+Those values are structurally related but are not an array.
+
+12. Tuples solve a longstanding awkwardness in array languages
+
+APL is excellent when one answer is an array.
+
+Modern computation often wants multiple semantically different outputs.
+
+Instead of conventions such as:
+
+2⊃R
+
+you could have:
+
+R.params
+R.loss
+
+or destructuring:
+
+⟨L P S⟩ ← Train Batch State
+
+This would fit right-to-left evaluation nicely:
+
+⟨Loss Params State⟩ ← Batch Train State
+
+A function can remain conceptually monadic/dyadic yet return a product.
+
+This is one place where I think departing from traditional APL is worth it.
+
+13. A tentative core type model
+
+I would avoid a traditional static type system initially.
+
+Instead introduce structural runtime categories plus optional shape annotations:
+
+Value
+├── Scalar
+│   ├── Int
+│   ├── Float
+│   ├── Complex
+│   ├── Bool
+│   └── Char
+│
+├── Array
+│   ├── Shape
+│   ├── Element storage
+│   └── Rank
+│
+├── Box/Nested
+│
+├── Tuple
+│   ├── positional
+│   └── named
+│
+├── Function
+│
+└── Model/Parameter
+
+Eventually:
+
+Tensor[F32; B,H,W,C]
+
+could exist as compiler metadata without infecting normal APL syntax.
+
+14. Shape should be part of the language's explanatory model
+
+APL already makes shape fundamental through ⍴.
+
+ML should take that further.
+
+For example a smart editor could show:
+
+Y ← W +.× X
+
+with hover metadata:
+
+W : 768 × 3072
+X : 3072 × 128
+────────────────
+Y : 768 × 128
+
+And math notation:
+
+$$ Y_{ij}=\sum_k W_{ik}X_{kj} $$
+
+could annotate:
+
+i → 768
+j → 128
+k → 3072 (contracted)
+
+This may be more valuable pedagogically than the ML glyphs themselves.
+
+15. The editor is part of the language
+
+APL historically required specialized input.
+
+You've already solved much of that problem in sw-apl: the browser has an APL keyboard, and the project explicitly supports Espanso and Emacs keymaps.
+
+For M I would make this a first-class design principle:
+
+Source remains Unicode text, but editing is mnemonic.
+
+Example Espanso mappings:
+
+\grad     → ∇
+\rho      → ⍴
+\iota     → ⍳
+\each     → ¨
+\sum      → ∑
+\product  → ∏
+\alpha    → α
+\partial  → ∂
+
+Maybe use an APL-style prefix key:
+
+Alt-G G   → ∇
+Alt-G R   → ⍴
+
+but Espanso provides the portable baseline.
+
+The editor should then display:
+
+∇
+Gradient operator
+Derives a function computing ∂output/∂argument
+
+on hover.
+
+That largely eliminates the classic “APL hieroglyphics” objection.
+
+16. Make glyphs readable without changing source
+
+Borrow directly from web-sw-cor24-apl.
+
+It already supports:
+
+representative syntax
+APL glyph syntax
+literate syntax
+
+Extend that to four synchronized views:
+
+Glyph
+    ∇Loss P
+
+Mnemonic
+    grad Loss P
+
+Literate
+    gradient-of Loss applied-to P
+
+Mathematical
+       ∂ Loss
+    ─────────
+       ∂ P
+
+All four views point at the same AST.
+
+That is a much stronger UI than a syntax highlighter.
+
+17. Don't parse arbitrary printed mathematics in M0
+
+There is a large difference between:
+
+“our editor understands structured two-dimensional math”
+
+and:
+
+“paste arbitrary mathematics from a paper and we'll parse it.”
+
+The latter rapidly becomes an OCR/TeX/CAS research project.
+
+For the first version, constrain the grammar to:
+
+fractions
+superscripts
+subscripts
+Σ
+Π
+∂
+∇
+parentheses/brackets
+indexed variables
+equality
+common arithmetic
+perhaps expectation E
+tensor contractions
+
+That is enough for a surprisingly large fraction of introductory ML equations.
+
+Softmax alone is a good proof:
+
+$$ \sigma_i(z)=\frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}} $$
+
+Google's ML material uses essentially this standard formula.
+
+18. The first demonstration should be softmax
+
+It exercises nearly everything you care about.
+
+Start with the paper notation:
+
+$$ s_i = \frac{e^{z_i}} {\sum_j e^{z_j}} $$
+
+Then show its interpretation:
+
+numerator
+    exponent(index(z,i))
+
+denominator
+    reduce(add, j, exponent(index(z,j)))
+
+Then arrayify:
+
+E ← *Z
+S ← E ÷ +/E
+
+Then stabilized version:
+
+E ← *Z-⌈/Z
+S ← E÷+/E
+
+Then replace the implementation with a primitive if desired:
+
+S ← ⌁Z
+
+Clicking ⌁ could expand back into its definition.
+
+That gives you a beautiful distinction between:
+
+primitive as abstraction
+
+and
+
+array expression as explanation
+
+19. Second demo: a linear layer should deliberately have no glyph
+
+Math:
+
+$$ y = Wx+b $$
+
+M:
+
+Y ← B + W +.× X
+
+This demonstrates the opposite lesson:
+
+APL already is an ML notation when the operation is fundamentally array algebra.
+
+That's important intellectually. Otherwise the project risks seeming like a Unicode façade over a tensor library.
+
+20. Third demo: gradient descent
+
+Math:
+
+$$ \theta_{t+1} = \theta_t-\eta\nabla_\theta L(\theta_t) $$
+
+M might look like:
+
+Θ ← Θ - η × ∇Loss Θ
+
+That is where the ML extension pays for itself.
+
+And then:
+
+Train ← {
+    Θ ← Θ - η × ∇Loss Θ
+}
+
+or an eventual derived optimizer form.
+
+21. Fourth demo: Adam shows why tuples matter
+
+Adam has:
+
+parameters
+first moment
+second moment
+step
+hyperparameters
+
+So something like:
+
+State ← ⟨step:0 m:0×Θ v:0×Θ⟩
+
+then:
+
+⟨Θ State⟩ ← Grad AdamStep ⟨Θ State⟩
+
+This makes the tuple work clearly justified rather than an arbitrary language feature.
+
+22. Fifth demo: CNN equation → array operation
+
+Use one of the nested-sum convolution equations you've been exploring.
+
+Something like:
+
+$$ Y_{i,j,k} = \sum_m\sum_n\sum_c X_{i+m,j+n,c}K_{m,n,c,k} $$
+
+Your math parser recognizes:
+
+free indices:      i j k
+contracted:        m n c
+
+and lowers it to:
+
+window + contraction
+
+Then either:
+
+Y ← K Conv X
+
+or a composition of window and inner-product primitives.
+
+This would connect directly to the CNN/math work in MLPL.
+
+23. Architecture
+
+I'd build the research implementation in Rust and reuse your established pattern:
+
+                     ┌───────────────┐
+Unicode APL/M ──────▶│ glyph parser  │
+                     └──────┬────────┘
+                            │
+2D math editor ─────────────┤
+                     ┌──────▼────────┐
+                     │ semantic AST  │
+                     └──────┬────────┘
+                            │
+                   ┌────────▼────────┐
+                   │ shape/index IR  │
+                   └────────┬────────┘
+                            │
+                 ┌──────────▼─────────┐
+                 │ arrayification pass │
+                 └──────────┬─────────┘
+                            │
+                    ┌───────▼───────┐
+                    │ array/ML IR   │
+                    └───┬───────┬───┘
+                        │       │
+                  interpreter  MLPL?
+                        │       │
+                       WASM   teaching view
+
+I would not compile math text straight to executable operations.
+
+Keep the intermediate index representation visible and testable.
+
+24. Five small Rust components
+
+This also fits your preferred project-size discipline reasonably well.
+
+m-core
+    Value, Array, Tuple, Shape
+
+m-parse
+    traditional glyph parser
+
+m-math
+    spatial math parser + indexed-expression IR
+
+m-lower
+    index analysis + arrayification
+
+m-eval
+    evaluator + AD primitives
+
+Then:
+
+m-web
+
+as a separate app consuming those.
+
+sw-apl itself remains untouched except perhaps extracting/reusing ideas or small libraries where sensible.
+
+25. Autodiff should be phase 2, but architect for it immediately
+
+If ∇ is going to mean anything beyond symbolic rewriting, every primitive eventually needs derivative metadata.
+
+For instance:
+
+Primitive {
+    eval
+    shape_rule
+    derivative_rule
+}
+
+Conceptually:
+
+Add
+  eval:       x+y
+  shape:      broadcast(x,y)
+  derivative: (dx,dy) → dx+dy
+
+This gives you:
+
+evaluation
+shape inference
+automatic differentiation
+documentation
+
+from the same primitive registry.
+
+That registry could be the heart of the language.
+
+26. I'd make primitives declarative
+
+For example, conceptually:
+
+primitive softmax {
+    glyph:    "⌁"
+    name:     "softmax"
+    arity:    1
+    rank:     last-axis
+    shape:    identity
+    expand:   exp(x-max(x)) / sum(exp(x-max(x)))
+    grad:     ...
+}
+
+Then the browser can generate:
+
+tooltip
+help
+mnemonic entry
+pretty rendering
+shape rule
+expansion
+tests
+
+from one definition.
+
+This would be a good evolution beyond both current APL implementations.
+
+27. MLPL and M should remain different languages
+
+I would resist merging the two.
+
+They serve different pedagogical purposes.
+
+MLPL
+Readable
+word-oriented
+explicit
+good for stepping through concepts
+approachable
+M
+dense
+symbolic
+array-first
+close to mathematical notation
+composition-oriented
+
+They can share the semantic ML layer.
+
+For example:
+
+MLPL:
+softmax logits
+
+M:
+⌁Z
+
+Math:
+        eᶻⁱ
+──────────────────
+   Σⱼ eᶻʲ
+
+All could lower to something like:
+
+MlOp::Softmax(axis=-1)
+
+That creates an unexpectedly useful architecture:
+
+MLPL and M become two experimental languages over the same ML semantics.
+
+28. In fact, build the shared IR first
+
+I would create something like:
+
+enum Expr {
+    Scalar(...),
+    Array(...),
+    Tuple(Vec<Expr>),
+    NamedTuple(...),
+
+    Apply(...),
+    Reduce(...),
+    Contract(...),
+    Index(...),
+
+    Grad(...),
+    StopGrad(...),
+    Parameter(...),
+}
+
+Then:
+
+MLPL ───┐
+        ├──▶ ML IR
+M ──────┤
+        │
+Math ───┘
+
+This gives you a very clean research story.
+
+29. Suggested roadmap
+
+I would make the first milestones deliberately small.
+
+Milestone	Result
+M0	fork/minimal glyph APL evaluator with nested arrays + Each
+M1	first-class positional and named tuples
+M2	shape-aware expression IR
+M3	paper-math editor for Σ, indices, fraction, exponent
+M4	index-expression lowering to reductions/contractions
+M5	softmax math → M expression → execution
+M6	∇ + reverse-mode autodiff
+M7	linear regression trained entirely in M
+M8	optimizer state + Adam + named tuples
+M9	convolution/index-sum demo
+M10	synchronized Math / Glyph / Mnemonic / Literate views
+M11	bridge selected expressions to/from MLPL
+Definition of a convincing M5 demo
+
+A user should be able to enter:
+
+       eᶻⁱ
+────────────────
+    Σ  eᶻʲ
+     j
+
+and watch it become:
+
+indexed IR
+      ↓
+reduction IR
+      ↓
+E ← *Z-⌈/Z
+E÷+/E
+      ↓
+[0.0900 0.2447 0.6652]
+
+That alone is a publishable-quality project demo.
+
+30. One UI I would build
+
+Not a notebook clone.
+
+A four-pane “notation microscope”:
+
+┌──────────────────────┬──────────────────────┐
+│ PAPER                │ M                    │
+│                      │                      │
+│      eᶻⁱ             │ E←*Z-⌈/Z            │
+│ ─────────────        │ E÷+/E                │
+│    Σⱼ eᶻʲ           │                      │
+├──────────────────────┼──────────────────────┤
+│ STRUCTURE            │ RESULT / SHAPES      │
+│                      │                      │
+│ Divide               │ Z   [3]              │
+│ ├ Exp(Index z i)     │ E   [3]              │
+│ └ Sum j              │ out [3]              │
+│   └ Exp(Index z j)   │ .09 .24 .67          │
+└──────────────────────┴──────────────────────┘
+
+Click Σ and the relevant +/ highlights.
+
+Click j, and the reduced axis highlights.
+
+Click the denominator, and the actual intermediate array appears.
+
+That ties together APL, ML, mathematics, and your microscope-style explanatory work unusually well.
+
+31. What I would not do
+
+Avoid these early:
+
+40 new ML glyphs.
+GPU support.
+full PyTorch compatibility.
+general symbolic algebra.
+arbitrary LaTeX import.
+arbitrary handwritten/pasted math recognition.
+static dependent tensor types.
+trying to run existing Python models.
+modifying historical sw-apl semantics.
+giving every named ML function a primitive.
+
+Those are distractions from the distinctive idea.
+
+The research question should instead be:
+
+Can mathematical ML notation be mechanically transformed into concise array-language programs, while retaining an executable connection between the notation, shapes, intermediate arrays, and learning process?
+
+That is a crisp and unusual project.
+
+32. The language identity I'd use
+
+My naming stack would currently be:
+
+Project/repository
+    sw-aplml
+
+Language
+    M
+
+Expanded name
+    M — A Programming Language for Machine Learning
+
+Heritage
+    APL2-inspired array semantics
+    Iverson notation
+    modern tensor computation
+
+There is a nice historical joke hidden there:
+
+APL = A Programming Language
+M = Machine Learning, written as an array language
+
+And the front-page program should probably not be “Hello World.” It should be:
+
+$$ y_i=\frac{e^{x_i}}{\sum_j e^{x_j}} $$
+
+next to:
+
+E←*X-⌈/X
+Y←E÷+/E
+
+with both executing to the same result.
+
+That immediately communicates why this project exists.
+
+The three ideas I would prototype first
+APL2-ish nested arrays + named tuples on top of the modern Rust interpreter architecture.
+A structured 2-D sum/index parser, narrowly constrained to indexed sums and fractions.
+One shared semantic IR that both M and MLPL can target.
+
+If those three work, then ∇, Adam, convolution, attention, and richer mathematical notation have a very solid place to grow into.
+
+continue, you stopped mid-diagram (again)
+
+Continuing exactly from the architecture diagram that got cut off:
+
+              SOURCE REPRESENTATIONS
+         ┌─────────┬──────────┬─────────┐
+         │ M glyph │  Math 2D │ MLPL(*) │
+         └────┬────┴────┬─────┴────┬────┘
+              │         │          │
+              └─────────┼──────────┘
+                        ▼
+                ┌──────────────┐
+                │ Semantic AST │
+                └──────┬───────┘
+                       ▼
+              ┌───────────────────┐
+              │ Shape / Index IR  │
+              │                   │
+              │ arrays            │
+              │ axes              │
+              │ tuples            │
+              │ contractions      │
+              │ reductions        │
+              │ parameters        │
+              └─────────┬─────────┘
+                        ▼
+                ┌───────────────┐
+                │ Execution IR  │
+                └───────┬───────┘
+                        │
+              ┌─────────┴──────────┐
+              ▼                    ▼
+       ┌─────────────┐      ┌─────────────┐
+       │  Evaluator  │      │ Trace Engine│
+       └──────┬──────┘      └──────┬──────┘
+              │                    │
+              │         ┌──────────┴──────────┐
+              │         │                     │
+              ▼         ▼                     ▼
+           Values   Provenance            Timeline
+              │         │                     │
+              └─────────┼─────────────────────┘
+                        ▼
+               ┌──────────────────┐
+               │ Semantic History │
+               │      Store       │
+               └────────┬─────────┘
+                        │
+       ┌────────────────┼───────────────────┐
+       ▼                ▼                   ▼
+ ┌──────────┐    ┌────────────┐      ┌────────────┐
+ │Math Lens │    │ M Code Lens│      │Visual Lens │
+ └──────────┘    └────────────┘      └────────────┘
+       │                │                   │
+       └────────────────┼───────────────────┘
+                        ▼
+                ROSETTA STONE UI
+                        │
+                time / zoom / drill
+
+(*) MLPL interoperability is useful eventually, but I would not make it an M0 requirement.
+
+22. The Semantic History Store is the important new component
+
+I'd make this a first-class subsystem rather than have the debugger scrape the interpreter.
+
+Conceptually, every meaningful operation emits something like:
+
+TraceEvent {
+    id: EventId,
+    time: LogicalTime,
+    operation: OpId,
+
+    inputs: Vec<ValueId>,
+    output: ValueId,
+
+    source: SourceId,
+    math: Option<MathId>,
+
+    shape_before: ...,
+    shape_after: ...,
+
+    provenance: ...,
+    summary: ...
+}
+
+But the interesting point isn't the Rust structure. It's the relationships:
+
+                 source
+                   │
+                   ▼
+Math #14 ─────── Op #42 ─────── M AST #27
+                   │
+           ┌───────┴────────┐
+           ▼                ▼
+       Value #18        Value #19
+           │                │
+           └──────┬─────────┘
+                  ▼
+              Value #20
+                  │
+                  ▼
+              Event #91
+                  │
+                  ▼
+                t=37
+
+Everything in the UI is then a query against this graph.
+
+That gives you something much more general than a debugger.
+
+23. Think of execution as producing a persistent computation graph
+
+For:
+
+Z ← W +.× X
+Y ← B + Z
+
+you don't merely get Y.
+
+You retain:
+
+ W ──────────────┐
+                 │
+                 ▼
+             Contract #12
+                 │
+                 ▼
+                Z₁ ─────────┐
+                            │
+ B ─────────────────────────┤
+                            ▼
+                         Add #13
+                            │
+                            ▼
+                           Y₁
+
+Then training iteration 2 produces:
+
+W₂ → Contract #27 → Z₂ → Add #28 → Y₂
+
+The system knows:
+
+W₁ ──update──▶ W₂
+Y₁            Y₂
+
+So the visualization can switch between data-flow space and time space.
+
+24. This suggests an extremely useful UI operation: rotate
+
+Rather than rotation merely being graphical, make rotate a conceptual UI operation.
+
+You're looking at:
+
+Math face
+$$ y_i=\sum_jW_{ij}x_j $$
+
+Rotate right:
+
+M face
+Y ← W +.× X
+
+Rotate right:
+
+Structural face
+       W [i,j]
+          │
+          ▼
+       contract j
+          ▲
+          │
+       X [j]
+          │
+          ▼
+       Y [i]
+
+Rotate right:
+
+Data face
+ W                   X              Y
+
+┌────────────┐     ┌────┐       ┌─────┐
+│ .2 .7 -.1  │     │ .3 │       │ .48 │
+│ .4 .1  .8  │  ×  │ .6 │   =   │ .34 │
+│ .9 .2  .3  │     │-.1 │       │ .36 │
+└────────────┘     └────┘       └─────┘
+
+Now scrub time:
+
+              ◀────────────────────────▶
+
+epoch 0       epoch 1       epoch 2       epoch 3
+   │             │             │             │
+   ▼             ▼             ▼             ▼
+  W₀            W₁            W₂            W₃
+
+That's the “4D” interaction.
+
+25. And there should be a second control: zoom
+
+Rotation changes representation.
+
+Zoom changes abstraction.
+
+For example:
+
+MODEL
+  │
+  ▼
+LAYER
+  │
+  ▼
+OPERATION
+  │
+  ▼
+ARRAY
+  │
+  ▼
+AXIS
+  │
+  ▼
+CELL
+  │
+  ▼
+SCALAR OPERATION
+
+So:
+
+rotate = "show me this differently"
+
+zoom   = "show me what's inside this"
+
+time   = "show me when this happened"
+
+That is a wonderfully small interaction vocabulary.
+
+I'd make those three concepts fundamental to the UI.
+
+26. Add a fourth interaction: trace
+
+Suppose you're looking at:
+
+Loss = 2.714
+
+Click Trace backward.
+
+You see:
+
+                    Loss
+                      ▲
+                      │
+                   Softmax
+                      ▲
+                      │
+                    Logits
+                   ▲      ▲
+                  /        \
+              Linear       Bias
+              ▲    ▲
+             /      \
+            W        H
+
+Continue tracing:
+
+Loss
+ ↑
+...
+ ↑
+Input
+
+But when AD exists, there's another graph:
+
+Loss
+ │
+ ▼
+∂Loss/∂Logits
+ │
+ ▼
+∂Loss/∂W
+ │
+ ▼
+Optimizer
+ │
+ ▼
+ΔW
+
+Thus the same program naturally has two causal directions:
+
+FORWARD
+
+input ───────────────────────────▶ loss
+
+
+BACKWARD
+
+gradient ◀──────────────────────── loss
+
+The Rosetta Stone should allow flipping between them.
+
+27. Provenance makes ordinary APL interesting too
+
+This shouldn't require ML.
+
+Consider:
+
++/2 3⍴⍳6
+
+Rather than merely:
+
+3 5 7
+
+the visual interpreter can progressively reveal:
+
+⍳6
+
+0 1 2 3 4 5
+
+then:
+
+2 3⍴
+
+┌───────┐
+│ 0 1 2 │
+│ 3 4 5 │
+└───────┘
+
+then reduction:
+
+ 0 1 2
+ + + +
+ 3 4 5
+ ─────
+ 3 5 7
+
+The code:
+
++/2 3⍴⍳6
+│ │   │
+│ │   └── generate
+│ └────── reshape
+└──────── reduce
+
+can be highlighted right-to-left as execution proceeds.
+
+This is potentially an exceptionally good way to teach APL evaluation order.
+
+28. Right-to-left execution becomes visual
+
+APL expressions often intimidate newcomers because:
+
++/2 3⍴⍳6
+
+looks like punctuation soup.
+
+But animation makes the grammar almost obvious:
+
++/2 3⍴⍳6
+       ──
+       ⍳6
+       ↓
+     0 1 2 3 4 5
+
+
++/2 3⍴ 0 1 2 3 4 5
+     ─────────────
+          ↓
+
+       0 1 2
+       3 4 5
+
+
++/  0 1 2
+    3 4 5
+──
+ ↓
+
+3 5 7
+
+Now glyph density becomes an advantage because the whole expression remains visible while its semantics animate.
+
+29. The visual interpreter could make tacit/composed code much easier to understand
+
+Eventually, consider:
+
+F ← +/÷≢
+
+or more sophisticated trains/compositions if M acquires them.
+
+Instead of explaining composition verbally, the UI constructs the dataflow:
+
+              ┌──▶ +/ ───┐
+X ────────────┤           ├──▶ ÷ ───▶ result
+              └──▶ ≢ ─────┘
+
+Then animate actual values through it.
+
+That bridges:
+
+symbolic program
+       ↕
+dataflow graph
+       ↕
+actual execution
+
+again reinforcing the Rosetta Stone model.
+
+30. Tuples become visually valuable
+
+Earlier we discussed first-class tuples.
+
+Now their value increases.
+
+Suppose:
+
+⟨Loss Params State⟩ ← Batch Train ⟨Params State⟩
+
+The visualizer can show:
+
+                 Batch
+                   │
+                   ▼
+              ┌─────────┐
+ Params ─────▶│         │────▶ Params'
+              │  Train  │
+ State ──────▶│         │────▶ State'
+              └─────────┘
+                   │
+                   ▼
+                  Loss
+
+Click State:
+
+AdamState
+├─ step = 137
+├─ m
+│  ├─ layer1.weight [128,64]
+│  └─ layer2.weight [10,128]
+└─ v
+   ├─ layer1.weight [128,64]
+   └─ layer2.weight [10,128]
+
+A tuple therefore naturally visualizes as a structural bundle, whereas an array visualizes spatially.
+
+That's another reason to keep tuples semantically distinct from nested arrays.
+
+31. Make visualization itself extensible
+
+I would define something analogous to:
+
+Lens
+
+rather than hard-code every display.
+
+Built-in lenses:
+
+ScalarLens
+VectorLens
+MatrixLens
+TensorLens
+TupleLens
+ReductionLens
+ContractionLens
+GradientLens
+ParameterLens
+DistributionLens
+GraphLens
+TimelineLens
+
+Then a primitive can nominate an appropriate lens:
+
+Contract
+    default → ContractionLens
+
+Softmax
+    default → DistributionLens
+
+Conv
+    default → WindowLens
+
+Gradient
+    default → GradientLens
+
+Users can switch lenses.
+
+32. A lens shouldn't own the data
+
+Important architectural separation:
+
+                    Trace Store
+                         │
+                         ▼
+                   Semantic Query
+                         │
+           ┌─────────────┼─────────────┐
+           ▼             ▼             ▼
+       Heatmap       Dataflow       Histogram
+        Lens           Lens            Lens
+
+The UI asks the semantic engine:
+
+give me Value #42
+give me its shape
+give me its parents
+give me sampled values
+give me axis 2
+give me its state at t=173
+
+That lets new visualizations be added without changing the interpreter.
+
+33. This wants a query language eventually
+
+Not in M0, but it almost inevitably emerges.
+
+Something conceptually like:
+
+value W
+at epoch 12
+axis channel
+sample 16
+
+or:
+
+trace Y backward until X
+
+or:
+
+compare W at epoch 0,10,100
+
+or:
+
+find values where isnan
+
+or:
+
+show gradients where abs > 1
+
+This could eventually be a tiny inspection DSL, separate from M itself.
+
+That would be preferable to stuffing debugger commands into the language.
+
+34. The editor can make annotations visually richer than source comments
+
+For example, source remains:
+
+Y ← ⌁ B + W +.× X
+
+but the editor renders small semantic annotations:
+
+       softmax
+          ↓
+Y ← ⌁ B + W +.× X
+      ↑     ↑    ↑
+   [10]  [10,64] [64]
+
+Hover +.×:
+
+CONTRACT
+
+W [10,64]
+       │
+       ├── axis 64
+       │
+X    [64]
+       │
+       ▼
+Y    [10]
+
+Math:
+    yᵢ = Σⱼ Wᵢⱼxⱼ
+
+Executed:
+    137 times
+
+Last:
+    42 μs
+
+This is where the “smart editor” becomes dramatically more useful than simply offering glyph tooltips.
+
+35. Performance information belongs on another lens
+
+Because you want a general language environment, eventually the same semantic graph can carry:
+
+execution time
+allocations
+bytes moved
+cache behavior
+GPU/CPU location
+kernel launches
+
+Then:
+
+Y ← W +.× X
+
+can be viewed as:
+
+Mathematical lens
+$$ y_i=\sum_j W_{ij}x_j $$
+Data lens
+[1024,4096] × [4096]
+Performance lens
+16 MB read
+16 KB read
+4 KB written
+~8.4 MFLOP
+37 μs
+Hardware lens
+CPU ──────▶ GPU
+              │
+           matvec
+              │
+              ▼
+            VRAM
+
+That also connects naturally to your work investigating memory movement and inference architecture.
+
+36. This suggests five Rosetta faces, conceptually
+
+I'd slightly relax the literal stone metaphor.
+
+The semantic object has at least:
+
+Face/lens	Question
+Math	What does this mean mathematically?
+M	How is it expressed in the language?
+Structure	What operations/arrays/axes compose it?
+Data	What values are actually flowing?
+Machine	How is it being executed?
+
+And then:
+
+Time passes through all five.
+
+So the conceptual object is:
+
+                  Mathematics
+                      ▲
+                     / \
+                    /   \
+                   /     \
+              M  /       \ Structure
+                 \       /
+                  \     /
+                   \   /
+               Machine ─── Data
+
+                      │
+                      │
+                      ▼
+                     TIME
+
+I wouldn't literally render a five-sided solid most of the time. But this is a better semantic model.
+
+37. A complete example: training one neuron
+
+This might actually be a better first Rosetta demo than softmax.
+
+Math:
+
+$$ \hat y=\sigma(wx+b) $$ $$ L=(y-\hat y)^2 $$ $$ w' = w-\eta\frac{\partial L}{\partial w} $$
+
+M:
+
+Ŷ ← Sigmoid B + W×X
+L ← (Y-Ŷ)*2
+W ← W - η×∇W L
+
+Then the structural view:
+
+X ──┐
+    × ──▶ + ──▶ sigmoid ──▶ Ŷ ──▶ loss ──▶ L
+W ──┘     ▲
+          B
+
+Backward:
+
+                       L
+                       │
+                       ▼
+                      ∇
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+             ∇W                ∇B
+              │                 │
+              ▼                 ▼
+             ΔW                ΔB
+
+Timeline:
+
+epoch      0       1       2       3       ...     100
+loss     1.82    1.31     .94     .67              .01
+W         .12     .18     .26     .34             1.97
+
+Now scrub epoch 0→100 and watch:
+
+the equation stay constant;
+M source stay constant;
+graph stay structurally constant;
+values animate;
+parameters move;
+gradients change;
+loss decline.
+
+That is the 4D Rosetta Stone in one tiny program.
+
+38. Then progressively increase complexity
+
+I'd build demos as a deliberate ladder:
+
+1. ⍳ and ⍴
+       ↓
+2. reduce
+       ↓
+3. matrix multiplication
+       ↓
+4. one neuron
+       ↓
+5. gradient descent
+       ↓
+6. small MLP
+       ↓
+7. softmax classifier
+       ↓
+8. convolution
+       ↓
+9. attention
+       ↓
+10. tiny transformer
+
+The same visualization infrastructure handles every stage.
+
+By the time you reach a Transformer,
+
+continue, you stopped mid-sentence
+
+By the time you reach a Transformer, nothing fundamental has changed. You have only composed more of the same semantic objects:
+
+arrays
+  ↓
+operations
+  ↓
+reductions / contractions
+  ↓
+functions
+  ↓
+parameterized functions
+  ↓
+gradient transformations
+  ↓
+training
+  ↓
+larger compositions
+
+That is a major advantage over a Transformer-specific explainer: attention doesn't require a bespoke visualization architecture. It is a composition that the existing microscope can progressively open.
+
+39. A Transformer becomes a stress test, not the architecture
+
+At the highest zoom:
+
+Tokens
+  │
+  ▼
+Embedding
+  │
+  ▼
+┌───────────────────────┐
+│ Transformer Block × N │
+└───────────────────────┘
+  │
+  ▼
+Logits
+  │
+  ▼
+Softmax
+
+Zoom into a block:
+
+       ┌─────────────┐
+──────▶│ Attention   │──┐
+       └─────────────┘  │
+              + ◀───────┘
+              │
+       ┌─────────────┐
+       │     MLP     │──┐
+       └─────────────┘  │
+              + ◀───────┘
+              │
+              ▼
+
+Zoom into attention:
+
+               X
+         ┌─────┼─────┐
+         ▼     ▼     ▼
+         Wq    Wk    Wv
+         │     │     │
+         Q     K     V
+          \   /
+           \ /
+           QKᵀ
+            │
+          scale
+            │
+         softmax
+            │
+            × V
+            │
+            ▼
+          output
+
+Zoom into QKᵀ and suddenly you're back at the exact operation from the elementary matrix-multiplication lesson:
+
+$$ S_{ij}=\sum_kQ_{ik}K_{jk} $$
+S ← Q +.× ⍉K
+
+Zoom into softmax and you're back at the earlier softmax lesson.
+
+So the environment teaches a valuable idea:
+
+A Transformer isn't magic; zoom far enough and it turns back into array operations you already understand.
+
+That is very aligned with what M ought to demonstrate.
+
+40. Make semantic zoom the central UI concept
+
+I'd explicitly name this feature.
+
+At zoom level 0:
+
+Transformer
+
+Level 1:
+
+Attention → MLP
+
+Level 2:
+
+Q,K,V → scores → softmax → weighted values
+
+Level 3:
+
+Q +.× ⍉K
+
+Level 4:
+
+$$ S_{ij}=\sum_k Q_{ik}K_{jk} $$
+
+Level 5:
+
+S[2,3]
+ =
+Q[2,0]×K[3,0]
++
+Q[2,1]×K[3,1]
++
+...
+
+Level 6:
+
+multiply
+multiply
+add
+multiply
+add
+...
+
+That's one continuous semantic object viewed at increasing magnification.
+
+41. Combine semantic zoom with time zoom
+
+Now you have a two-dimensional navigation space:
+
+                   ABSTRACTION
+
+       model
+         ▲
+         │
+       layer
+         │
+      function
+         │
+     operation
+         │
+       array
+         │
+        cell
+         │
+       scalar
+         │
+         └──────────────────────▶ TIME
+
+          run → epoch → batch → op → scalar step
+
+Then representation is effectively the third navigation axis:
+
+                  Math
+                   ▲
+                   │
+          M ◀──────┼──────▶ Visual
+                   │
+                   ▼
+                 Machine
+
+This is a much better definition of your “4D” idea than literally placing four things in 3D space.
+
+You have:
+
+representation
+abstraction
+execution time
+data/provenance
+
+The 3D Stone can be the metaphorical UI manifestation of those dimensions.
+
+42. Add a focus concept
+
+One missing interaction is:
+
+“What am I talking about right now?”
+
+Everything should have a selected semantic focus:
+
+Focus = Operation #42
+
+or:
+
+Focus = Value W
+
+or:
+
+Focus = Axis k
+
+or:
+
+Focus = Cell Y[3,7]
+
+Every pane responds to that focus.
+
+Select k in:
+
+$$ Y_{ij}=\sum_k W_{ik}X_{kj} $$
+
+and immediately:
+
+Math: highlights k.
+
+M:
+
+Y ← W +.× X
+        ↑
+
+highlights the contracted axis.
+
+Structure:
+
+W [i,k] ─┐
+          ├─ contract k
+X [k,j] ─┘
+
+Data: highlights the relevant row/column.
+
+Timeline: shows operations involving that contraction.
+
+Machine: shows the kernel performing it.
+
+That synchronization is the core feature.
+
+43. Therefore every UI action should reduce to four verbs
+
+I think you've got a very small interaction vocabulary:
+
+Focus
+
+What am I looking at?
+
+Rotate
+
+Show me another representation of it.
+
+Zoom
+
+Show me its internals or enclosing abstraction.
+
+Travel
+
+Show me this at another point in execution.
+
+And perhaps:
+
+Trace
+
+Show me where it came from / where it goes.
+
+That's almost enough to define the whole visual environment.
+
+44. “Trace” gets particularly interesting for ML
+
+Select one surprising output probability:
+
+"cat" = 0.81
+
+Trace backward:
+
+cat probability
+      ↑
+   softmax
+      ↑
+ cat logit
+      ↑
+ output projection
+      ↑
+ hidden state
+      ↑
+ attention + MLP
+      ↑
+ ...
+
+Then zoom into a contribution.
+
+For a tiny model, you might eventually answer:
+
+Why did this value become 0.81?
+
+not with an AI-generated explanation but with actual computational provenance.
+
+That distinction matters:
+
+The visualizer explains what the program actually computed, rather than generating prose about what it probably did.
+
+45. “Why?” can therefore become a debugger operation
+
+Normal debuggers have:
+
+step
+next
+continue
+break
+
+M could have:
+
+step
+next
+continue
+why
+where-from
+where-to
+compare
+rewind
+
+Select:
+
+Y[4] = NaN
+
+and ask:
+
+why?
+
+The provenance traversal discovers:
+
+Y[4] = NaN
+   ↑
+divide
+   ├─ numerator = 1.27
+   └─ denominator = 0
+          ↑
+        reduce
+          ↑
+       [...]
+
+That's vastly more useful for numerical ML work than a source breakpoint alone.
+
+46. “Compare” should also be fundamental
+
+Because time travel gives you multiple states:
+
+compare W @ epoch 0 ↔ W @ epoch 100
+
+Visual:
+
+W₀             ΔW              W₁₀₀
+
+░▒░▒           +++             ▓▒▓▒
+▒░▒░     →     --+      →      ▓░▓▒
+░░▒▒           +--             ▒░▒▓
+
+Or:
+
+distribution W
+epoch 0   ─────────
+epoch 10  ─────────
+epoch 100 ─────────
+
+Likewise:
+
+compare forward pass batch 12 ↔ batch 13
+
+or even:
+
+compare implementation:
+
+    Math lowering
+        vs
+    primitive ⌁
+
+This could help validate optimized primitives against explanatory definitions.
+
+47. That last point suggests an unusual testing capability
+
+Suppose softmax has:
+
+Reference M implementation
+Softmax ← { E←*⍵-⌈/⍵ ⋄ E÷+/E }
+
+and later:
+
+Optimized primitive
+⌁X
+
+The Rosetta environment can execute both and compare:
+
+REFERENCE                  OPTIMIZED
+
+*X-⌈/X                       ⌁X
+   │                          │
+   ▼                          ▼
+array operations           native kernel
+   │                          │
+   └──────── compare ─────────┘
+              │
+         max error
+         mean error
+         runtime
+         allocations
+
+Now the visual debugger is also a language implementation validation tool.
+
+That fits your preference for reference implementations plus measured/optimized implementations very well.
+
+48. This could be valuable for compiler optimization too
+
+Imagine M eventually transforms:
+
+B + W +.× X
+
+into a fused kernel.
+
+The Rosetta Stone could expose:
+
+SOURCE
+
+B + W +.× X
+
+        ↓ lower
+
+SEMANTIC IR
+
+Add
+├── B
+└── Contract
+    ├── W
+    └── X
+
+        ↓ optimize
+
+PHYSICAL IR
+
+FusedLinear
+├── W
+├── X
+└── B
+
+        ↓ execute
+
+GPU/CPU kernel
+
+Then the user can rotate between:
+
+Math
+M
+Semantic IR
+Optimized IR
+Machine execution
+
+This makes compiler transformations visible rather than mysterious.
+
+49. So don't throw away intermediate representations
+
+Compiler implementations normally discard a lot of this information.
+
+M should intentionally preserve mappings:
+
+Math AST
+   ↕
+M AST
+   ↕
+Semantic IR
+   ↕
+Optimized IR
+   ↕
+Execution event
+   ↕
+Machine operation
+
+Not necessarily every object forever—but the identity/provenance relationships should survive.
+
+That enables the Stone.
+
+50. I'd call the underlying capability semantic observability
+
+This distinguishes it from:
+
+logging
+tracing
+debugging
+profiling
+visualization
+
+All of those become projections of the same infrastructure.
+
+                    SEMANTIC
+                  OBSERVABILITY
+                       │
+       ┌───────────────┼────────────────┐
+       │               │                │
+    Debugger        Visualizer       Profiler
+       │               │                │
+    values          structures       timings
+    history         animations       memory
+    provenance      lenses           hardware
+
+The language/runtime knows what an operation means, not merely that function address 0x1234 executed.
+
+51. This argues strongly against visualization as a postprocessor
+
+You mentioned several possibilities:
+
+annotations, debugger, post-processor, special visual interpreter
+
+I'd choose a hybrid, but with the semantic trace as the authority:
+
+                   M PROGRAM
+                       │
+                       ▼
+              Semantic Interpreter
+                       │
+               ┌───────┴────────┐
+               ▼                ▼
+             result         trace stream
+                                │
+                                ▼
+                         history store
+                                │
+                   ┌────────────┼───────────┐
+                   ▼            ▼           ▼
+               debugger     visualizer   profiler
+
+Then eventually an optimized runtime can emit the same trace protocol:
+
+Reference interpreter ─┐
+                       │
+WASM runtime ──────────┼──▶ Semantic Trace Protocol
+                       │
+Native/JIT ────────────┘
+
+That is much better than maintaining a separate “visual interpreter” indefinitely.
+
+52. But build a visual interpreter first
+
+For the first implementation, deliberately optimize for observability rather than speed.
+
+Use a tree-walking/reference interpreter where each evaluation step naturally produces:
+
+before
+operation
+after
+provenance
+
+That's very close to the approach you've already used in constrained APL work.
+
+Then later:
+
+reference semantic interpreter
+            │
+            ├── correctness oracle
+            ├── visual execution
+            └── teaching
+
+optimized evaluator
+            │
+            └── performance
+
+Both share AST/IR and trace semantics.
+
+53. The trace format should be serializable
+
+I would make traces first-class artifacts:
+
+run.mtrace
+
+Conceptually:
+
+metadata
+program
+semantic graph
+events
+snapshots
+summaries
+samples
+
+Then you can:
+
+M program
+   │
+   ▼
+run
+   │
+   ▼
+.mtrace
+   │
+   ├── browser
+   ├── debugger
+   ├── notebook
+   ├── test
+   └── share with someone
+
+A user could inspect somebody else's training run without executing it.
+
+That's useful for tutorials and reproducible demonstrations.
+
+54. This also solves expensive animation
+
+You don't want the browser rerunning a training demo every time.
+
+Ship:
+
+demo.m
+demo.mtrace
+
+The browser can replay:
+
+▶  ▮▮  ◀  ▶▶
+
+without running training.
+
+Then offer:
+
+Run it yourself
+
+to generate a fresh trace.
+
+Very useful for the educational site.
+
+55. Trace files should support progressive detail
+
+Something like:
+
+Trace
+├── program
+├── operation graph
+├── summaries
+├── checkpoints
+├── samples
+└── optional full data
+
+A tutorial might ship only:
+
+200 KB
+
+of summaries and samples.
+
+A debugging run might contain:
+
+2 GB
+
+of detailed state.
+
+The UI shouldn't care; it asks what detail is available.
+
+56. Animation should follow semantics, not canned scripts
+
+This is another important distinction from many explainers.
+
+Don't implement:
+
+if operation == "attention":
+    play_attention_animation()
+
+Instead:
+
+Contract
+Broadcast
+Reduce
+Index
+Window
+Normalize
+
+each knows how it can be animated.
+
+Then attention automatically composes those animations.
+
+For example:
+
+Attention
+
+QKᵀ
+  → Contract animation
+
+÷√d
+  → Broadcast animation
+
+softmax
+  → Normalize/Reduce animation
+
+×V
+  → Contract animation
+
+That makes the visual system general.
+
+57. A CNN then falls out naturally
+
+Math:
+
+$$ Y_{ijk} = \sum_{m,n,c} X_{i+m,j+n,c}K_{mnck} $$
+
+The semantic operations are:
+
+Window
+   ↓
+Contract
+   ↓
+Add bias
+   ↓
+Activation
+
+Visualization:
+
+input image
+
+┌─────────────────────┐
+│                     │
+│       ┌───┐         │
+│       │###│ ─────────────▶ kernel
+│       │###│         │
+│       └───┘         │
+│                     │
+└─────────────────────┘
+
+            ↓ slide
+
+feature map
+
+No CNN-specific execution model is necessary.
+
+58. MoE becomes another excellent test
+
+Given your MoE microscope work, M could eventually visualize:
+
+tokens
+   │
+   ▼
+ router
+ / | | \
+E0 E1 E2 E3
+   \ | /
+ combine
+   │
+   ▼
+output
+
+But because the trace knows actual values, you can scrub tokens:
+
+token 17
+
+router scores
+
+E0 .03
+E1 .81  ◀ selected
+E2 .11
+E3 .05
+
+Then trace:
+
+token
+ → router
+ → top-k
+ → expert 1
+ → expert output
+ → weighted combine
+
+And rotate to the math or M representation of each stage.
+
+That would eventually allow moe-microscope concepts to become applications of M's generic microscope, rather than one-off visualization machinery.
+
+59. I'd actually name the UI concept separately from the language
+
+For example:
+
+M
+    language
+
+M Stone
+    semantic visual environment
+
+M Trace
+    trace/provenance format
+
+M Lens
+    visualization extension interface
+
+Or more evocatively:
+
+M
+M Rosetta
+M Trace
+M Lens
+
+I like M Rosetta because the metaphor is immediately understandable:
+
+one computation, several equivalent languages/views.
+
+The 3D stone could literally appear as the landing-page demonstration, while the actual working UI defaults to synchronized panels.
+
+60. The first Rosetta prototype should be extremely small
+
+I would not start with a neural network.
+
+Build this:
+
++/2 3⍴⍳6
+
+and make it exceptionally good.
+
+The user gets:
+
+M
++/2 3⍴⍳6
+Mathematical/structural equivalent
+$$ \operatorname{reduce}_{+} \left( \operatorname{reshape}_{2\times3} (0,1,2,3,4,5) \right) $$
+Visual
+⍳6
+        ↓
+0 1 2 3 4 5
+
+2 3⍴
+        ↓
+┌─────┐
+│0 1 2│
+│3 4 5│
+└─────┘
+
++/
+        ↓
+┌─────┐
+│0 1 2│
+│+ + +│
+│3 4 5│
+└─────┘
+        ↓
+ 3 5 7
+
+And controls:
+
+◀ previous     ▶ next
+↻ rotate       + zoom
+← trace        compare
+
+If that interaction feels compelling, the architecture is working.
+
+61. Then make matrix multiplication the first true Rosetta Stone
+
+Program:
+
+C ← A +.× B
+
+Math:
+
+$$ C_{ij}=\sum_k A_{ik}B_{kj} $$
+
+Structure:
+
+A[i,k] ─┐
+         ├── contract(k,+,×) ──▶ C[i,j]
+B[k,j] ─┘
+
+Data:
+
+      B
+     ↓↓↓
+A →  ×××
+    
+
+××× → C
+×××
+
+
+Cell drill-down:
+
+\[
+C_{23}=\sum_kA_{2k}B_{k3}
+\]
+
+Time:
+
+```text id="24vbvo"
+k=0 → k=1 → k=2 → ... → result
+
+That one example exercises:
+
+Math parsing
+M parsing
+named axes
+contraction
+visualization
+provenance
+drill-down
+sampling
+animation
+time travel
+
+So matrix multiplication is probably the actual M Rosetta M1 target.
+
+62. Then the roadmap becomes much clearer
+Stage	Language capability	Rosetta capability
+R0	⍳ ⍴ +/	step/rewind
+R1	+.×	math ↔ M ↔ contraction animation
+R2	arbitrary rank	axis explorer + semantic zoom
+R3	tuples	structural drill-down
+R4	functions	call/dataflow graph
+R5	math parser	bidirectional Math/M focus
+R6	∇	forward/backward graph
+R7	parameters	compare/time travel
+R8	optimizer	training timeline
+R9	windows/conv	spatial lens
+R10	attention	composed visualization
+R11	larger models	sampling + trace levels
+R12	optimized backend	machine/performance lens
+
+I would develop language and Rosetta milestones together. A feature shouldn't really be “done” until the semantic observer can explain it.
+
+That gives M an unusual design principle:
+
+If the runtime can execute a primitive but Rosetta cannot explain its structure, data movement, provenance, and transformation, the primitive is incomplete.
+
+That could be one of the defining rules of the project.
+
+63. The larger idea
+
+This changes how I'd describe the entire project.
+
+Initially we had:
+
+M is an APL2-inspired array language for machine learning.
+
+Now I'd describe it as:
+
+M is an observable array language for expressing machine learning in executable mathematical notation. M Rosetta lets the same computation be explored as mathematics, array notation, structure, live data, and machine execution—across time and levels of abstraction.
+
+That is a considerably stronger research idea.
+
+And it gives you a clean conceptual stack:
+
+                    M ROSETTA
+       interactive semantic microscope
+     rotate • zoom • travel • trace • compare
+
+                        │
+                        ▼
+
+                     M TRACE
+          history • provenance • samples
+            snapshots • measurements
+
+                        │
+                        ▼
+
+                       M IR
+       arrays • axes • tuples • operations
+       reductions • contractions • gradients
+
+                        │
+              ┌─────────┴─────────┐
+              ▼                   ▼
+
+           M NOTATION           MATH
+        APL-like glyphs     2D notation
+        right-to-left      Σ ∂ ∇ indices
+
+              └─────────┬─────────┘
+                        ▼
+
+                 M SEMANTICS
+
+The language, mathematical notation, visualizer, debugger, profiler, and eventually compiler are no longer separate projects accidentally sharing an interpreter. They're different projections of one semantic model.
+
+That is the architectural direction I would lock down before choosing the final ML glyph set.
