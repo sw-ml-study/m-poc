@@ -1,0 +1,3 @@
+command = "./scripts/run-mlpl demos/dot-product/scene.mlpl"
+exit_code = 0
+desc = "The dot product's Visual face: dataflow, the arrays with the lit pair, the products, the running-sum bar; one frame per step."

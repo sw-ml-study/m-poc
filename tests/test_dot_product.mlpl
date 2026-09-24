@@ -1,0 +1,81 @@
+# The dot-product stone: the sum matches MLPL's reduce and matmul, the trace is keyed by the record's symbols with the running sum growing one term per step, every symbol, line and face is documented, the Visual face's ids are symbols, and the committed fixtures are what the programs emit.
+include "lib/rosetta/faces.mlpl";
+include "demos/dot-product/dot.mlpl";
+include "demos/dot-product/visual.mlpl";
+
+def u:t_dp_unknown(ir, ids) {
+  "The first id in a string list that is not a symbol of the record, or the empty string.";
+  index = 0;
+  unknown = "";
+  while lt(index, list_len(ids)) {
+    id = unwrap(list_get(ids, index));
+    if eq(u:rs_ir_symbol_index(ir, id), -1) {
+      unknown = id
+    };
+    index = index + 1
+  };
+  unknown
+}
+
+@test {name: "the running sum ends at the dot product, as reduce_add and matmul compute it", tags: ["dot-product", "trace"]}
+def u:test_dp_sum() {
+  "The numbers are real: the last row equals the two oracles, and each row adds exactly one product.";
+  rows = u:dp_steps();
+  by_reduce = reduce_add(dp_w * dp_x);
+  by_matmul = take(flatten(matmul(reshape(dp_w, [1, 5]), reshape(dp_x, [5, 1]))), 0, 0);
+  u:assert_lt(abs(take(rows.s, 0, 5) - by_reduce), 0.000000001, "reduce oracle")?;
+  u:assert_lt(abs(take(rows.s, 0, 5) - by_matmul), 0.000000001, "matmul oracle")?;
+  u:assert_eq(take(rows.s, 0, 0), 0, "nothing added before the first step")?;
+  u:assert_lt(u:t_dp_max_abs(rotate(rows.s, 1, 0) - rows.s - concat(rows.products, 0 - take(rows.s, 0, 5))), 0.000000001, "each step adds one product")
+}
+
+def u:t_dp_max_abs(v) {
+  "The largest absolute value in an array.";
+  reduce(:max, abs(v))
+}
+
+@test {name: "the trace is keyed by the record's symbols, one step per term plus the start", tags: ["dot-product", "trace", "json"]}
+def u:test_dp_trace() {
+  "Focus and the readout look values up by symbol id.";
+  ir = unwrap(u:dp_equation());
+  trace = u:dp_trace(u:dp_steps(), 6);
+  u:assert_eq(trace.axis.count, 6, "six steps")?;
+  u:assert_text_eq(trace.axis.name, "index", "the axis is the index")?;
+  u:assert_text_eq(u:t_dp_unknown(ir, record_keys(trace.channels)), "", "channel keys are symbols")?;
+  u:assert_text_eq(u:t_dp_unknown(ir, record_keys(trace.constants)), "", "constant keys are symbols")?;
+  on_disk = read_text("fixtures/dot-product/trace.json")?;
+  u:assert_eq(str_eq(on_disk, unwrap(u:rs_json(trace))), 1, "trace fixture is fresh")
+}
+
+@test {name: "every symbol, line and face of the dot-product record is documented, and the faces render", tags: ["dot-product", "docs", "faces"]}
+def u:test_dp_docs() {
+  "The page explains everything from the record.";
+  ir = unwrap(u:dp_equation());
+  u:assert_text_eq(ir.title, "Dot product", "title")?;
+  u:assert_text_eq(u:rs_ir_undocumented(ir), "", "every symbol")?;
+  u:assert_text_eq(u:rs_ir_undocumented_line(ir), "", "every line")?;
+  u:assert_text_eq(u:rs_ir_undocumented_face(ir), "", "every face")?;
+  u:assert_text_eq(u:rs_ir_math_text(ir), "s = ∑_{i=1}^{n} w_{i}⁢x_{i}", "math source with the invisible times")?;
+  u:assert_text_eq(u:rs_ir_m_text(ir), "S ← +/ W×X", "m text")?;
+  math = unwrap(u:rs_face_svg(ir, "math"));
+  u:assert_eq(u:rs_svg_count(math, "data-id=\""), ir.faces.math.count, "every math token tagged")?;
+  u:assert_eq(str_eq(read_text("fixtures/dot-product/faces/math.svg")?, math), 1, "math.svg fresh")?;
+  u:assert_eq(str_eq(read_text("fixtures/dot-product/faces/m.svg")?, unwrap(u:rs_face_svg(ir, "m"))), 1, "m.svg fresh")
+}
+
+@test {name: "the Visual face's ids are symbols, the lit pair moves one column per step, and scene.json is fresh", tags: ["dot-product", "visual", "fixture"]}
+def u:test_dp_visual() {
+  "The geometry follows the trace.";
+  ir = unwrap(u:dp_equation());
+  trace = unwrap(u:dp_read_trace("fixtures/dot-product/trace.json"));
+  out = unwrap(u:rs_scene_export(unwrap(u:dp_visual(trace, 3)), 4));
+  u:assert_text_eq(u:t_dp_unknown(ir, out.ids), "", "edge ids")?;
+  u:assert_text_eq(u:t_dp_unknown(ir, out.labels.ids), "", "label ids")?;
+  u:assert_eq(out.panels.count, 2, "two panels")?;
+  scene = unwrap(u:dp_scene(trace));
+  full = unwrap(u:rs_scene_export(scene, 4));
+  u:assert_eq(full.frames.count, 6, "one frame per step")?;
+  u:assert_eq(str_eq(read_text("fixtures/dot-product/scene.json")?, unwrap(u:rs_json(full))), 1, "scene.json fresh")
+}
+
+u:run_registered_tests()

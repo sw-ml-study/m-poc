@@ -1,6 +1,6 @@
 number = 18
 slug = "dot-product-stone"
-status = "pending"
+status = "in-progress"
 description = "The second stone in the tour, the simplest sum: a dot product / weighted sum,..."
 role = "production"
 context_files = []

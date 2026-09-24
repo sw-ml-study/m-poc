@@ -154,6 +154,33 @@ def u:rs_scene_frame(scene, positions) {
   }
 }
 
+def u:rs_points2d(xs, ys) {
+  "Points on the z = 0 plane from parallel x and y vectors, as a [k, 3] array.";
+  k = len(xs);
+  reshape(flatten(transpose(reshape(concat(concat(xs, ys), fill([k], 0)), [3, k]))), [k, 3])
+}
+
+def u:rs_scene_segment(scene, from_x, from_y, to_x, to_y, id, color) {
+  "One straight edge between two points on the plane.";
+  u:rs_scene_polyline(scene, u:rs_points2d([from_x, to_x], [from_y, to_y]), 0, id, color)
+}
+
+def u:rs_scene_rect(scene, x0, y0, x1, y1, id, color) {
+  "A closed rectangle on the plane, corners (x0, y0) and (x1, y1).";
+  u:rs_scene_polyline(scene, u:rs_points2d([x0, x1, x1, x0], [y0, y0, y1, y1]), 1, id, color)
+}
+
+def u:rs_scene_diamond(scene, cx, cy, r, id, color) {
+  "A small closed diamond marking a point.";
+  u:rs_scene_polyline(scene, u:rs_points2d([cx - r, cx, cx + r, cx], [cy, cy + r, cy, cy - r]), 1, id, color)
+}
+
+def u:rs_scene_box(scene, cx, cy, w, h, id, text, color) {
+  "A labelled box: a closed rectangle w by h around its centre and the label at the centre.";
+  scene = u:rs_scene_rect(scene, cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2, id, color)?;
+  u:rs_scene_label(scene, [cx, cy, 0], id, text)
+}
+
 def u:rs_scene_validate(scene) {
   "A scene is complete when it has vertices and edges (every edge built through this module is already in range) and its frames, if any, cover every vertex.";
   if eq(scene.vertex_count, 0) + eq(scene.edge_count, 0) {

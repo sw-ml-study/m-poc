@@ -1,0 +1,14 @@
+# Build the Visual face of the dot product from the committed trace and write it: fixtures/dot-product/scene.json by default, or the path given as the script's argument. The JSON written is also printed; the reg-rs baseline rosetta_dot_product_scene pins it.
+include "visual.mlpl";
+
+dp_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/dot-product/scene.json"
+};
+
+trace = unwrap(u:dp_read_trace("fixtures/dot-product/trace.json"));
+scene = unwrap(u:dp_scene(trace));
+text = unwrap(u:rs_write_json(dp_path, unwrap(u:rs_scene_export(scene, 4))));
+print(text);
+str_concat("wrote ", dp_path)

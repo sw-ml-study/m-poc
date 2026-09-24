@@ -1,11 +1,13 @@
 # The manifest of stones for the page: every equation record's id, title and one-line purpose, and a hint of face widths (scene units) so the stone's cross-section suits each stone's content. Written to fixtures/stones.json by default, or to the path given as the script's argument; printed too, for the reg-rs baseline rosetta_stones. Add a stone by including its equation and appending it below.
 include "../lib/rosetta/emit.mlpl";
 include "one-neuron/equation.mlpl";
+include "dot-product/equation.mlpl";
 
 def u:stones_manifest() {
   "The manifest record: parallel lists, one entry per stone, in tour order.";
   neuron = u:on_equation()?;
-  ok({schema: "sw-ml-study.rosetta.stones", version: 1, ids: [neuron.name], titles: [neuron.title], purposes: [neuron.description], widths: {math: [480], m: [480], visual: [720]}})
+  dot = u:dp_equation()?;
+  ok({schema: "sw-ml-study.rosetta.stones", version: 1, ids: [neuron.name, dot.name], titles: [neuron.title, dot.title], purposes: [neuron.description, dot.description], widths: {math: [480, 480], m: [480, 480], visual: [720, 720]}})
 }
 
 st_path = if gt(list_len(args()), 0) {

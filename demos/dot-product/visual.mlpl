@@ -1,0 +1,115 @@
+# The Visual face of the dot product, as a line scene built from the trace. Left, the dataflow: W and X into ×, into +/, into S. Right, the arrays: a row of cells for w, a row for x, a row for their products, with the pair just added lit by a box that moves one column per step, and below them the running sum as a bar that grows. Every edge and label carries a symbol id of the equation record. Coordinates are scene units, roughly 16 wide by 9 high.
+include "../../lib/rosetta/scene.mlpl";
+include "equation.mlpl";
+
+def u:dp_palette() {
+  "The RGBA colours of the face.";
+  {structure: [0.78, 0.8, 0.88, 1], param: [0.4, 0.85, 0.95, 1], flow: [0.55, 0.58, 0.68, 1], data: [0.95, 0.85, 0.4, 1], product: [0.95, 0.5, 0.45, 1], sum: [0.72, 0.58, 0.95, 1], lit: [1, 0.6, 0.25, 1]}
+}
+
+def u:dp_dataflow(scene) {
+  "The structure panel: the two arrays flow into the multiply, the multiply into the reduce, the reduce into the sum.";
+  c = u:dp_palette();
+  scene = u:rs_scene_box(scene, 1, 6.5, 0.9, 0.6, "w", "w", c.param)?;
+  scene = u:rs_scene_box(scene, 1, 4.5, 0.9, 0.6, "x", "x", c.structure)?;
+  scene = u:rs_scene_box(scene, 3, 5.5, 0.9, 0.6, "mul", "×", c.structure)?;
+  scene = u:rs_scene_box(scene, 5, 5.5, 0.9, 0.6, "sum", "+/", c.structure)?;
+  scene = u:rs_scene_box(scene, 7, 5.5, 0.9, 0.6, "s", "s", c.structure)?;
+  scene = u:rs_scene_segment(scene, 1.45, 6.5, 2.55, 5.5, "w", c.flow)?;
+  scene = u:rs_scene_segment(scene, 1.45, 4.5, 2.55, 5.5, "x", c.flow)?;
+  scene = u:rs_scene_segment(scene, 3.45, 5.5, 4.55, 5.5, "mul", c.flow)?;
+  u:rs_scene_segment(scene, 5.45, 5.5, 6.55, 5.5, "sum", c.flow)
+}
+
+def u:dp_cell_x(k) {
+  "Scene x of the centre of column k of the arrays panel.";
+  9.4 + k * 1.3
+}
+
+def u:dp_number(v) {
+  "A number as label text, integers bare.";
+  to_string(v)
+}
+
+def u:dp_row(scene, values, y, id, color) {
+  "A row of labelled cells for the entries of one array.";
+  index = 0;
+  n = len(values);
+  while lt(index, n) {
+    scene = u:rs_scene_box(scene, u:dp_cell_x(index), y, 1.1, 0.7, id, u:dp_number(take(values, 0, index)), color)?;
+    index = index + 1
+  };
+  ok(scene)
+}
+
+def u:dp_arrays(scene, trace, t) {
+  "The arrays panel at step t: rows for w, x and the products, the pair just added lit, and the running sum as a bar.";
+  c = u:dp_palette();
+  w = trace.constants.w;
+  x = trace.constants.x;
+  n = trace.constants.n;
+  products = w * x;
+  scene = u:rs_scene_row_labels(scene, "w", 8.3, 7.4, "w")?;
+  scene = u:dp_row(scene, w, 7.4, "w", c.param)?;
+  scene = u:rs_scene_row_labels(scene, "x", 8.3, 6.3, "x")?;
+  scene = u:dp_row(scene, x, 6.3, "x", c.data)?;
+  scene = u:rs_scene_row_labels(scene, "mul", 8.3, 5.0, "×")?;
+  scene = u:dp_row(scene, products, 5.0, "mul", c.product)?;
+  k = if gt(t, 0) {
+    t - 1
+  } else {
+    0
+  };
+  half = if gt(t, 0) {
+    0.62
+  } else {
+    0
+  };
+  cx = u:dp_cell_x(k);
+  scene = u:rs_scene_rect(scene, cx - half, 4.55, cx + half, 7.85, "i", c.lit)?;
+  total = take(trace.channels.s, 0, t);
+  unit = 1.0 / (reduce(:max, abs(concat(products, reduce_add(products)))) + 0.0001) * 5.5;
+  scene = u:rs_scene_segment(scene, u:dp_cell_x(0) - 0.55, 3.2, u:dp_cell_x(n - 1) + 0.55, 3.2, "s", c.structure)?;
+  scene = u:rs_scene_label(scene, [8.3, 3.2, 0], "s", "s")?;
+  scene = u:rs_scene_segment(scene, u:dp_cell_x(0) - 0.55, 3.2, u:dp_cell_x(0) - 0.55 + total * unit, 3.2, "s", c.sum)?;
+  scene = u:rs_scene_diamond(scene, u:dp_cell_x(0) - 0.55 + total * unit, 3.2, 0.14, "s", c.sum)?;
+  scene = u:rs_scene_label(scene, [u:dp_cell_x(0) - 0.55, 2.6, 0], "one", "1")?;
+  u:rs_scene_label(scene, [u:dp_cell_x(n - 1), 8.3, 0], "n", "n")
+}
+
+def u:rs_scene_row_labels(scene, id, x, y, text) {
+  "A row's name at its left.";
+  u:rs_scene_label(scene, [x, y, 0], id, text)
+}
+
+def u:dp_panels(scene) {
+  "Name the two panels for the page's legend and callouts.";
+  c = u:dp_palette();
+  scene = u:rs_scene_panel(scene, "dataflow", "Dataflow", "The two arrays flow into ×, every pair multiplied at once, then into +/, which adds the products up, then into s. Click a box to focus that symbol everywhere.", [0.3, 3.8, 7.7, 7.2], c.structure)?;
+  u:rs_scene_panel(scene, "arrays", "Arrays and the sum", "The entries of w and x in cells, their products below, and the pair just added lit in orange; the bar at the bottom is the running sum s after this many terms, with 1 marking where it starts and n how many there are.", [7.8, 2.2, 16, 8.6], c.sum)
+}
+
+def u:dp_visual(trace, t) {
+  "The whole Visual face at step t of a parsed trace record.";
+  scene = u:rs_scene_new(trace.axis.name);
+  scene = u:dp_dataflow(scene)?;
+  scene = u:dp_arrays(scene, trace, t)?;
+  u:dp_panels(scene)
+}
+
+def u:dp_scene(trace) {
+  "The Visual face with one frame per step of the trace.";
+  scene = u:dp_visual(trace, 0)?;
+  t = 0;
+  while lt(t, trace.axis.count) {
+    frame = u:dp_visual(trace, t)?;
+    scene = u:rs_scene_frame(scene, reshape(frame.positions, [frame.vertex_count, 3]))?;
+    t = t + 1
+  };
+  ok(scene)
+}
+
+def u:dp_read_trace(path) {
+  "The trace record from its fixture.";
+  parse_json(read_text(path)?)
+}

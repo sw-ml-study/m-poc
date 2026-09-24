@@ -1,0 +1,26 @@
+# The second stone's equation: a dot product, the simplest sum. s = ∑ from i = 1 to n of w_i x_i on the Math face, with a stacked summation sign and every index its own token; S ← +/ W×X on the M face, the proposed notation, where +/ (reduce by plus) says the whole sum with no index at all: i, 1 and n exist only on the Math face, which is the point of the comparison. The glyphs are placeholders (see docs/plan.md). Multiplication is by juxtaposition on the Math face, carried by U+2062 INVISIBLE TIMES.
+include "../../lib/rosetta/ir.mlpl";
+
+def u:dp_equation() {
+  "Build the dot-product record: one line per face, every symbol, line and face documented for the page.";
+  ir = u:rs_ir_new("dot-product", "Dot product: a weighted sum s = ∑ wᵢxᵢ, one multiply per pair and one running sum.");
+  ir = u:rs_ir_titled(ir, "Dot product")?;
+  ir = u:rs_ir_face_doc(ir, "math", "The sum as written on paper", "One line: the sum over i of the products of matching entries. The stacked limits say where i runs, from 1 to n; the subscripts say which entries are paired.")?;
+  ir = u:rs_ir_face_doc(ir, "m", "The same sum in the proposed notation", "Read right to left: W×X multiplies the two arrays entry by entry, +/ reduces the result with plus, and the total becomes S. No index appears: the notation says the whole sum at once. Placeholder glyphs.")?;
+  ir = u:rs_ir_face_doc(ir, "visual", "The two arrays, the products, and the sum growing", "The entries of w and x as cells, the current pair lit, their products in a row, and the running sum as a bar that grows one term per step.")?;
+  ir = u:rs_ir_symbol_doc(ir, "s", "var", "sum", "The result: the sum of all the products, one number.")?;
+  ir = u:rs_ir_symbol_doc(ir, "eq", "op", "definition", "Definition: the left side is computed from the right side.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sum", "op", "summation", "Add up every term: on paper a ∑ with its limits, in the notation a reduce by plus (+/), which needs no index.")?;
+  ir = u:rs_ir_symbol_doc(ir, "i", "var", "index", "The index: which pair of entries is being multiplied; it runs from 1 to n.")?;
+  ir = u:rs_ir_symbol_doc(ir, "one", "hyper", "one", "Where the index starts.")?;
+  ir = u:rs_ir_symbol_doc(ir, "n", "hyper", "count", "How many entries each array has; here 5.")?;
+  ir = u:rs_ir_symbol_doc(ir, "w", "param", "weights", "The weights: one number per entry of the input.")?;
+  ir = u:rs_ir_symbol_doc(ir, "x", "var", "input", "The input: the entries the weights are paired with.")?;
+  ir = u:rs_ir_symbol_doc(ir, "mul", "op", "multiply", "Multiply matching entries; written by juxtaposition on the Math face, as wᵢxᵢ, and as × in the notation.")?;
+  ir = u:rs_ir_line(ir, "math", "s:s|eq:=|sum:!∑|i:<i|eq:<=|one:<1|n:>n|w:w|i:_i|mul:~⁢|x:~x|i:_i")?;
+  ir = u:rs_ir_line(ir, "m", "s:S|eq:←|sum:+/|w:W|mul:~×|x:~X")?;
+  ir = u:rs_ir_line_doc(ir, "math", 0, "The sum: for each i from 1 to n, multiply w_i by x_i, and add all those products into s.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 0, "The same sum with no index: W×X is every product at once, +/ adds them up, S receives the total.")?;
+  u:rs_ir_validate(ir)?;
+  ok(ir)
+}

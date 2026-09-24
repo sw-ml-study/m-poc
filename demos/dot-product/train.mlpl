@@ -1,0 +1,12 @@
+# Compute the dot product step by step and write the trace the page replays: fixtures/dot-product/trace.json by default, or the path given as the script's argument (scripts/check-fixtures uses that; the file is named train.mlpl because that is the name the fixture checks give every stone's trace program). The JSON written is also printed; the reg-rs baseline rosetta_dot_product_trace pins it.
+include "dot.mlpl";
+
+dp_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/dot-product/trace.json"
+};
+
+text = unwrap(u:rs_write_json(dp_path, u:dp_trace(u:dp_steps(), 6)));
+print(text);
+str_concat("wrote ", dp_path)

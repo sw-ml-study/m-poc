@@ -51,7 +51,7 @@ def u:test_line_validation() {
   u:assert_eq(ir.faces.math.count, 3, "a failed line leaves the record untouched")
 }
 
-@test {name: "validation requires symbols, both faces, equal line counts, and every symbol on every face", tags: ["ir", "validation"]}
+@test {name: "validation requires symbols, both faces, equal line counts, and every symbol on some face", tags: ["ir", "validation"]}
 def u:test_record_validation() {
   "An exported record is complete or it is not exported.";
   u:assert_eq(is_err(u:rs_ir_validate(u:rs_ir_new("e", "e"))), 1, "no symbols")?;
@@ -66,6 +66,9 @@ def u:test_record_validation() {
   ir = unwrap(u:rs_ir_line(ir, "m", "a:A"));
   u:assert_eq(is_err(u:rs_ir_validate(ir)), 1, "symbol c is on no face")?;
   u:assert_eq(is_err(u:rs_ir_json(ir)), 1, "an incomplete record does not export")?;
+  ir = unwrap(u:rs_ir_line(ir, "math", "c:c"));
+  ir = unwrap(u:rs_ir_line(ir, "m", "a:A"));
+  u:assert_eq(is_ok(u:rs_ir_validate(ir)), 1, "a symbol on one face only is allowed: a notation may leave it implicit")?;
   u:assert_eq(is_ok(u:rs_ir_validate(unwrap(u:t_tiny()))), 1, "the tiny record is complete")
 }
 

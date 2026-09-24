@@ -1,2 +1,2 @@
-{"ids":["one-neuron"],"purposes":["One neuron: a linear fit ŷ = wx + b trained by gradient descent on the squared error."],"schema":"sw-ml-study.rosetta.stones","titles":["One neuron"],"version":1,"widths":{"m":[480],"math":[480],"visual":[720]}}
+{"ids":["one-neuron","dot-product"],"purposes":["One neuron: a linear fit ŷ = wx + b trained by gradient descent on the squared error.","Dot product: a weighted sum s = ∑ wᵢxᵢ, one multiply per pair and one running sum."],"schema":"sw-ml-study.rosetta.stones","titles":["One neuron","Dot product"],"version":1,"widths":{"m":[480,480],"math":[480,480],"visual":[720,720]}}
 wrote fixtures/stones.json

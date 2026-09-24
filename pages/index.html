@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rosetta M</title>
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
 <header>
@@ -14,12 +14,12 @@
       <select id="stone-select" aria-label="Choose the equation shown on the stone"></select>
     </label>
   </div>
-  <p class="lede">One computation, three faces, and time. A single neuron
-    <span class="eq">ŷ = wx + b</span> fitted to four points by gradient descent:
-    its <b>Math</b>, the <b>proposed M code</b>, and its <b>Visual</b>
-    (structure and live data), on one stone. Drag to rotate it; scrub the
-    epochs and the numbers move while the equation, the code and the dataflow
-    stay put.</p>
+  <p class="lede">One computation, three faces, and time. Each stone is one
+    small machine-learning computation shown as its <b>Math</b>, the
+    <b>proposed M code</b>, and its <b>Visual</b> (structure and live data),
+    with time as the fourth dimension. Choose a stone above; drag it to
+    rotate; scrub the steps and the numbers move while the equation, the code
+    and the dataflow stay put.</p>
   <p class="note"><b>M is proposed, not run.</b> The M face is notation rendered
     from the same record as the Math face; nothing here parses or evaluates it,
     and its glyphs are placeholders. Every number on the page comes from a real
@@ -84,7 +84,7 @@
     <div class="row time">
       <span class="verb" data-doc="travel">Travel</span>
       <button type="button" id="play" data-doc="play" aria-pressed="false">Play</button>
-      <label for="epoch" data-doc="epoch">epoch <output id="epoch-out" for="epoch">0</output></label>
+      <label for="epoch" data-doc="epoch"><span id="axis-name">epoch</span> <output id="epoch-out" for="epoch">0</output></label>
       <input type="range" id="epoch" data-doc="scrubber" min="0" max="0" value="0" step="1">
     </div>
     <dl class="readout" id="readout" data-doc="readout" aria-live="polite"></dl>
@@ -138,6 +138,6 @@
   <svg class="callout-leader" aria-hidden="true"></svg>
 </div>
 
-<script src="rosetta.js?v=17"></script>
+<script src="rosetta.js?v=19"></script>
 </body>
 </html>

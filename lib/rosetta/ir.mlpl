@@ -370,7 +370,7 @@ def u:rs_face_uses(face, id) {
 }
 
 def u:rs_ir_validate(ir) {
-  "A record is complete when it has symbols, both faces have the same non-zero line count, and every symbol appears on every face.";
+  "A record is complete when it has symbols, both faces have the same non-zero line count, and every symbol appears on at least one face (a notation may leave a symbol implicit: an APL reduce has no index).";
   if eq(ir.symbol_count, 0) {
     err({kind: "rosetta_validate", message: "no symbols"})
   } else {
@@ -385,13 +385,13 @@ def u:rs_ir_validate(ir) {
         missing = "";
         while lt(index, ir.symbol_count) {
           id = unwrap(list_get(ids, index));
-          if 1 - (u:rs_face_uses(ir.faces.math, id) * u:rs_face_uses(ir.faces.m, id)) {
+          if eq(u:rs_face_uses(ir.faces.math, id) + u:rs_face_uses(ir.faces.m, id), 0) {
             missing = id
           };
           index = index + 1
         };
         if gt(str_len(missing), 0) {
-          err({kind: "rosetta_validate", message: str_concat("symbol missing from a face: ", missing)})
+          err({kind: "rosetta_validate", message: str_concat("symbol on no face: ", missing)})
         } else {
           ok(1)
         }

@@ -1,0 +1,36 @@
+# The second stone's computation: a dot product of two five-entry arrays, computed by MLPL one term at a time so the page can replay the sum growing. u:dp_steps records, for t = 0..n, how many terms have been added, the current index, the current term and the running sum; u:dp_trace turns the rows into the trace record the page replays, keyed by the equation's symbol ids.
+include "../../lib/rosetta/emit.mlpl";
+include "equation.mlpl";
+
+dp_w = [0.5, 1.5, -1, 2, 0.25];
+dp_x = [4, -2, 3, 1, 8];
+
+def u:dp_steps() {
+  "One row per step t = 0..n: after t terms, the running sum, the index just added (0 before the first), and the term just added (0 before the first). The products come from MLPL's elementwise multiply.";
+  n = len(dp_w);
+  products = dp_w * dp_x;
+  running = fill([0], 0);
+  index = fill([0], 0);
+  terms = fill([0], 0);
+  total = 0;
+  t = 0;
+  while lt(t, n + 1) {
+    if gt(t, 0) {
+      total = total + take(products, 0, t - 1)
+    };
+    running = concat(running, total);
+    index = concat(index, t);
+    terms = concat(terms, if gt(t, 0) {
+        take(products, 0, t - 1)
+      } else {
+        0
+      });
+    t = t + 1
+  };
+  {n: n, w: dp_w, x: dp_x, products: products, s: running, i: index, term: terms}
+}
+
+def u:dp_trace(rows, places) {
+  "The trace record: the axis is the index i (rows.n + 1 steps), the constants are the two arrays and n, the channels are the running sum, the current index and the current term.";
+  {schema: "sw-ml-study.rosetta.trace", version: 1, equation: "dot-product", axis: {name: "index", count: rows.n + 1}, constants: {w: rows.w, x: rows.x, n: rows.n, one: 1}, channels: {s: u:rs_round(rows.s, places), i: rows.i, mul: u:rs_round(rows.term, places)}}
+}

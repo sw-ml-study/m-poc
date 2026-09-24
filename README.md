@@ -69,8 +69,14 @@ just serve-site   # the committed pages/ at http://127.0.0.1:8765/
 The page is a tour: a dropdown in the header chooses the stone, and
 `?stone=ID` links to one. Every stone is one equation record with the
 same three faces, verbs and fixtures; [`docs/stones.md`](docs/stones.md)
-is the layout and the manifest. There is one stone so far, the neuron;
-the dot product, matmul, softmax and the CNN triple sum follow.
+is the layout and the manifest. The tour so far:
+
+1. **One neuron**, ŷ = wx + b trained by gradient descent; time is the
+   epoch.
+2. **Dot product**, s = ∑ᵢ wᵢxᵢ, the simplest sum: on the M face `+/ W×X`
+   says it with no index at all; time is the index, one term per step.
+
+Matmul, softmax and the CNN triple sum follow.
 
 ## The page
 

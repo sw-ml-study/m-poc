@@ -448,9 +448,12 @@ function makeReadout(dl, trace, equation) {
 // Every face names the equation it shows, from the record: the description's
 // lead ("One neuron") and that face's first line, so a face is never just
 // "Math". Page words (which face this is) stay in the page.
+// The renderer's source markers, _{ } and ^{ }, shown plainly in running text.
+const plainMath = (text) => text.replace(/_\{([^}]*)\}/g, "_$1").replace(/\^\{([^}]*)\}/g, "^$1");
+
 function titleFaces(equation) {
   const lead = equation.title || equation.description.split(":")[0].trim();
-  const first = (face) => (equation.faces[face].text.split("\n")[0] || "").trim();
+  const first = (face) => plainMath((equation.faces[face].text.split("\n")[0] || "").trim());
   const parts = {
     math: [lead, first("math")],
     m: [lead, first("m"), "proposed notation · placeholder glyphs"],
@@ -477,9 +480,8 @@ function faceDocsOf(equation) {
   };
 }
 
-function trace_axis_name() { return "epochs"; }
 
-function makeFaceCard(root, equation, scene) {
+function makeFaceCard(root, equation, scene, axisName) {
   const FACE_DOCS = faceDocsOf(equation);
   // the Visual legend comes from the scene's panels, not from page text
   if (scene.panels && scene.panels.count) {
@@ -494,7 +496,7 @@ function makeFaceCard(root, equation, scene) {
   const text = root.querySelector("#face-card-purpose");
   const legend = root.querySelector("#face-card-legend");
   const lines = root.querySelector("#face-card-lines");
-  purpose.textContent = `${equation.description} This stone shows that one computation three ways; time runs along the ${trace_axis_name(equation)} below.`;
+  purpose.textContent = `${equation.description} This stone shows that one computation three ways; time runs along the ${axisName} axis below.`;
   let shown = null;
   return function show(face) {
     if (face === shown) return;
@@ -521,7 +523,7 @@ function makeFaceCard(root, equation, scene) {
       lines.replaceChildren(...texts.map((t, i) => {
         const li = document.createElement("li");
         const b = document.createElement("b");
-        b.textContent = t;
+        b.textContent = plainMath(t);
         li.append(b, f.line_docs[i] || "");
         return li;
       }));
@@ -674,7 +676,7 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
   const lineCallout = (el) => {
     const line = lineDoc(el, Number(el.dataset.line));
     if (!line) return null;
-    return { title: line.text, body: line.doc || "", extra: `line ${Number(el.dataset.line) + 1}` };
+    return { title: plainMath(line.text), body: line.doc || "", extra: `line ${Number(el.dataset.line) + 1}` };
   };
   const panelDoc = (id) => {
     const k = scene.panels ? scene.panels.ids.indexOf(id) : -1;
@@ -1214,7 +1216,8 @@ async function main() {
     minimapPrism.querySelector("polygon").setAttribute("points", pts.join(" "));
   }
   titleFaces(equation);
-  const faceCard = makeFaceCard(document.getElementById("face-card"), equation, scene);
+  const faceCard = makeFaceCard(document.getElementById("face-card"), equation, scene, trace.axis.name);
+  document.getElementById("axis-name").textContent = trace.axis.name;
   // orientation cues follow the view: the front face's button and minimap edge light up
   let calloutsRef = null;
   const stone = makeStone(stage, document.getElementById("stone"), geometry, (v) => {
