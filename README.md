@@ -3,8 +3,9 @@
 **Live demo: <https://sw-ml-study.github.io/m-poc/>** — the committed
 `pages/` directory, published as is on every push to `main`. Drag the stone
 to rotate it, press Play or scrub the epochs; `?yaw=DEG&epoch=T` in the URL
-fixes a view for a still, and `?focus=ID` (a symbol id such as `w` or
-`grad_w`) starts with that symbol focused.
+fixes a view for a still, `?focus=ID` (a symbol id such as `w` or
+`grad_w`) starts with that symbol focused, `?read=FACE` opens a face in
+read mode and `?scale=S` sets the view scale.
 
 A mock-up of **Rosetta M**: a 4D Rosetta Stone for a proposed array language
 for machine learning. One small computation — a single neuron trained by
@@ -82,6 +83,14 @@ framework. The script has three parts, none of which knows what a neuron is:
   that sets the projector's frame and fills a readout of every channel,
   labelled with the Math face's text for that symbol from the equation
   record;
+- **view**: double-click a face, or press Read this face, and it comes
+  flat and enlarged in front of the stone, fitted so nothing is cropped,
+  still live; Esc, Back or Reset view returns to the stone. The view-scale
+  buttons resize the stone. The buttons of the Rotate row and a small
+  top-down minimap of the prism show which face is toward you. (The plan's
+  fourth verb, Zoom into an abstraction level, is still deferred; this is
+  only magnification.) A face card under the stone says what the stone is
+  for and what the front face shows, with a legend for the Visual face;
 - **focus**: click any symbol on any face, or in the readout, and every
   element carrying the same symbol id lights up on every face (token tspans
   on the text faces, edges and labels on the Visual face, the readout row),
@@ -93,9 +102,10 @@ its data, so it needs HTTP rather than `file://`.
 
 ## Status
 
-Steps 1–6 of [the plan](docs/plan.md) are done: the gate; the equation IR
+Steps 1–7 of [the plan](docs/plan.md) are done: the gate; the equation IR
 with the one-neuron instance; the training trace; the three faces as
-fixtures; the page; and focus.
+fixtures; the page; focus; and read mode with view scale, orientation cues
+and the face card.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -120,9 +130,9 @@ fixtures; the page; and focus.
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next: read mode and view scale (a face flat and enlarged in front of the
-stone, never cropped; a view-scale control with reset; a face indicator),
-then captures and the README with the stone.
+Next: Blender-style modal keys (g, r, s, t, f), hover callouts that explain
+every element from the equation record, then captures and the README with
+the stone.
 
 ## License
 

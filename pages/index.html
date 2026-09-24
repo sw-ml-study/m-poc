@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rosetta M</title>
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <header>
@@ -23,7 +23,17 @@
 </header>
 
 <main>
-  <div class="stage" id="stage" aria-label="The stone: drag to rotate">
+  <div class="stage" id="stage" aria-label="The stone: drag to rotate, double-click a face to read it">
+    <svg class="minimap" id="minimap" viewBox="-40 -40 80 80" aria-label="Which face is toward you">
+      <g id="minimap-prism">
+        <polygon points="0,-23 20,11.5 -20,11.5"/>
+        <line data-face="math" x1="-20" y1="11.5" x2="20" y2="11.5"/>
+        <line data-face="m" x1="20" y1="11.5" x2="0" y2="-23"/>
+        <line data-face="visual" x1="0" y1="-23" x2="-20" y2="11.5"/>
+      </g>
+      <path class="eye" d="M-7,33 L0,25 L7,33"/>
+    </svg>
+    <button type="button" class="back" id="back" hidden>Back to the stone</button>
     <div class="stone" id="stone">
       <section class="face" data-face="math" aria-label="Math face">
         <h2>Math</h2>
@@ -40,6 +50,13 @@
     </div>
   </div>
 
+  <section class="face-card" id="face-card" aria-live="polite">
+    <p class="stone-purpose" id="stone-purpose"></p>
+    <h2 id="face-card-title"></h2>
+    <p id="face-card-purpose"></p>
+    <ul class="legend" id="face-card-legend"></ul>
+  </section>
+
   <div class="controls">
     <div class="row faces" role="group" aria-label="Rotate to a face">
       <span class="verb">Rotate</span>
@@ -47,6 +64,16 @@
       <button type="button" data-turn="m">M</button>
       <button type="button" data-turn="visual">Visual</button>
       <button type="button" id="spin" aria-pressed="true">Auto-rotate</button>
+    </div>
+    <div class="row view" role="group" aria-label="View">
+      <span class="verb">View</span>
+      <button type="button" id="read">Read this face</button>
+      <span class="scale-group">
+        <button type="button" id="scale-down" aria-label="Smaller">−</button>
+        <output id="scale-out">100%</output>
+        <button type="button" id="scale-up" aria-label="Larger">+</button>
+      </span>
+      <button type="button" id="reset-view">Reset view</button>
     </div>
     <div class="row time">
       <span class="verb">Travel</span>
@@ -70,6 +97,6 @@
     Serve this page over HTTP (<code>just serve-site</code>) if you open it locally: it fetches its data.</p>
 </footer>
 
-<script src="rosetta.js?v=6"></script>
+<script src="rosetta.js?v=7"></script>
 </body>
 </html>

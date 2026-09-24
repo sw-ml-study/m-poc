@@ -1,6 +1,6 @@
 number = 7
 slug = "read-mode"
-status = "pending"
+status = "in-progress"
 description = "Legibility on the stone page (pages/, no build step). (1) Cache-busting: vers..."
 role = "production"
 context_files = []

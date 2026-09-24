@@ -32,17 +32,37 @@ code { font-size: 0.95em; }
 /* The stage holds the stone in perspective; the stone is a triangular prism
    of three faces standing on its axis. */
 .stage {
-  height: calc(var(--face-h) + 150px);
+  position: relative;
+  height: calc(var(--face-h) * var(--view-scale, 1) + 150px);
+  transition: height 0.3s;
   perspective: 1800px; perspective-origin: 50% 45%;
   display: grid; place-items: center;
   touch-action: none; user-select: none; cursor: grab;
 }
 .stage.dragging { cursor: grabbing; }
 .stone {
+  /* recomputed here so a read-mode --face-w set on the stone carries through */
+  --face-h: calc(var(--face-w) * 0.78);
+  --apothem: calc(var(--face-w) * 0.2887);
   position: relative; width: var(--face-w); height: var(--face-h);
   transform-style: preserve-3d;
-  transform: rotateX(-4deg) rotateY(var(--yaw, 0deg));
+  transform: scale(var(--view-scale, 1)) rotateX(var(--pitch, -4deg)) rotateY(var(--yaw, 0deg));
 }
+.stone.settling { transition: transform 0.35s ease-out; }
+body.reading .stage { height: auto; padding: 56px 0 12px; cursor: default; }
+body.reading .minimap { width: 44px; height: 44px; }
+body.reading .stone { --apothem: 0px; transition: transform 0.35s ease-out; }
+body.reading .face:not(.reading-face) { visibility: hidden; }
+
+/* orientation cues: a top-down minimap of the prism with the viewer below it */
+.minimap { position: absolute; top: 8px; right: 8px; width: 64px; height: 64px; z-index: 2; pointer-events: none; }
+.minimap polygon { fill: var(--panel); stroke: none; }
+.minimap line { stroke: var(--edge); stroke-width: 5; stroke-linecap: round; transition: stroke 0.15s; }
+.minimap line.front { stroke: var(--warm); }
+.minimap .eye { fill: none; stroke: var(--dim); stroke-width: 2; }
+.back { position: absolute; top: 8px; left: 8px; z-index: 2; }
+.scale-group { display: inline-flex; align-items: center; gap: 4px; }
+.scale-group output { min-width: 3.5ch; text-align: center; font-variant-numeric: tabular-nums; color: var(--dim); }
 .face {
   position: absolute; inset: 0;
   background: var(--face); border: 1px solid var(--edge); border-radius: 6px;
@@ -70,6 +90,16 @@ code { font-size: 0.95em; }
   paint-order: stroke; stroke: var(--face); stroke-width: 4px;
 }
 .scene line { stroke-linecap: round; }
+
+/* The face card: what the stone is for, and what the face toward the viewer shows */
+.face-card { margin: 4px auto 12px; padding: 10px 16px; border-left: 3px solid var(--warm); }
+.stone-purpose { margin: 0 0 6px; color: var(--dim); font-size: 0.9rem; }
+.face-card h2 { margin: 0; font-size: 1.05rem; }
+.face-card p { margin: 4px 0 0; }
+.legend { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px 20px; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); color: var(--dim); font-size: 0.92rem; }
+.legend li { display: flex; gap: 8px; align-items: baseline; }
+.legend .swatch { flex: none; width: 1.6em; height: 0.35em; border-radius: 2px; background: var(--edge); }
+.legend b { color: var(--fg); font-weight: 600; }
 
 /* Controls */
 .controls { margin: 12px auto 24px; padding: 12px 16px; background: var(--panel);

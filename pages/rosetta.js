@@ -24,35 +24,80 @@ const params = new URLSearchParams(location.search);
 const fixedYaw = params.has("yaw") ? Number(params.get("yaw")) : null;
 const fixedEpoch = params.has("epoch") ? Number(params.get("epoch")) : null;
 const initialFocus = params.get("focus");
+const initialRead = params.get("read");
+const initialScale = params.has("scale") ? Number(params.get("scale")) : null;
 
 // ---------------------------------------------------------------- the stone
 
-function makeStone(stage, stone) {
+function makeStone(stage, stone, onChange) {
   const FACE_ANGLE = { math: 0, m: -120, visual: -240 };
-  let yaw = fixedYaw ?? -20;
+  const FACES = Object.keys(FACE_ANGLE);
+  const DEFAULT = { yaw: -20, pitch: -4, scale: 1 };
+  const SPEED = 9; // degrees per second
+  const SCALES = [0.5, 0.65, 0.8, 1, 1.25, 1.6, 2, 2.5];
+  let yaw = fixedYaw ?? DEFAULT.yaw;
+  let pitch = DEFAULT.pitch;
+  let scale = initialScale ?? DEFAULT.scale;
   let spinning = !reducedMotion && fixedYaw === null;
   let dragging = null;
+  let reading = null;      // the face being read, or null
+  let before = null;       // the view to restore when reading ends
   let last = performance.now();
-  const SPEED = 9; // degrees per second
 
   function apply() {
     stone.style.setProperty("--yaw", `${yaw}deg`);
+    stone.style.setProperty("--pitch", `${pitch}deg`);
+    stone.style.setProperty("--view-scale", String(scale));
+    stage.style.setProperty("--view-scale", String(scale));
+    onChange(view());
+  }
+  function view() {
+    return { yaw, pitch, scale, spinning, reading, front: frontFace() };
+  }
+  // the face whose normal is closest to the viewer
+  function frontFace() {
+    let best = null, bestDist = Infinity;
+    for (const face of FACES) {
+      const d = Math.abs(((yaw - FACE_ANGLE[face]) % 360 + 540) % 360 - 180);
+      if (d < bestDist) { bestDist = d; best = face; }
+    }
+    return best;
   }
   function tick(now) {
-    if (spinning && !dragging) yaw += (SPEED * (now - last)) / 1000;
+    if (spinning && !dragging && !reading) yaw += (SPEED * (now - last)) / 1000;
     last = now;
     apply();
     requestAnimationFrame(tick);
   }
+  function settle(fn) {
+    stone.classList.add("settling");
+    fn();
+    apply();
+    setTimeout(() => stone.classList.remove("settling"), 400);
+  }
+  function turnTo(face) {
+    const target = FACE_ANGLE[face];
+    const delta = ((target - yaw) % 360 + 540) % 360 - 180;
+    yaw += delta;
+  }
+  // the face width that fills the viewport height in read mode, width permitting;
+  // read mode enlarges the layout box itself, so the stage sizes to it
+  function fitWidth() {
+    const width = stage.getBoundingClientRect().width - 16;
+    const height = Math.max(240, window.innerHeight - 32 - 68);
+    return Math.max(200, Math.min(width, height / 0.78));
+  }
   stage.addEventListener("pointerdown", (e) => {
-    dragging = { x: e.clientX, yaw };
+    if (reading) return;
+    dragging = { x: e.clientX, y: e.clientY, yaw, pitch };
     stage.classList.add("dragging");
     stage.setPointerCapture(e.pointerId);
   });
   stage.addEventListener("pointermove", (e) => {
     if (!dragging) return;
     yaw = dragging.yaw + (e.clientX - dragging.x) * 0.45;
-    if (Math.abs(e.clientX - dragging.x) > 4) dragging.moved = true;
+    pitch = Math.max(-30, Math.min(30, dragging.pitch - (e.clientY - dragging.y) * 0.15));
+    if (Math.abs(e.clientX - dragging.x) > 4 || Math.abs(e.clientY - dragging.y) > 4) dragging.moved = true;
     apply();
   });
   const release = () => {
@@ -60,26 +105,64 @@ function makeStone(stage, stone) {
     dragging = null;
     stage.classList.remove("dragging");
   };
+  stage.addEventListener("pointerup", release);
+  stage.addEventListener("pointercancel", release);
   // a click that ends a drag is not a focus request
   stage.addEventListener("click", (e) => {
     if (stage.dataset.suppressClick) { delete stage.dataset.suppressClick; e.stopPropagation(); }
   }, true);
-  stage.addEventListener("pointerup", release);
-  stage.addEventListener("pointercancel", release);
 
   requestAnimationFrame(tick);
-  return {
+  const api = {
     turnTo(face) {
       spinning = false;
-      // shortest way round to the face's angle
-      const target = FACE_ANGLE[face];
-      const delta = ((target - yaw) % 360 + 540) % 360 - 180;
-      yaw += delta;
-      apply();
+      settle(() => turnTo(face));
     },
-    setSpinning(on) { spinning = on; },
+    setSpinning(on) { spinning = on; apply(); },
     get spinning() { return spinning; },
+    get reading() { return reading; },
+    front: frontFace,
+    scaleBy(steps) {
+      const i = SCALES.reduce((best, s, k) => (Math.abs(s - scale) < Math.abs(SCALES[best] - scale) ? k : best), 0);
+      const next = SCALES[Math.max(0, Math.min(SCALES.length - 1, i + steps))];
+      settle(() => { scale = next; });
+    },
+    // read mode: one face flat and enlarged to fill the stage, the others hidden
+    read(face) {
+      if (!FACE_ANGLE[face]) face = face in FACE_ANGLE ? face : frontFace();
+      if (!reading) before = { yaw, pitch, scale, spinning };
+      reading = face;
+      spinning = false;
+      document.body.classList.add("reading");
+      for (const el of stone.querySelectorAll(".face")) el.classList.toggle("reading-face", el.dataset.face === face);
+      // the stage has its reading height after the class change; fit to it on the next frame
+      requestAnimationFrame(() => {
+        stone.style.setProperty("--face-w", `${fitWidth()}px`);
+        settle(() => { turnTo(face); pitch = 0; scale = 1; });
+        stage.scrollIntoView({ block: "start" });
+      });
+    },
+    endRead() {
+      if (!reading) return;
+      reading = null;
+      stone.style.removeProperty("--face-w");
+      document.body.classList.remove("reading");
+      for (const el of stone.querySelectorAll(".face")) el.classList.remove("reading-face");
+      settle(() => { ({ yaw, pitch, scale, spinning } = before); });
+      before = null;
+    },
+    reset() {
+      const wasReading = reading;
+      reading = null;
+      stone.style.removeProperty("--face-w");
+      document.body.classList.remove("reading");
+      for (const el of stone.querySelectorAll(".face")) el.classList.remove("reading-face");
+      settle(() => { yaw = DEFAULT.yaw; pitch = DEFAULT.pitch; scale = DEFAULT.scale; spinning = !reducedMotion; });
+      before = null;
+      return wasReading;
+    },
   };
+  return api;
 }
 
 // ------------------------------------------------------ the line projector
@@ -217,6 +300,62 @@ function makeReadout(dl, trace, equation) {
   };
 }
 
+// -------------------------------------------------------------- face card
+
+// What each face is for. Page vocabulary: the faces are the page's idea; the
+// equation's own purpose comes from the record's description.
+const FACE_DOCS = {
+  math: {
+    title: "Math: the equation as written on paper",
+    purpose: "The four lines are the whole computation: a prediction, how wrong it is, and how the two parameters move to be less wrong next epoch. This is the face the other two are translations of.",
+    legend: [],
+  },
+  m: {
+    title: "M: the same four lines in the proposed notation",
+    purpose: "Rendered from the same record as the Math face, token for token, in an APL-style array notation that reads right to left. Nothing runs it; the glyphs are placeholders until the language's semantics are settled.",
+    legend: [],
+  },
+  visual: {
+    title: "Visual: the structure of the computation and its live data",
+    purpose: "Three panels on one plane, redrawn at every epoch from the recorded trace. Click any box, line or label to focus that symbol on every face.",
+    legend: [
+      ["#c7ccdf", "Dataflow (left)", "the equation as boxes: values flow left to right from x, w and b through × and + to ŷ, then with y through − and ² to the loss L."],
+      ["#ff9940", "Gradient paths", "the orange lines carry ∂L/∂w and ∂L/∂b back from L to w and b; η beside them is the step size."],
+      ["#f2d966", "Data (middle)", "the four training points as diamonds on x and y axes."],
+      ["#66d9f2", "Fitted line", "ŷ = wx + b at this epoch, with each point's residual y − ŷ in red; watch it settle onto the points."],
+      ["#b894f2", "Parameters (right)", "the path (w, b) has taken so far in parameter space, and the arrow to next epoch's (w, b): its legs are −η ∂L/∂w and −η ∂L/∂b."],
+    ],
+  },
+};
+
+function makeFaceCard(root, equation) {
+  const purpose = root.querySelector("#stone-purpose");
+  const title = root.querySelector("#face-card-title");
+  const text = root.querySelector("#face-card-purpose");
+  const legend = root.querySelector("#face-card-legend");
+  purpose.textContent = `${equation.description} This stone shows that one computation three ways; time runs along the epochs below.`;
+  let shown = null;
+  return function show(face) {
+    if (face === shown) return;
+    shown = face;
+    const doc = FACE_DOCS[face];
+    if (!doc) return;
+    title.textContent = doc.title;
+    text.textContent = doc.purpose;
+    legend.replaceChildren(...doc.legend.map(([color, name, what]) => {
+      const li = document.createElement("li");
+      const swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = color;
+      const b = document.createElement("b");
+      b.textContent = `${name}: `;
+      li.append(swatch, b, what);
+      return li;
+    }));
+    legend.hidden = doc.legend.length === 0;
+  };
+}
+
 // ------------------------------------------------------------------ focus
 
 // One symbol id is focused at a time. Every element carrying data-id, on any
@@ -300,7 +439,24 @@ async function main() {
   document.getElementById("face-math").innerHTML = mathSvg;
   document.getElementById("face-m").innerHTML = mSvg;
 
-  const stone = makeStone(document.getElementById("stage"), document.getElementById("stone"));
+  const stage = document.getElementById("stage");
+  const spin = document.getElementById("spin");
+  const back = document.getElementById("back");
+  const scaleOut = document.getElementById("scale-out");
+  const turnButtons = [...document.querySelectorAll("[data-turn]")];
+  const minimapLines = [...document.querySelectorAll("#minimap line")];
+  const minimapPrism = document.getElementById("minimap-prism");
+  const faceCard = makeFaceCard(document.getElementById("face-card"), equation);
+  // orientation cues follow the view: the front face's button and minimap edge light up
+  const stone = makeStone(stage, document.getElementById("stone"), (v) => {
+    faceCard(v.reading || v.front);
+    for (const b of turnButtons) b.setAttribute("aria-pressed", String(b.dataset.turn === v.front));
+    for (const l of minimapLines) l.classList.toggle("front", l.dataset.face === v.front);
+    minimapPrism.setAttribute("transform", `rotate(${-v.yaw})`);
+    spin.setAttribute("aria-pressed", String(v.spinning));
+    scaleOut.value = `${Math.round(v.scale * 100)}%`;
+    back.hidden = !v.reading;
+  });
   const projector = makeProjector(document.getElementById("face-visual"), scene);
   const show = makeReadout(document.getElementById("readout"), trace, equation);
   const focus = makeFocus(document.getElementById("focus-caption"), document.getElementById("unfocus"), trace, equation);
@@ -308,7 +464,6 @@ async function main() {
   const range = document.getElementById("epoch");
   const out = document.getElementById("epoch-out");
   const play = document.getElementById("play");
-  const spin = document.getElementById("spin");
   const T = Math.min(trace.axis.count, projector.count);
   range.max = String(T - 1);
 
@@ -334,20 +489,29 @@ async function main() {
   }
   play.addEventListener("click", () => setPlaying(!playing));
 
-  spin.addEventListener("click", () => {
-    stone.setSpinning(!stone.spinning);
-    spin.setAttribute("aria-pressed", String(stone.spinning));
-  });
-  spin.setAttribute("aria-pressed", String(stone.spinning));
-  for (const button of document.querySelectorAll("[data-turn]")) {
-    button.addEventListener("click", () => {
-      stone.turnTo(button.dataset.turn);
-      spin.setAttribute("aria-pressed", "false");
-    });
+  spin.addEventListener("click", () => stone.setSpinning(!stone.spinning));
+  for (const button of turnButtons) {
+    button.addEventListener("click", () => { stone.endRead(); stone.turnTo(button.dataset.turn); });
   }
+
+  // view: read mode, view scale, reset
+  document.getElementById("read").addEventListener("click", () => stone.read(stone.front()));
+  document.getElementById("scale-down").addEventListener("click", () => stone.scaleBy(-1));
+  document.getElementById("scale-up").addEventListener("click", () => stone.scaleBy(1));
+  document.getElementById("reset-view").addEventListener("click", () => stone.reset());
+  back.addEventListener("click", () => stone.endRead());
+  for (const face of document.querySelectorAll(".face")) {
+    face.addEventListener("dblclick", (e) => { e.preventDefault(); stone.read(face.dataset.face); });
+  }
+  stage.addEventListener("click", (e) => { if (stone.reading && e.target === stage) stone.endRead(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && stone.reading) { stone.endRead(); e.stopImmediatePropagation(); }
+  }, true);
+  window.addEventListener("resize", () => { if (stone.reading) stone.read(stone.reading); });
 
   setEpoch(fixedEpoch ?? 0);
   if (initialFocus) focus.set(initialFocus);
+  if (initialRead) stone.read(initialRead);
   if (!reducedMotion && fixedEpoch === null) setPlaying(true);
 }
 
