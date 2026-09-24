@@ -26,6 +26,7 @@ const fixedEpoch = params.has("epoch") ? Number(params.get("epoch")) : null;
 const initialFocus = params.get("focus");
 const initialRead = params.get("read");
 const initialScale = params.has("scale") ? Number(params.get("scale")) : null;
+const showHelp = params.has("help");
 
 // ------------------------------------------------------------- the geometry
 
@@ -97,6 +98,7 @@ function makeStone(stage, stone, geometry, onChange) {
   let yaw = fixedYaw ?? DEFAULT.yaw;
   let pitch = DEFAULT.pitch;
   let scale = initialScale ?? DEFAULT.scale;
+  let pan = [0, 0];
   let spinning = !reducedMotion && fixedYaw === null;
   let dragging = null;
   let reading = null;      // the face being read, or null
@@ -107,6 +109,8 @@ function makeStone(stage, stone, geometry, onChange) {
     stone.style.setProperty("--yaw", `${yaw}deg`);
     stone.style.setProperty("--pitch", `${pitch}deg`);
     stone.style.setProperty("--view-scale", String(scale));
+    stone.style.setProperty("--pan-x", `${pan[0]}px`);
+    stone.style.setProperty("--pan-y", `${pan[1]}px`);
     stage.style.setProperty("--view-scale", String(scale));
     onChange(view());
   }
@@ -154,7 +158,7 @@ function makeStone(stage, stone, geometry, onChange) {
     return Math.max(0.25, Math.min(width / geometry.faces[face].width, height / geometry.height));
   }
   stage.addEventListener("pointerdown", (e) => {
-    if (reading) return;
+    if (reading || document.body.dataset.mode) return;
     dragging = { x: e.clientX, y: e.clientY, yaw, pitch };
     stage.classList.add("dragging");
     stage.setPointerCapture(e.pointerId);
@@ -180,6 +184,16 @@ function makeStone(stage, stone, geometry, onChange) {
 
   requestAnimationFrame(tick);
   const api = {
+    // the modal keys work on a snapshot: set() applies live, restore() cancels
+    snapshot() { return { yaw, pitch, scale, pan: [...pan], spinning }; },
+    set(v) {
+      if ("yaw" in v) yaw = v.yaw;
+      if ("pitch" in v) pitch = Math.max(-30, Math.min(30, v.pitch));
+      if ("scale" in v) scale = Math.max(0.5, Math.min(2.5, v.scale));
+      if ("pan" in v) pan = [...v.pan];
+      if ("spinning" in v) spinning = v.spinning;
+      apply();
+    },
     turnTo(face) {
       spinning = false;
       settle(() => turnTo(face));
@@ -226,7 +240,7 @@ function makeStone(stage, stone, geometry, onChange) {
       restoreGeometry();
       document.body.classList.remove("reading");
       for (const el of stone.querySelectorAll(".face")) el.classList.remove("reading-face");
-      settle(() => { yaw = DEFAULT.yaw; pitch = DEFAULT.pitch; scale = DEFAULT.scale; spinning = !reducedMotion; });
+      settle(() => { yaw = DEFAULT.yaw; pitch = DEFAULT.pitch; scale = DEFAULT.scale; pan = [0, 0]; spinning = !reducedMotion; });
       before = null;
       return wasReading;
     },
@@ -369,6 +383,28 @@ function makeReadout(dl, trace, equation) {
   };
 }
 
+// ------------------------------------------------------------ face titles
+
+// Every face names the equation it shows, from the record: the description's
+// lead ("One neuron") and that face's first line, so a face is never just
+// "Math". Page words (which face this is) stay in the page.
+function titleFaces(equation) {
+  const lead = equation.description.split(":")[0].trim();
+  const first = (face) => (equation.faces[face].text.split("\n")[0] || "").trim();
+  const parts = {
+    math: [lead, first("math")],
+    m: [lead, first("m"), "proposed notation · placeholder glyphs"],
+    visual: [lead, "structure and data at this epoch"],
+  };
+  for (const el of document.querySelectorAll(".face > h2")) {
+    const face = el.parentElement.dataset.face;
+    const small = document.createElement("small");
+    small.textContent = parts[face].join(" · ");
+    el.replaceChildren(el.firstChild.textContent.trim(), " ", small);
+    el.dataset.title = `${lead}: ${parts[face][1]}`;
+  }
+}
+
 // -------------------------------------------------------------- face card
 
 // What each face is for. Page vocabulary: the faces are the page's idea; the
@@ -490,6 +526,114 @@ function makeFocus(caption, clearButton, trace, equation) {
   };
 }
 
+// ------------------------------------------------------------- modal keys
+
+// Blender's grammar: a key arms a mode, the mouse acts, a click or Enter
+// confirms, Escape cancels and restores. Nothing here knows what the faces
+// show; it moves the stone, the time and the focus through their APIs.
+function makeModes({ stone, time, focus, legend, help }) {
+  const MODES = {
+    grab: "Grab: move the mouse to move the stone",
+    rotate: "Rotate: left and right turns, up and down tilts",
+    scale: "Scale: mouse up grows the view, down shrinks it",
+    travel: "Travel: left and right scrubs the epoch, ← → step one",
+    focus: "Focus: click a symbol on any face; f again or Esc clears",
+  };
+  const IDLE = [["g", "grab"], ["r", "rotate"], ["s", "scale"], ["t", "travel"], ["f", "focus"], ["1 2 3", "faces"], ["Enter", "read"], ["Space", "play"], ["a", "spin"], ["Home", "reset"], ["?", "help"]];
+  let mode = null;
+  let origin = null;   // mouse position when the mode was armed
+  let before = null;   // what to restore on cancel
+
+  function showLegend() {
+    legend.classList.toggle("active", mode !== null);
+    if (mode) { legend.textContent = MODES[mode] + " · click or Enter confirms · Esc cancels"; return; }
+    legend.replaceChildren(...IDLE.flatMap(([k, what], i) => {
+      const kbd = document.createElement("kbd");
+      kbd.textContent = k;
+      return [...(i ? [" · "] : []), kbd, ` ${what}`];
+    }));
+  }
+  function arm(next, e) {
+    if (mode === next) { if (next === "focus") focus.set(null); return disarm(); }
+    mode = next;
+    origin = e ? [e.clientX ?? 0, e.clientY ?? 0] : null;
+    before = { view: stone.snapshot(), epoch: time.epoch };
+    if (mode === "rotate" || mode === "grab" || mode === "scale") stone.set({ spinning: false });
+    document.body.dataset.mode = mode;
+    showLegend();
+  }
+  function disarm() {
+    mode = null; origin = null; before = null;
+    delete document.body.dataset.mode;
+    showLegend();
+  }
+  function cancel() {
+    if (!mode) return false;
+    if (before) { stone.set(before.view); time.set(before.epoch); }
+    disarm();
+    return true;
+  }
+
+  document.addEventListener("mousemove", (e) => {
+    if (!mode || stone.reading) return;
+    if (!origin) { origin = [e.clientX, e.clientY]; return; }
+    const dx = e.clientX - origin[0], dy = e.clientY - origin[1];
+    const v = before.view;
+    if (mode === "grab") stone.set({ pan: [v.pan[0] + dx, v.pan[1] + dy] });
+    else if (mode === "rotate") stone.set({ yaw: v.yaw + dx * 0.45, pitch: v.pitch - dy * 0.15 });
+    else if (mode === "scale") stone.set({ scale: v.scale * Math.exp(-dy / 250) });
+    else if (mode === "travel") time.set(before.epoch + Math.round(dx / 24));
+  });
+  // a click confirms every mode but focus, where the click is the pick itself
+  document.addEventListener("click", (e) => {
+    if (!mode) return;
+    if (mode === "focus") { if (e.target.closest("[data-id]")) disarm(); return; }
+    if (e.target.closest("button, input, a")) return;
+    e.stopPropagation();
+    disarm();
+  }, true);
+
+  const typing = (e) => e.target.closest("input, textarea, select, [contenteditable]");
+  document.addEventListener("keydown", (e) => {
+    if (typing(e)) return;
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const k = e.key;
+    if (k === "Escape") {
+      if (!help.hidden) { help.hidden = true; return; }
+      if (cancel()) { e.stopImmediatePropagation(); return; }
+      return; // read mode and focus handle their own Escape
+    }
+    if (k === "?") { help.hidden = !help.hidden; e.preventDefault(); return; }
+    if (!help.hidden) return;
+    if (k === "Enter") {
+      if (mode) { disarm(); e.preventDefault(); return; }
+      if (e.target.closest("button, a")) return;
+      if (stone.reading) stone.endRead(); else stone.read(stone.front());
+      e.preventDefault(); return;
+    }
+    if (k === " ") { if (e.target.closest("button")) return; time.toggle(); e.preventDefault(); return; }
+    if (k === "ArrowLeft" || k === "ArrowRight") {
+      if (e.target.closest("input")) return;
+      time.set(time.epoch + (k === "ArrowRight" ? 1 : -1)); e.preventDefault(); return;
+    }
+    const lower = k.toLowerCase();
+    if (lower === "g" || lower === "r" || lower === "s" || lower === "t" || lower === "f") {
+      if (stone.reading && lower !== "f" && lower !== "t") return;
+      arm({ g: "grab", r: "rotate", s: "scale", t: "travel", f: "focus" }[lower]);
+      e.preventDefault(); return;
+    }
+    if (lower === "a") { stone.setSpinning(!stone.spinning); return; }
+    if (k === "1" || k === "2" || k === "3") {
+      const face = ["math", "m", "visual"][Number(k) - 1];
+      stone.endRead(); stone.turnTo(face); return;
+    }
+    if (k === "Home" || k === "0") { cancel(); stone.reset(); e.preventDefault(); return; }
+  });
+
+  showLegend();
+  return { get mode() { return mode; }, cancel };
+}
+
 // ------------------------------------------------------------------- boot
 
 async function load(url, asText) {
@@ -530,6 +674,7 @@ async function main() {
     }
     minimapPrism.querySelector("polygon").setAttribute("points", pts.join(" "));
   }
+  titleFaces(equation);
   const faceCard = makeFaceCard(document.getElementById("face-card"), equation);
   // orientation cues follow the view: the front face's button and minimap edge light up
   const stone = makeStone(stage, document.getElementById("stone"), geometry, (v) => {
@@ -572,6 +717,7 @@ async function main() {
     if (on) timer = setInterval(() => setEpoch(t + 1), 400);
   }
   play.addEventListener("click", () => setPlaying(!playing));
+  const time = { get epoch() { return t; }, set: setEpoch, toggle: () => setPlaying(!playing) };
 
   spin.addEventListener("click", () => stone.setSpinning(!stone.spinning));
   for (const button of turnButtons) {
@@ -592,6 +738,13 @@ async function main() {
     if (e.key === "Escape" && stone.reading) { stone.endRead(); e.stopImmediatePropagation(); }
   }, true);
   window.addEventListener("resize", () => { if (stone.reading) stone.read(stone.reading); });
+
+  const help = document.getElementById("help");
+  document.getElementById("help-button").addEventListener("click", () => { help.hidden = false; });
+  document.getElementById("help-close").addEventListener("click", () => { help.hidden = true; });
+  help.addEventListener("click", (e) => { if (e.target === help) help.hidden = true; });
+  makeModes({ stone, time, focus, legend: document.getElementById("key-legend"), help });
+  if (showHelp) help.hidden = false;
 
   setEpoch(fixedEpoch ?? 0);
   if (initialFocus) focus.set(initialFocus);

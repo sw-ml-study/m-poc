@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rosetta M</title>
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 <header>
@@ -87,6 +87,34 @@
       <p class="focus-caption" id="focus-caption" aria-live="polite">Click any symbol on any face, or in the readout, to focus it everywhere. Esc clears.</p>
       <button type="button" id="unfocus" hidden>Clear</button>
     </div>
+    <div class="row keys-row">
+      <span class="verb">Keys</span>
+      <p class="key-legend" id="key-legend"></p>
+      <button type="button" id="help-button" aria-label="Keyboard help">?</button>
+    </div>
+  </div>
+
+  <div class="help" id="help" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div>
+      <h2 id="help-title">Keys</h2>
+      <p>Blender-style modes: press a key, move the mouse, click or <kbd>Enter</kbd> to
+        confirm, <kbd>Esc</kbd> to cancel and put things back.</p>
+      <table>
+        <tr><td><kbd>g</kbd></td><td>grab: move the stone in the stage</td></tr>
+        <tr><td><kbd>r</kbd></td><td>rotate: mouse left and right turns the stone, up and down tilts it</td></tr>
+        <tr><td><kbd>s</kbd></td><td>scale: mouse up grows the view, down shrinks it</td></tr>
+        <tr><td><kbd>t</kbd></td><td>travel: mouse left and right scrubs the epoch; <kbd>←</kbd> <kbd>→</kbd> step one</td></tr>
+        <tr><td><kbd>f</kbd></td><td>focus: the next click picks a symbol; <kbd>f</kbd> again or <kbd>Esc</kbd> clears</td></tr>
+        <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>turn to the Math, M and Visual faces</td></tr>
+        <tr><td><kbd>Enter</kbd></td><td>read the face toward you (and confirm a mode)</td></tr>
+        <tr><td><kbd>Space</kbd></td><td>play / pause the epochs</td></tr>
+        <tr><td><kbd>a</kbd></td><td>auto-rotate on / off</td></tr>
+        <tr><td><kbd>Home</kbd> <kbd>0</kbd></td><td>reset the view: scale, position, angle</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>cancel a mode, leave read mode, clear focus, close this</td></tr>
+        <tr><td><kbd>?</kbd></td><td>this list</td></tr>
+      </table>
+      <button type="button" class="close" id="help-close">Close</button>
+    </div>
   </div>
 </main>
 
@@ -97,6 +125,6 @@
     Serve this page over HTTP (<code>just serve-site</code>) if you open it locally: it fetches its data.</p>
 </footer>
 
-<script src="rosetta.js?v=8"></script>
+<script src="rosetta.js?v=9"></script>
 </body>
 </html>

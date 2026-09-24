@@ -49,8 +49,15 @@ code { font-size: 0.95em; }
   --face-h: calc(var(--face-hu) * var(--unit));
   position: relative; width: calc(var(--stone-w) * var(--unit)); height: var(--face-h);
   transform-style: preserve-3d;
-  transform: scale(var(--view-scale, 1)) rotateX(var(--pitch, -4deg)) rotateY(var(--yaw, 0deg));
+  transform: translate(var(--pan-x, 0px), var(--pan-y, 0px)) scale(var(--view-scale, 1)) rotateX(var(--pitch, -4deg)) rotateY(var(--yaw, 0deg));
 }
+/* modal keys: the cursor says which mode is armed */
+body[data-mode="grab"] { cursor: move; }
+body[data-mode="rotate"] { cursor: ew-resize; }
+body[data-mode="scale"] { cursor: ns-resize; }
+body[data-mode="travel"] { cursor: col-resize; }
+body[data-mode="focus"] { cursor: crosshair; }
+body[data-mode] .stage { cursor: inherit; }
 .stone.settling { transition: transform 0.35s ease-out; }
 body.reading .stage { height: auto; padding: 56px 0 12px; cursor: default; }
 body.reading .minimap { width: 44px; height: 44px; }
@@ -84,7 +91,8 @@ body.reading .face:not(.reading-face) { visibility: hidden; }
   color: var(--dim); border-bottom: 1px solid var(--edge); letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.face h2 small { text-transform: none; font-weight: 400; letter-spacing: 0; margin-left: 8px; }
+.face h2 small { text-transform: none; font-weight: 400; letter-spacing: 0; margin-left: 8px; color: var(--fg); }
+.face h2 small { font-family: "Latin Modern Math", "Cambria Math", "STIX Two Math", serif; font-size: 1.05rem; }
 .text-face { flex: 1; min-height: 0; display: grid; place-items: center; padding: 8px; }
 .text-face svg { width: 100%; height: 100%; }
 .text-face svg > rect { fill: transparent; }
@@ -131,6 +139,30 @@ button[aria-pressed="true"] { background: var(--accent); color: #11111b; border-
 .readout .points { grid-column: 1 / -1; }
 .readout .points dd { font-size: 0.95em; }
 .focus-row { margin-bottom: 0; margin-top: 10px; }
+.keys-row { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid var(--edge); }
+.key-legend { margin: 0; flex: 1; color: var(--dim); font-size: 0.85rem; }
+.key-legend kbd, .help kbd {
+  font: 0.85em ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--edge); border-bottom-width: 2px;
+  border-radius: 4px; padding: 0 5px; margin: 0 1px;
+}
+.key-legend.active { color: var(--warm); }
+.key-legend.active kbd { border-color: var(--warm); }
+.help {
+  position: fixed; inset: 0; z-index: 10; display: grid; place-items: center;
+  background: rgba(17, 17, 27, 0.75); padding: 16px;
+}
+.help[hidden] { display: none; }
+.help > div {
+  background: var(--panel); border: 1px solid var(--edge); border-radius: 10px;
+  padding: 16px 20px; max-width: 34rem; width: 100%; max-height: 90vh; overflow: auto;
+}
+.help h2 { margin: 0 0 8px; font-size: 1.1rem; }
+.help p { margin: 0 0 10px; color: var(--dim); font-size: 0.95rem; }
+.help table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+.help td { padding: 3px 6px 3px 0; vertical-align: top; border-bottom: 1px dotted var(--edge); }
+.help td:first-child { white-space: nowrap; width: 8rem; }
+.help .close { margin-top: 12px; }
 .focus-caption { margin: 0; flex: 1; color: var(--dim); font-size: 0.95rem; }
 .focus-caption b { color: var(--fg); font-family: "Latin Modern Math", "Cambria Math", "STIX Two Math", serif; font-weight: 600; }
 .focus-caption .val { color: var(--warm); font-variant-numeric: tabular-nums; }

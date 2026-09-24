@@ -1,6 +1,6 @@
 number = 9
 slug = "modal-keys"
-status = "pending"
+status = "in-progress"
 description = "Blender-style modal keyboard controls for the stone page (pages/rosetta.js, n..."
 role = "production"
 context_files = []

@@ -98,6 +98,13 @@ framework. The script has three parts, none of which knows what a neuron is:
   fourth verb, Zoom into an abstraction level, is still deferred; this is
   only magnification.) A face card under the stone says what the stone is
   for and what the front face shows, with a legend for the Visual face;
+- **keys**, Blender's grammar: a key arms a mode, the mouse acts, a click
+  or Enter confirms, Esc cancels and restores. `g` grab (move the stone),
+  `r` rotate, `s` scale, `t` travel (scrub the epoch; arrows step one), `f`
+  focus (the next click picks a symbol); `1` `2` `3` turn to a face, Enter
+  reads the front face, Space plays or pauses, `a` toggles auto-rotate,
+  Home or `0` resets the view, `?` lists the keys. The Keys row names the
+  armed mode;
 - **focus**: click any symbol on any face, or in the readout, and every
   element carrying the same symbol id lights up on every face (token tspans
   on the text faces, edges and labels on the Visual face, the readout row),
@@ -109,10 +116,11 @@ its data, so it needs HTTP rather than `file://`.
 
 ## Status
 
-Steps 1–8 of [the plan](docs/plan.md) are done: the gate; the equation IR
+Steps 1–9 of [the plan](docs/plan.md) are done: the gate; the equation IR
 with the one-neuron instance; the training trace; the three faces as
 fixtures; the page; focus; read mode with view scale, orientation cues and
-the face card; and the scalene prism with faces sized to their content.
+the face card; the scalene prism with faces sized to their content; and the
+modal keys. Every face header names the equation it shows, from the record.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -137,10 +145,9 @@ the face card; and the scalene prism with faces sized to their content.
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next: Blender-style modal keys (g, r, s, t, f), hover callouts that explain
-every element from the equation record, then the plan update, IR v2 for
-sums and indices, the multi-stone page, and the dot-product, matmul,
-softmax and CNN stones, then captures.
+Next: hover callouts that explain every element from the equation record,
+then the plan update, IR v2 for sums and indices, the multi-stone page, and
+the dot-product, matmul, softmax and CNN stones, then captures.
 
 ## License
 
