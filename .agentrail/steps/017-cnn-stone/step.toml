@@ -1,4 +1,4 @@
-number = 15
+number = 17
 slug = "cnn-stone"
 status = "pending"
 description = "The third stone: the CNN triple sum, one convolutional layer as the paper wri..."

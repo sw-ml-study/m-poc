@@ -1,4 +1,4 @@
-number = 14
+number = 15
 slug = "matmul-stone"
 status = "pending"
 description = "optional second IR instance C ← A +.× B with time = k"
