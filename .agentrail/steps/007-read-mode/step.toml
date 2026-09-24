@@ -1,8 +1,9 @@
 number = 7
 slug = "read-mode"
-status = "in-progress"
+status = "completed"
 description = "Legibility on the stone page (pages/, no build step). (1) Cache-busting: vers..."
 role = "production"
 context_files = []
 created_at = "2026-09-23T17:05:49"
-commits = []
+completed_at = "2026-09-23T17:45:26"
+commits = ["71845ea39aaafa3ce90cbb8af4dce14153e772ab"]
