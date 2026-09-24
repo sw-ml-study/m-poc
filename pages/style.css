@@ -180,16 +180,26 @@ footer .colophon { border-top: 1px solid var(--edge); padding-top: 8px; font-siz
 .callout { position: fixed; inset: 0; z-index: 9; pointer-events: none; }
 .callout[hidden] { display: none; }
 .callout-box {
-  position: absolute; max-width: 22rem; padding: 8px 12px;
-  background: var(--panel); color: var(--fg); border: 1px solid var(--warm); border-radius: 8px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5); font-size: 0.9rem; line-height: 1.4;
+  position: absolute; max-width: 20rem; padding: 7px 11px;
+  background: var(--panel); color: var(--fg); border: 1px solid var(--edge); border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5); font-size: 0.86rem; line-height: 1.35;
+  opacity: 0.92;
 }
+.callout-box.near { border-color: var(--warm); opacity: 1; z-index: 1; }
+.callout-box.far { font-size: 0.8rem; max-width: 16rem; }
+.callout-box.far span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .callout-box b { display: block; font-family: "Latin Modern Math", "Cambria Math", "STIX Two Math", serif; font-size: 1.05rem; margin-bottom: 2px; }
 .callout-box small { display: block; color: var(--warm); margin-top: 4px; font-variant-numeric: tabular-nums; }
 .callout-box small:empty { display: none; }
 .callout-leader { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.callout-leader line { stroke: var(--warm); stroke-width: 1.5; }
-.callout-leader path { fill: var(--warm); }
+.callout-leader line { stroke: var(--edge); stroke-width: 1.5; }
+.callout-leader path { fill: var(--edge); }
+.callout-leader .near line { stroke: var(--warm); }
+.callout-leader .near path { fill: var(--warm); }
+/* generous hit areas: a token's whole box, not its glyph outline */
+.text-face text, .text-face tspan { pointer-events: bounding-box; }
+.scene .hit line { stroke: transparent; stroke-width: 14; pointer-events: stroke; }
+.scene .hit rect { fill: transparent; pointer-events: all; }
 .scene .panel-hit { fill: transparent; stroke: none; pointer-events: all; }
 body.no-hints .callout { display: none; }
 

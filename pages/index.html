@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rosetta M</title>
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 <header>
@@ -35,16 +35,16 @@
     </svg>
     <button type="button" class="back" id="back" data-doc="back" hidden>Back to the stone</button>
     <div class="stone" id="stone">
-      <section class="face" data-face="math" data-doc="face-math" aria-label="Math face">
-        <h2>Math</h2>
+      <section class="face" data-face="math" aria-label="Math face">
+        <h2 data-doc="face-math">Math</h2>
         <div class="text-face" id="face-math"></div>
       </section>
-      <section class="face" data-face="m" data-doc="face-m" aria-label="Proposed M face">
-        <h2>M <small>proposed notation · placeholder glyphs</small></h2>
+      <section class="face" data-face="m" aria-label="Proposed M face">
+        <h2 data-doc="face-m">M <small>proposed notation · placeholder glyphs</small></h2>
         <div class="text-face" id="face-m"></div>
       </section>
-      <section class="face" data-face="visual" data-doc="face-visual" aria-label="Visual face">
-        <h2>Visual <small>structure and data at this epoch</small></h2>
+      <section class="face" data-face="visual" aria-label="Visual face">
+        <h2 data-doc="face-visual">Visual <small>structure and data at this epoch</small></h2>
         <svg class="scene" id="face-visual" role="img" aria-label="Dataflow, data fit and parameter space"></svg>
       </section>
     </div>
@@ -130,10 +130,9 @@
 </footer>
 
 <div class="callout" id="callout" hidden role="tooltip">
-  <div class="callout-box"><b id="callout-title"></b><span id="callout-body"></span><small id="callout-extra"></small></div>
-  <svg class="callout-leader" aria-hidden="true"><line/><path/></svg>
+  <svg class="callout-leader" aria-hidden="true"></svg>
 </div>
 
-<script src="rosetta.js?v=11"></script>
+<script src="rosetta.js?v=12"></script>
 </body>
 </html>

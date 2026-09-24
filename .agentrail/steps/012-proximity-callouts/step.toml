@@ -1,6 +1,6 @@
 number = 12
 slug = "proximity-callouts"
-status = "pending"
+status = "in-progress"
 description = "Callouts that are easy to hit and can show several things at once (pages/rose..."
 role = "production"
 context_files = []

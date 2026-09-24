@@ -105,13 +105,19 @@ framework. The script has three parts, none of which knows what a neuron is:
   reads the front face, Space plays or pauses, `a` toggles auto-rotate,
   Home or `0` resets the view, `?` lists the keys. The Keys row names the
   armed mode;
-- **callouts**: rest the pointer on anything and a 2D callout with a
-  leader line explains it: every symbol on every face (its glyph, name,
-  role, one-sentence doc from the equation record, its value at this
-  epoch, and what its line says), each line of a text face (rest on the
-  line outside a token), each panel of the Visual face (from the scene's
-  `panels`), and every control of the page. The face card also lists the
-  front face's lines with their docs. Keyboard focus and taps show them too; Esc
+- **callouts**: rest the pointer on a face and everything within reach
+  gets a callout at once, up to six, fanned out around the pointer with a
+  leader line each; the nearest is emphasised. Move down a row and the
+  previous row's callouts give way to the next row's. A symbol's callout
+  gives its glyph, name, role, one-sentence doc from the equation record,
+  its value at this epoch, and what its line says; a line's callout (rest
+  on the line outside a token) gives the line's doc; the Visual face's
+  panels come from the scene's `panels`. Tokens have generous hit areas
+  (their whole box, and wide invisible twins behind the Visual edges), and
+  a face's own callout is on its header. Controls, the minimap and the
+  readout get a single callout each. Keyboard focus shows one too. The
+  face card lists the front face's lines with their docs. `?hover=ID`
+  and `?near=ID` show them for stills. Keyboard focus and taps show them too; Esc
   hides one; the Hints button turns them off. `?hover=ID` shows one for a
   still;
 - **focus**: click any symbol on any face, or in the readout, and every
@@ -128,13 +134,14 @@ SHA (`-dirty` when the tree had uncommitted changes), UTC time.
 
 ## Status
 
-Steps 1–11 of [the plan](docs/plan.md) are done: the gate; the equation
+Steps 1–12 of [the plan](docs/plan.md) are done: the gate; the equation
 IR with the one-neuron instance; the training trace; the three faces as
 fixtures; the page; focus; read mode with view scale, orientation cues and
 the face card; the scalene prism with faces sized to their content; the
 modal keys; hover callouts with every symbol's doc in the record and the
-Visual face's panels in the scene; and per-line docs on the text faces.
-Every face header names the equation it shows, from the record.
+Visual face's panels in the scene; per-line docs on the text faces; and
+proximity callouts. Every face header names the equation it shows, from
+the record.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -159,9 +166,9 @@ Every face header names the equation it shows, from the record.
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next: proximity callouts (several at once, easy to hit), the plan update,
-IR v2 for sums and indices, the multi-stone page with a stone selector, and
-the dot-product, matmul, softmax and CNN stones, then captures.
+Next: the plan update, IR v2 for sums and indices, the multi-stone page
+with a stone selector, and the dot-product, matmul, softmax and CNN stones,
+then captures.
 
 ## License
 

@@ -295,6 +295,9 @@ function makeProjector(svg, scene) {
   };
 
   const lines = [];
+  const hits = [];
+  const hitGroup = document.createElementNS(NS, "g");
+  hitGroup.setAttribute("class", "hit");
   const edgeGroup = document.createElementNS(NS, "g");
   edgeGroup.setAttribute("class", "edges");
   for (let e = 0; e < m; e++) {
@@ -305,7 +308,13 @@ function makeProjector(svg, scene) {
     line.dataset.id = scene.ids[e];
     edgeGroup.appendChild(line);
     lines.push(line);
+    // an invisible wide twin, so the edge is easy to rest the pointer on
+    const hit = document.createElementNS(NS, "line");
+    hit.dataset.id = scene.ids[e];
+    hitGroup.appendChild(hit);
+    hits.push(hit);
   }
+  svg.appendChild(hitGroup);
   svg.appendChild(edgeGroup);
 
   const labelGroup = document.createElementNS(NS, "g");
@@ -318,6 +327,11 @@ function makeProjector(svg, scene) {
     text.dataset.id = scene.labels.ids[k];
     text.textContent = scene.labels.texts[k];
     labelGroup.appendChild(text);
+    const pad = document.createElementNS(NS, "rect");
+    pad.dataset.id = scene.labels.ids[k];
+    pad.setAttribute("x", px(lp[k * 3]) - 30); pad.setAttribute("y", py(lp[k * 3 + 1]) - 30);
+    pad.setAttribute("width", 60); pad.setAttribute("height", 60);
+    hitGroup.appendChild(pad);
   }
   svg.appendChild(labelGroup);
 
@@ -345,10 +359,13 @@ function makeProjector(svg, scene) {
       const a = base + edges[e * 2] * 3;
       const b = base + edges[e * 2 + 1] * 3;
       const line = lines[e];
-      line.setAttribute("x1", px(all[a]).toFixed(1));
-      line.setAttribute("y1", py(all[a + 1]).toFixed(1));
-      line.setAttribute("x2", px(all[b]).toFixed(1));
-      line.setAttribute("y2", py(all[b + 1]).toFixed(1));
+      const x1 = px(all[a]).toFixed(1), y1 = py(all[a + 1]).toFixed(1);
+      const x2 = px(all[b]).toFixed(1), y2 = py(all[b + 1]).toFixed(1);
+      line.setAttribute("x1", x1); line.setAttribute("y1", y1);
+      line.setAttribute("x2", x2); line.setAttribute("y2", y2);
+      const hit = hits[e];
+      hit.setAttribute("x1", x1); hit.setAttribute("y1", y1);
+      hit.setAttribute("x2", x2); hit.setAttribute("y2", y2);
     }
   }
   return { frame, count: T, axis: frames.axis };
@@ -621,17 +638,15 @@ const CHROME_DOCS = {
 };
 
 function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
-  const box = root.querySelector(".callout-box");
-  const title = root.querySelector("#callout-title");
-  const body = root.querySelector("#callout-body");
-  const extra = root.querySelector("#callout-extra");
-  const line = root.querySelector("line");
-  const head = root.querySelector("path");
+  const NS = "http://www.w3.org/2000/svg";
+  const leaders = root.querySelector(".callout-leader");
   let timer = null;
-  let target = null;
   let enabled = true;
+  let shown = [];          // {el, box, g} currently on screen
+  let mode = null;         // "single" | "near"
+  let lastPoint = null;
 
-  // the doc of a line of a text face, by the face the element sits in
+  // ---- docs
   const lineDoc = (el, index) => {
     const section = el.closest("[data-face]");
     const face = section && equation.faces[section.dataset.face];
@@ -658,7 +673,6 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     return { title: scene.panels.titles[k], body: scene.panels.docs[k], extra: "" };
   };
   const chromeDoc = (key) => (CHROME_DOCS[key] ? { title: CHROME_DOCS[key][0], body: CHROME_DOCS[key][1], extra: "" } : null);
-
   function docFor(el) {
     if (el.dataset.id) return symbolDoc(el, el.dataset.id);
     if (el.dataset.line !== undefined) return lineCallout(el);
@@ -667,106 +681,248 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     return null;
   }
 
-  // Where to point. A pointer-triggered callout points at the pointer itself,
-  // which is always right. Otherwise (keyboard focus, stills) the element's
-  // box is used; for SVG content that box is computed from the SVG root's
-  // rect and the element's bbox in viewBox units, because the browser's own
-  // client rect for SVG children inside a 3D-rotated face comes back
-  // mirrored in Chrome.
+  // ---- anchors. Client rects of SVG children inside a 3D-rotated face come
+  // back mirrored in Chrome, so every SVG anchor is computed from the SVG
+  // root's rect (which is right) and the element's extent in viewBox units.
+  function svgToClient(svg, b) {
+    const sr = svg.getBoundingClientRect();
+    const vb = svg.viewBox.baseVal;
+    const k = Math.min(sr.width / vb.width, sr.height / vb.height);
+    const ox = sr.left + (sr.width - vb.width * k) / 2 - vb.x * k;
+    const oy = sr.top + (sr.height - vb.height * k) / 2 - vb.y * k;
+    const left = ox + b.x * k, top = oy + b.y * k, width = b.width * k, height = b.height * k;
+    return { left, top, width, height, right: left + width, bottom: top + height };
+  }
+  // a tspan's extent: the union of its characters' extents within its text
+  function tspanBox(tspan) {
+    const text = tspan.closest("text");
+    let start = 0;
+    for (const node of text.childNodes) {
+      if (node === tspan) break;
+      start += node.textContent.length;
+    }
+    const n = tspan.textContent.length;
+    let box = null;
+    for (let i = start; i < start + n && i < text.getNumberOfChars(); i++) {
+      const e = text.getExtentOfChar(i);
+      if (!box) box = { x: e.x, y: e.y, right: e.x + e.width, bottom: e.y + e.height };
+      else { box.x = Math.min(box.x, e.x); box.y = Math.min(box.y, e.y); box.right = Math.max(box.right, e.x + e.width); box.bottom = Math.max(box.bottom, e.y + e.height); }
+    }
+    return box ? { x: box.x, y: box.y, width: box.right - box.x, height: box.bottom - box.y } : text.getBBox();
+  }
   function anchorRect(el, point) {
     if (point) return { left: point[0], top: point[1], width: 0, height: 0, right: point[0], bottom: point[1] };
     const svg = el.ownerSVGElement;
     if (svg && svg.viewBox && svg.viewBox.baseVal.width) {
-      const host = el.getBBox ? el : el.closest("text");
-      if (host && host.getBBox) {
-        const b = host.getBBox();
-        const sr = svg.getBoundingClientRect();
-        const vb = svg.viewBox.baseVal;
-        const k = Math.min(sr.width / vb.width, sr.height / vb.height);
-        const ox = sr.left + (sr.width - vb.width * k) / 2 - vb.x * k;
-        const oy = sr.top + (sr.height - vb.height * k) / 2 - vb.y * k;
-        const left = ox + b.x * k, top = oy + b.y * k, width = b.width * k, height = b.height * k;
-        return { left, top, width, height, right: left + width, bottom: top + height };
-      }
+      if (el.tagName === "tspan") return svgToClient(svg, tspanBox(el));
+      if (el.getBBox) return svgToClient(svg, el.getBBox());
     }
     return el.getBoundingClientRect();
   }
 
-  // place the box above the anchor, or below if there is no room; keep it in
-  // the viewport; draw the leader from the box's nearest edge to the anchor
-  function place(el, point) {
-    const r = anchorRect(el, point);
-    const vw = window.innerWidth, vh = window.innerHeight;
-    root.hidden = false;
-    box.style.left = "0px"; box.style.top = "0px";
+  // ---- drawing
+  function makeBox(doc, cls) {
+    const box = document.createElement("div");
+    box.className = `callout-box ${cls}`;
+    const b = document.createElement("b"); b.textContent = doc.title;
+    const span = document.createElement("span"); span.textContent = doc.body;
+    const small = document.createElement("small"); small.textContent = doc.extra;
+    box.append(b, span, small);
+    root.appendChild(box);
+    return box;
+  }
+  function makeLeader(cls) {
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", cls);
+    g.appendChild(document.createElementNS(NS, "line"));
+    g.appendChild(document.createElementNS(NS, "path"));
+    leaders.appendChild(g);
+    return g;
+  }
+  function drawLeader(g, box, r) {
+    const bx = parseFloat(box.style.left), by = parseFloat(box.style.top);
     const bw = box.offsetWidth, bh = box.offsetHeight;
-    const gap = 14;
-    let above = r.top - gap - bh >= 8;
-    let top = above ? r.top - gap - bh : r.bottom + gap;
-    if (!above && top + bh > vh - 8) { above = true; top = Math.max(8, r.top - gap - bh); }
-    let left = r.left + r.width / 2 - bw / 2;
-    left = Math.max(8, Math.min(vw - bw - 8, left));
-    box.style.left = `${left}px`; box.style.top = `${top}px`;
-    const ax = Math.max(left + 12, Math.min(left + bw - 12, r.left + r.width / 2));
-    const ay = above ? top + bh : top;
-    const tx = r.left + r.width / 2, ty = above ? r.top - 2 : r.bottom + 2;
-    line.setAttribute("x1", ax); line.setAttribute("y1", ay);
-    line.setAttribute("x2", tx); line.setAttribute("y2", ty);
-    const d = above ? -1 : 1; // arrowhead points at the element
-    head.setAttribute("d", `M${tx},${ty} L${tx - 5},${ty - 7 * d} L${tx + 5},${ty - 7 * d} Z`);
+    const tx = r.left + r.width / 2, ty = r.top + r.height / 2;
+    // leave the box from the edge nearest the anchor
+    const cx = Math.max(bx + 10, Math.min(bx + bw - 10, tx));
+    const above = by + bh <= ty;
+    const ay = above ? by + bh : (by >= ty ? by : by + bh / 2);
+    const ax = (above || by >= ty) ? cx : (tx < bx ? bx : bx + bw);
+    const ey = above ? r.top - 2 : (by >= ty ? r.bottom + 2 : ty);
+    const ex = (above || by >= ty) ? tx : (tx < bx ? r.right + 2 : r.left - 2);
+    const line = g.querySelector("line"), head = g.querySelector("path");
+    line.setAttribute("x1", ax); line.setAttribute("y1", ay); line.setAttribute("x2", ex); line.setAttribute("y2", ey);
+    const dx = ex - ax, dy = ey - ay, len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len;
+    head.setAttribute("d", `M${ex},${ey} L${ex - 8 * ux + 4 * uy},${ey - 8 * uy - 4 * ux} L${ex - 8 * ux - 4 * uy},${ey - 8 * uy + 4 * ux} Z`);
   }
-
-  let lastPoint = null;
-  function show(el, point) {
-    const doc = docFor(el);
-    if (!doc) return;
-    target = el;
-    lastPoint = point;
-    title.textContent = doc.title;
-    body.textContent = doc.body;
-    extra.textContent = doc.extra;
-    place(el, point);
-  }
-  function hide() {
-    clearTimeout(timer); timer = null; target = null;
+  function clear() {
+    for (const s of shown) { s.box.remove(); s.g.remove(); }
+    shown = [];
     root.hidden = true;
   }
-  const targetOf = (e) => e.target.closest && e.target.closest("[data-id], [data-line], [data-panel], [data-doc]");
 
-  document.addEventListener("pointerover", (e) => {
-    if (!enabled) return;
+  // one callout above (or below) its anchor, clamped to the viewport
+  function placeSingle(box, r) {
+    const vw = window.innerWidth, vh = window.innerHeight, gap = 14;
+    const bw = box.offsetWidth, bh = box.offsetHeight;
+    let above = r.top - gap - bh >= 8;
+    let top = above ? r.top - gap - bh : r.bottom + gap;
+    if (!above && top + bh > vh - 8) top = Math.max(8, r.top - gap - bh);
+    let left = Math.max(8, Math.min(vw - bw - 8, r.left + r.width / 2 - bw / 2));
+    box.style.left = `${left}px`; box.style.top = `${top}px`;
+  }
+
+  function showSingle(el, point) {
+    const doc = docFor(el);
+    if (!doc) return;
+    clear();
+    mode = "single"; lastPoint = point;
+    root.hidden = false;
+    const box = makeBox(doc, "near");
+    const g = makeLeader("near");
+    const r = anchorRect(el, point);
+    placeSingle(box, r);
+    drawLeader(g, box, r);
+    shown = [{ el, box, g, point }];
+  }
+
+  // ---- proximity: everything within reach of the pointer, fanned out
+  const RADIUS = 90, MAX = 6;
+  function candidates(face) {
+    const out = [];
+    const seen = new Set();
+    for (const el of face.querySelectorAll("tspan[data-id], text[data-line], .labels text[data-id], .edges line[data-id], .panel-hit")) {
+      // one entry per symbol id on the Visual face: a label beats an edge, the nearest edge stands for the rest
+      const key = el.tagName === "line" || (el.tagName === "text" && el.dataset.id) ? `id:${el.dataset.id}` : el.tagName === "rect" ? `panel:${el.dataset.panel}` : null;
+      out.push({ el, key, label: el.tagName === "text" && !!el.dataset.id });
+    }
+    return out;
+  }
+  const distance = (r, p) => {
+    const dx = Math.max(r.left - p[0], 0, p[0] - r.right);
+    const dy = Math.max(r.top - p[1], 0, p[1] - r.bottom);
+    return Math.hypot(dx, dy);
+  };
+  function showNear(face, point) {
+    const found = [];
+    const best = new Map();
+    for (const c of candidates(face)) {
+      const r = anchorRect(c.el, null);
+      const d = distance(r, point);
+      if (d > RADIUS) continue;
+      const doc = docFor(c.el);
+      if (!doc) continue;
+      if (c.key) {
+        const prev = best.get(c.key);
+        if (prev && (prev.label || (!c.label && prev.d <= d))) continue;
+        best.set(c.key, { el: c.el, r, d, doc, label: c.label });
+        continue;
+      }
+      found.push({ el: c.el, r, d, doc });
+    }
+    for (const v of best.values()) found.push(v);
+    found.sort((a, b) => a.d - b.d);
+    const pick = found.slice(0, MAX);
+    clear();
+    if (!pick.length) return;
+    mode = "near"; lastPoint = point;
+    root.hidden = false;
+    // Layout: the row under the pointer (the union of the anchors) is kept
+    // clear; boxes go in tiers above and below it, alternating sides, ordered
+    // left to right by their anchor so leaders do not cross, and a tier that
+    // runs off the viewport starts another further out.
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const keep = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+    for (const c of pick) { keep.left = Math.min(keep.left, c.r.left); keep.top = Math.min(keep.top, c.r.top); keep.right = Math.max(keep.right, c.r.right); keep.bottom = Math.max(keep.bottom, c.r.bottom); }
+    keep.top = Math.min(keep.top, point[1]) - 12; keep.bottom = Math.max(keep.bottom, point[1]) + 12;
+    const items = pick.map((c, i) => {
+      const cls = i === 0 ? "near" : "far";
+      const box = makeBox(c.doc, cls);
+      const g = makeLeader(cls);
+      return { c, box, g, side: i % 2 === 0 ? -1 : 1, bw: box.offsetWidth, bh: box.offsetHeight };
+    });
+    // if one side has no room, everything goes to the other
+    const roomAbove = keep.top - 8 - 40 > 8, roomBelow = keep.bottom + 8 + 40 < vh - 8;
+    for (const it of items) { if (it.side < 0 && !roomAbove) it.side = 1; if (it.side > 0 && !roomBelow) it.side = -1; }
+    for (const side of [-1, 1]) {
+      const group = items.filter((it) => it.side === side).sort((a, b) => (a.c.r.left + a.c.r.width / 2) - (b.c.r.left + b.c.r.width / 2));
+      let edge = side < 0 ? keep.top - 16 : keep.bottom + 16;   // the tier's near edge
+      let cursor = -Infinity, tierDepth = 0;
+      for (const it of group) {
+        let left = Math.max(8, it.c.r.left + it.c.r.width / 2 - it.bw / 2);
+        if (left < cursor + 8) left = cursor + 8;
+        if (left + it.bw > vw - 8) {
+          // next tier, further from the row
+          edge = side < 0 ? edge - tierDepth - 8 : edge + tierDepth + 8;
+          cursor = -Infinity; tierDepth = 0;
+          left = Math.max(8, Math.min(vw - it.bw - 8, it.c.r.left + it.c.r.width / 2 - it.bw / 2));
+        }
+        const top = side < 0 ? edge - it.bh : edge;
+        it.box.style.left = `${left}px`; it.box.style.top = `${Math.max(8, Math.min(vh - it.bh - 8, top))}px`;
+        cursor = left + it.bw; tierDepth = Math.max(tierDepth, it.bh);
+        drawLeader(it.g, it.box, it.c.r);
+        shown.push({ el: it.c.el, box: it.box, g: it.g });
+      }
+    }
+  }
+
+  const targetOf = (e) => e.target.closest && e.target.closest("[data-id], [data-line], [data-panel], [data-doc]");
+  const faceOf = (e) => e.target.closest && e.target.closest(".face");
+  const inFaceBody = (e) => { const f = faceOf(e); return f && !e.target.closest("h2") ? f : null; };
+
+  let lastFace = null;
+  document.addEventListener("pointermove", (e) => {
+    if (!enabled || e.pointerType === "touch") return;
+    const face = inFaceBody(e);
+    if (face) {
+      lastFace = face;
+      clearTimeout(timer);
+      const point = [e.clientX, e.clientY];
+      timer = setTimeout(() => showNear(face, point), mode === "near" ? 40 : 180);
+      return;
+    }
+    if (mode === "near") { clear(); mode = null; }
     const el = targetOf(e);
-    if (!el || el === target) return;
+    if (!el) { if (mode === "single") { clear(); mode = null; } return; }
+    if (shown[0] && shown[0].el === el) { const point = [e.clientX, e.clientY]; lastPoint = point; const r = anchorRect(el, point); placeSingle(shown[0].box, r); drawLeader(shown[0].g, shown[0].box, r); return; }
     clearTimeout(timer);
     const point = [e.clientX, e.clientY];
-    timer = setTimeout(() => show(el, point), 220);
+    timer = setTimeout(() => showSingle(el, point), 200);
   });
-  // follow the pointer while it stays on the same element
-  document.addEventListener("pointermove", (e) => {
-    if (target && lastPoint && targetOf(e) === target) { lastPoint = [e.clientX, e.clientY]; place(target, lastPoint); }
+  document.addEventListener("pointerleave", () => { clearTimeout(timer); clear(); mode = null; });
+  document.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "touch" || !enabled) return;
+    const face = inFaceBody(e);
+    if (face) showNear(face, [e.clientX, e.clientY]);
+    else { const el = targetOf(e); if (el) showSingle(el, null); }
   });
-  document.addEventListener("pointerout", (e) => {
-    const el = targetOf(e);
-    if (!el) return;
-    if (e.relatedTarget && el.contains(e.relatedTarget)) return;
-    hide();
-  });
-  document.addEventListener("focusin", (e) => { if (enabled) { const el = targetOf(e); if (el) show(el, null); } });
-  document.addEventListener("focusout", hide);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
-  document.addEventListener("scroll", () => { if (target) place(target, lastPoint); }, true);
-  window.addEventListener("resize", () => { if (target) place(target, lastPoint); });
+  document.addEventListener("focusin", (e) => { if (enabled) { const el = targetOf(e); if (el) showSingle(el, null); } });
+  document.addEventListener("focusout", () => { if (mode === "single") { clear(); mode = null; } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { clearTimeout(timer); clear(); mode = null; } });
+  const relayout = () => { if (mode === "near" && lastFace && lastPoint) showNear(lastFace, lastPoint); else if (mode === "single" && shown[0]) showSingle(shown[0].el, shown[0].point); };
+  document.addEventListener("scroll", relayout, true);
+  window.addEventListener("resize", relayout);
 
   hintsButton.addEventListener("click", () => {
     enabled = !enabled;
     hintsButton.setAttribute("aria-pressed", String(enabled));
     document.body.classList.toggle("no-hints", !enabled);
-    if (!enabled) hide();
+    if (!enabled) { clearTimeout(timer); clear(); mode = null; }
   });
 
   return {
-    refresh() { if (target) show(target, lastPoint); },
-    showFor(selector) { const el = document.querySelector(selector); if (el) show(el, null); },
+    refresh: relayout,
+    showFor(selector) { const el = document.querySelector(selector); if (el) showSingle(el, null); },
+    // for stills: proximity mode at the centre of an element, preferring the face being read
+    showNearFor(id) {
+      const scope = document.querySelector(".face.reading-face") || document;
+      const el = scope.querySelector(`[data-id="${id}"], [data-panel="${id}"]`);
+      const face = el && el.closest(".face");
+      if (!face) return;
+      const r = anchorRect(el, null);
+      showNear(face, [r.left + r.width / 2, r.top + r.height / 2]);
+    },
   };
 }
 
@@ -1009,6 +1165,8 @@ async function main() {
   setEpoch(fixedEpoch ?? 0);
   if (initialFocus) focus.set(initialFocus);
   // for stills: after read mode and the layout have settled
+  const nearParam = params.get("near");
+  if (nearParam) setTimeout(() => callouts.showNearFor(nearParam), 900);
   if (initialHover) setTimeout(() => callouts.showFor(`[data-id="${initialHover}"], [data-panel="${initialHover}"], [data-doc="${initialHover}"], ${/^line\d$/.test(initialHover) ? `.face[data-face="math"] text[data-line="${initialHover.slice(4)}"]` : "#none"}`), 700);
   if (initialRead) stone.read(initialRead);
   if (!reducedMotion && fixedEpoch === null) setPlaying(true);
