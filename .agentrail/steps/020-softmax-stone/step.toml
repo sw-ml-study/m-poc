@@ -1,6 +1,6 @@
 number = 20
 slug = "softmax-stone"
-status = "pending"
+status = "in-progress"
 description = "The fourth stone in the tour, the research's front-page equation: softmax, σ..."
 role = "production"
 context_files = []

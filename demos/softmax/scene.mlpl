@@ -1,0 +1,14 @@
+# Build the Visual face of softmax from the committed trace and write it: fixtures/softmax/scene.json by default, or the path given as the script's argument. The JSON written is also printed; the reg-rs baseline rosetta_softmax_scene pins it.
+include "visual.mlpl";
+
+sm_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/softmax/scene.json"
+};
+
+trace = unwrap(u:sm_read_trace("fixtures/softmax/trace.json"));
+scene = unwrap(u:sm_scene(trace));
+text = unwrap(u:rs_write_json(sm_path, unwrap(u:rs_scene_export(scene, 4))));
+print(text);
+str_concat("wrote ", sm_path)

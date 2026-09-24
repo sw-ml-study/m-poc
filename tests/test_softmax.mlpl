@@ -1,0 +1,84 @@
+# The softmax stone: every row matches the softmax builtin and sums to one, the trace is keyed by the record's symbols with the temperatures as the axis values, every symbol, line and face is documented, the Visual face's ids are symbols, and the committed fixtures are what the programs emit.
+include "lib/rosetta/faces.mlpl";
+include "demos/softmax/sm.mlpl";
+include "demos/softmax/visual.mlpl";
+
+def u:t_sm_unknown(ir, ids) {
+  "The first id in a string list that is not a symbol of the record, or the empty string.";
+  index = 0;
+  unknown = "";
+  while lt(index, list_len(ids)) {
+    id = unwrap(list_get(ids, index));
+    if eq(u:rs_ir_symbol_index(ir, id), -1) {
+      unknown = id
+    };
+    index = index + 1
+  };
+  unknown
+}
+
+@test {name: "every row's probabilities match the softmax builtin and add up to one", tags: ["softmax", "trace"]}
+def u:test_sm_rows() {
+  "The numbers are real: exp and reduce_add agree with the stabilised builtin at every temperature, and the biggest score wins as the temperature falls.";
+  rows = u:sm_steps();
+  worst = 0;
+  t = 0;
+  while lt(t, rows.count) {
+    row = take(rows.probs, 0, t);
+    oracle = softmax(take(rows.scaled, 0, t), 0);
+    worst = reduce(:max, [worst, reduce(:max, abs(row - oracle)), abs(reduce_add(row) - 1)]);
+    t = t + 1
+  };
+  u:assert_lt(worst, 0.000000001, "every row matches the builtin and sums to one")?;
+  u:assert_gt(take(rows.temperatures, 0, 0), take(rows.temperatures, 0, rows.count - 1), "the temperature falls")?;
+  first = take(rows.probs, 0, 0);
+  last = take(rows.probs, 0, rows.count - 1);
+  u:assert_lt(reduce(:max, first) - reduce(:min, first), 0.3, "at high temperature the probabilities are nearly flat")?;
+  u:assert_gt(take(last, 0, 1), 0.9, "at low temperature the biggest score takes almost everything")
+}
+
+@test {name: "the trace is keyed by the record's symbols, with the temperatures as the axis values", tags: ["softmax", "trace", "json"]}
+def u:test_sm_trace() {
+  "The page shows the temperature at each step and looks values up by symbol id.";
+  ir = unwrap(u:sm_equation());
+  trace = u:sm_trace(u:sm_steps(), 6);
+  u:assert_eq(trace.axis.count, 21, "twenty-one steps")?;
+  u:assert_text_eq(trace.axis.name, "temperature", "the axis is the temperature")?;
+  u:assert_shape(trace.axis.values, [21], "one temperature per step")?;
+  u:assert_text_eq(u:t_sm_unknown(ir, record_keys(trace.channels)), "", "channel keys are symbols")?;
+  u:assert_text_eq(u:t_sm_unknown(ir, record_keys(trace.constants)), "", "constant keys are symbols")?;
+  on_disk = read_text("fixtures/softmax/trace.json")?;
+  u:assert_eq(str_eq(on_disk, unwrap(u:rs_json(trace))), 1, "trace fixture is fresh")
+}
+
+@test {name: "every symbol, line and face of the softmax record is documented, and the faces render and are fresh", tags: ["softmax", "docs", "faces"]}
+def u:test_sm_docs() {
+  "The exponent's index is a Unicode subscript letter, its own token, so i and j are focusable inside the exponent too.";
+  ir = unwrap(u:sm_equation());
+  u:assert_text_eq(ir.title, "Softmax", "title")?;
+  u:assert_text_eq(u:rs_ir_undocumented(ir), "", "every symbol")?;
+  u:assert_text_eq(u:rs_ir_undocumented_line(ir), "", "every line")?;
+  u:assert_text_eq(u:rs_ir_undocumented_face(ir), "", "every face")?;
+  u:assert_text_eq(u:rs_ir_math_text(ir), "σ(z)_{i} = e^{zᵢ} / ∑_{j=1}^{n} e^{zⱼ}", "math source")?;
+  u:assert_text_eq(u:rs_ir_m_text(ir), "P ← (*Z) ÷ +/ *Z", "m text")?;
+  math = unwrap(u:rs_face_svg(ir, "math"));
+  u:assert_eq(u:rs_svg_count(math, "data-id=\""), ir.faces.math.count, "every math token tagged")?;
+  u:assert_gt(str_find(math, "data-id=\"i\" baseline-shift=\"super\" font-size=\"0.7em\">ᵢ</tspan>"), -1, "the index inside the exponent is its own token")?;
+  u:assert_eq(str_eq(read_text("fixtures/softmax/faces/math.svg")?, math), 1, "math.svg fresh")?;
+  u:assert_eq(str_eq(read_text("fixtures/softmax/faces/m.svg")?, unwrap(u:rs_face_svg(ir, "m"))), 1, "m.svg fresh")
+}
+
+@test {name: "the Visual face's ids are symbols, one frame per step, and scene.json is fresh", tags: ["softmax", "visual", "fixture"]}
+def u:test_sm_visual() {
+  "The geometry follows the trace.";
+  ir = unwrap(u:sm_equation());
+  trace = unwrap(u:sm_read_trace("fixtures/softmax/trace.json"));
+  out = unwrap(u:rs_scene_export(unwrap(u:sm_visual(trace, 10)), 4));
+  u:assert_text_eq(u:t_sm_unknown(ir, out.ids), "", "edge ids")?;
+  u:assert_text_eq(u:t_sm_unknown(ir, out.labels.ids), "", "label ids")?;
+  full = unwrap(u:rs_scene_export(unwrap(u:sm_scene(trace)), 4));
+  u:assert_eq(full.frames.count, 21, "one frame per step")?;
+  u:assert_eq(str_eq(read_text("fixtures/softmax/scene.json")?, unwrap(u:rs_json(full))), 1, "scene.json fresh")
+}
+
+u:run_registered_tests()

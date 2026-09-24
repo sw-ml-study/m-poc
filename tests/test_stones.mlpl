@@ -6,7 +6,8 @@ def u:test_manifest() {
   "The page's dropdown is built from this.";
   m = unwrap(u:stones_manifest());
   u:assert_text_eq(m.schema, "sw-ml-study.rosetta.stones", "schema")?;
-  u:assert_eq(list_len(m.ids), 3, "three stones so far")?;
+  u:assert_eq(list_len(m.ids), 4, "four stones so far")?;
+  u:assert_text_eq(unwrap(list_get(m.ids, 3)), "softmax", "the fourth stone")?;
   u:assert_text_eq(unwrap(list_get(m.ids, 1)), "dot-product", "the second stone")?;
   u:assert_text_eq(unwrap(list_get(m.ids, 2)), "matmul", "the third stone")?;
   u:assert_text_eq(unwrap(list_get(m.ids, 0)), "one-neuron", "the first stone")?;

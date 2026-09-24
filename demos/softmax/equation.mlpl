@@ -1,0 +1,29 @@
+# The fourth stone's equation: softmax, the research's front-page equation (docs/research.txt §18). σ(z)_i = e^{zᵢ} / ∑_{j=1}^{n} e^{zⱼ} on the Math face, every index a token (the index inside the exponent is a Unicode subscript letter, because the renderer does not nest a subscript inside a superscript); P ← (*Z) ÷ +/ *Z on the M face, where * is the exponential, ÷ the divide and +/ the sum, all placeholders (see docs/plan.md).
+include "../../lib/rosetta/ir.mlpl";
+
+def u:sm_equation() {
+  "Build the softmax record: one line per face, every symbol, line and face documented for the page.";
+  ir = u:rs_ir_new("softmax", "Softmax: turn a vector of scores into probabilities, each score exponentiated and divided by the sum of all of them.");
+  ir = u:rs_ir_titled(ir, "Softmax")?;
+  ir = u:rs_ir_face_doc(ir, "math", "The equation as written on paper", "One line: the i-th probability is e to the i-th score, divided by the sum over j of e to every score. The division makes the probabilities add up to one; the exponential makes the biggest score dominate.")?;
+  ir = u:rs_ir_face_doc(ir, "m", "The same in the proposed notation", "Read right to left: *Z exponentiates every score at once, +/ adds the results up, ÷ divides the exponentials by that sum, and P receives all the probabilities. No index appears. Placeholder glyphs.")?;
+  ir = u:rs_ir_face_doc(ir, "visual", "Scores, exponentials, probabilities, as the temperature falls", "Three rows of bars: the scores divided by the temperature, their exponentials, and the probabilities they become. As the temperature falls the scores spread out and one probability takes over.")?;
+  ir = u:rs_ir_symbol_doc(ir, "p", "var", "probability", "The output: σ(z), the softmax of the scores, a probability for each entry; they add up to one.")?;
+  ir = u:rs_ir_symbol_doc(ir, "lp", "punct", "open", "Open parenthesis: the scores the softmax is applied to.")?;
+  ir = u:rs_ir_symbol_doc(ir, "rp", "punct", "close", "Close parenthesis.")?;
+  ir = u:rs_ir_symbol_doc(ir, "z", "var", "scores", "The scores (logits): one number per entry, any size; here five, divided by the temperature at this step.")?;
+  ir = u:rs_ir_symbol_doc(ir, "i", "var", "index", "Which entry's probability this line gives.")?;
+  ir = u:rs_ir_symbol_doc(ir, "eq", "op", "definition", "Definition: the left side is computed from the right side.")?;
+  ir = u:rs_ir_symbol_doc(ir, "exp", "op", "exponential", "e raised to a score: always positive, and growing fast, so big scores win by a lot. In the notation, *.")?;
+  ir = u:rs_ir_symbol_doc(ir, "div", "op", "divide", "Divide each exponential by the sum of all of them, so the results add up to one.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sum", "op", "summation", "Add up every exponential: the normaliser. On paper a ∑ over j, in the notation +/.")?;
+  ir = u:rs_ir_symbol_doc(ir, "j", "var", "summation index", "Runs over every entry inside the sum, 1 to n.")?;
+  ir = u:rs_ir_symbol_doc(ir, "one", "hyper", "one", "Where j starts.")?;
+  ir = u:rs_ir_symbol_doc(ir, "n", "hyper", "count", "How many scores there are; here 5.")?;
+  ir = u:rs_ir_line(ir, "math", "p:σ|lp:~(|z:~z|rp:~)|i:_i|eq:=|exp:e|z:^z|i:^ᵢ|div:/|sum:!∑|j:<j|eq:<=|one:<1|n:>n|exp:e|z:^z|j:^ⱼ")?;
+  ir = u:rs_ir_line(ir, "m", "p:P|eq:←|lp:(|exp:~*|z:~Z|rp:~)|div:÷|sum:+/|exp:*|z:~Z")?;
+  ir = u:rs_ir_line_doc(ir, "math", 0, "The i-th probability: e to the i-th score over the sum of e to every score.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 0, "All the probabilities at once: exponentiate the scores, divide by their sum, assign to P.")?;
+  u:rs_ir_validate(ir)?;
+  ok(ir)
+}

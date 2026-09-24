@@ -1,0 +1,40 @@
+# The fourth stone's computation: softmax of five scores, computed by MLPL's exp and reduce_add at a sweep of temperatures from high to low, so the page can replay the probabilities sharpening. u:sm_steps records, per temperature, the scaled scores, their exponentials, the normaliser and the probabilities; u:sm_trace turns the rows into the trace record the page replays, keyed by the equation's symbol ids, with the temperatures as the axis values. The tests check every row against the softmax builtin.
+include "../../lib/rosetta/emit.mlpl";
+include "equation.mlpl";
+
+sm_z = [1, 2, 0.5, -1, 1.5];
+sm_count = 21;
+
+def u:sm_temperature(t) {
+  "The temperature at step t: from 4 down to 0.2, geometrically, over sm_count steps.";
+  4 * pow(0.05, t / (sm_count - 1))
+}
+
+def u:sm_steps() {
+  "One row per step: the scores divided by the temperature, their exponentials, the normaliser (their sum) and the probabilities.";
+  n = len(sm_z);
+  scaled = fill([0], 0);
+  exps = fill([0], 0);
+  sums = fill([0], 0);
+  probs = fill([0], 0);
+  temps = fill([0], 0);
+  t = 0;
+  while lt(t, sm_count) {
+    temp = u:sm_temperature(t);
+    s = sm_z / temp;
+    e = exp(s);
+    total = reduce_add(e);
+    scaled = concat(scaled, s);
+    exps = concat(exps, e);
+    sums = concat(sums, total);
+    probs = concat(probs, e / total);
+    temps = concat(temps, temp);
+    t = t + 1
+  };
+  {n: n, count: sm_count, z: sm_z, temperatures: temps, scaled: reshape(scaled, [sm_count, n]), exps: reshape(exps, [sm_count, n]), sums: sums, probs: reshape(probs, [sm_count, n])}
+}
+
+def u:sm_trace(rows, places) {
+  "The trace record: the axis is the temperature (its values listed), the constants are the raw scores and n, the channels are the scaled scores z, the exponentials, the normaliser and the probabilities.";
+  {schema: "sw-ml-study.rosetta.trace", version: 1, equation: "softmax", axis: {name: "temperature", count: rows.count, values: u:rs_round(rows.temperatures, places)}, constants: {n: rows.n, one: 1}, channels: {z: u:rs_array_json(u:rs_round(rows.scaled, places)), exp: u:rs_array_json(u:rs_round(rows.exps, places)), sum: u:rs_round(rows.sums, places), p: u:rs_array_json(u:rs_round(rows.probs, places))}}
+}

@@ -1,0 +1,12 @@
+# Compute the softmax at a sweep of temperatures and write the trace the page replays: fixtures/softmax/trace.json by default, or the path given as the script's argument. The JSON written is also printed; the reg-rs baseline rosetta_softmax_trace pins it.
+include "sm.mlpl";
+
+sm_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/softmax/trace.json"
+};
+
+text = unwrap(u:rs_write_json(sm_path, u:sm_trace(u:sm_steps(), 6)));
+print(text);
+str_concat("wrote ", sm_path)

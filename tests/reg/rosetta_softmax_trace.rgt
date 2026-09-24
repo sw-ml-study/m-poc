@@ -1,0 +1,3 @@
+command = "./scripts/run-mlpl demos/softmax/train.mlpl"
+exit_code = 0
+desc = "The softmax trace: scaled scores, exponentials, normaliser and probabilities at twenty-one temperatures from 4 to 0.2."

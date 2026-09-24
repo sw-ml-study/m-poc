@@ -78,8 +78,11 @@ is the layout and the manifest. The tour so far:
 3. **Matrix multiply**, Cᵢⱼ = ∑ₖ AᵢₖBₖⱼ, the research's first true Rosetta
    Stone: `C ← A +.× B` is APL's inner product; time is the contraction
    index k, and every cell of C accumulates one product per step.
+4. **Softmax**, σ(z)ᵢ = eᶻⁱ / ∑ⱼ eᶻʲ, the research's front-page equation:
+   `P ← (*Z) ÷ +/ *Z`; time is the temperature falling from 4 to 0.2, and
+   the probabilities sharpen from nearly flat to one winner.
 
-Softmax and the CNN triple sum follow.
+The CNN triple sum follows.
 
 ## The page
 

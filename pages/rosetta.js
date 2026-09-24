@@ -1244,7 +1244,8 @@ async function main() {
     root: document.getElementById("callout"), equation, trace, scene,
     valueAt: (id) => {
       const v = valueText(trace, id, epochNow);
-      return v ? `at ${trace.axis.name} ${epochNow}: ${v}` : "an operator, no value of its own";
+      const where = trace.axis.values ? `${trace.axis.name} ${fmt(trace.axis.values[epochNow])}` : `${trace.axis.name} ${epochNow}`;
+      return v ? `at ${where}: ${v}` : "an operator, no value of its own";
     },
     hintsButton: document.getElementById("hints"),
   });
@@ -1259,7 +1260,8 @@ async function main() {
   function setEpoch(next) {
     t = ((next % T) + T) % T;
     range.value = String(t);
-    out.value = String(t);
+    // an axis may list a value per step (a temperature); otherwise the step number
+    out.value = trace.axis.values ? `${t} · ${fmt(trace.axis.values[t])}` : String(t);
     projector.frame(t);
     show(t);
     focus.epoch(t);
