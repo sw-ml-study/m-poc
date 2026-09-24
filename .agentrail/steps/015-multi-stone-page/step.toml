@@ -1,4 +1,4 @@
-number = 14
+number = 15
 slug = "multi-stone-page"
 status = "pending"
 description = "Several stones on one page (fixtures/, scripts/, pages/). Layout: fixtures/<s..."
