@@ -379,14 +379,27 @@ function fmt(v) {
   return a >= 100 ? v.toFixed(2) : a >= 1 ? v.toFixed(4) : v.toFixed(5);
 }
 
-// The label for a channel id: the Math face's text for that symbol, from the
-// equation record; the id itself if the record does not render it.
+// Characters that render as nothing: the Math face carries multiplication
+// by juxtaposition as U+2062 INVISIBLE TIMES so it has a focus target.
+const INVISIBLE = /^[\u2062\u2063\u200b\s]*$/;
+const isInvisible = (text) => INVISIBLE.test(text || "");
+
+// The label for a symbol id: the Math face's text for it, or the M face's
+// when the Math face renders it invisibly, or the symbol's name.
 function labelFor(equation, id) {
+  for (const face of [equation.faces.math, equation.faces.m]) {
+    const k = face.ids.indexOf(id);
+    if (k >= 0 && !isInvisible(face.texts[k])) return face.texts[k];
+  }
+  return equation.symbols.names[equation.symbols.ids.indexOf(id)] || id;
+}
+// How an invisible token is written, for its callout: by juxtaposition of its neighbours.
+function invisibleNote(equation, id) {
   const face = equation.faces.math;
   const k = face.ids.indexOf(id);
-  if (k < 0) return id;
-  const text = face.texts[k];
-  return text.trim().length ? text : equation.symbols.names[equation.symbols.ids.indexOf(id)];
+  if (k < 0 || !isInvisible(face.texts[k])) return "";
+  const before = face.texts[k - 1] || "", after = face.texts[k + 1] || "";
+  return ` (invisible: written by juxtaposition, as ${before}${after})`;
 }
 
 function makeReadout(dl, trace, equation) {
@@ -588,6 +601,7 @@ function makeFocus(caption, clearButton, trace, equation) {
       el.classList.toggle("focus", el.dataset.id === id);
     }
     document.body.classList.toggle("has-focus", id !== null);
+    window.dispatchEvent(new CustomEvent("rs-focus"));
     clearButton.hidden = id === null;
     if (id === null) caption.textContent = "Click any symbol on any face, or in the readout, to focus it everywhere. Esc clears.";
     else describe(id);
@@ -660,7 +674,7 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     const textEl = el.closest && el.closest("text[data-line]");
     const line = textEl ? lineDoc(el, Number(textEl.dataset.line)) : null;
     const where = line && line.doc ? ` · line ${Number(textEl.dataset.line) + 1}: ${line.doc}` : "";
-    return { title: `${labelFor(equation, id)}  ${equation.symbols.names[k]}`, body: equation.symbols.docs[k] || "", extra: `${equation.symbols.roles[k]} · ${valueAt(id)}${where}` };
+    return { title: `${labelFor(equation, id)}  ${equation.symbols.names[k]}${invisibleNote(equation, id)}`, body: equation.symbols.docs[k] || "", extra: `${equation.symbols.roles[k]} · ${valueAt(id)}${where}`, invisible: el.tagName === "tspan" && isInvisible(el.textContent) };
   };
   const lineCallout = (el) => {
     const line = lineDoc(el, Number(el.dataset.line));
@@ -702,8 +716,18 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
       start += node.textContent.length;
     }
     const n = tspan.textContent.length;
+    const total = text.getNumberOfChars();
+    if (isInvisible(tspan.textContent)) {
+      // the gap between the neighbouring glyphs, at least a few units wide
+      const prev = start > 0 ? text.getExtentOfChar(start - 1) : null;
+      const next = start + n < total ? text.getExtentOfChar(start + n) : null;
+      const ref = prev || next || text.getBBox();
+      const left = prev ? prev.x + prev.width : next.x - 4;
+      const right = next ? next.x : left + 4;
+      return { x: Math.min(left, right), y: ref.y, width: Math.max(4, Math.abs(right - left)), height: ref.height };
+    }
     let box = null;
-    for (let i = start; i < start + n && i < text.getNumberOfChars(); i++) {
+    for (let i = start; i < start + n && i < total; i++) {
       const e = text.getExtentOfChar(i);
       if (!box) box = { x: e.x, y: e.y, right: e.x + e.width, bottom: e.y + e.height };
       else { box.x = Math.min(box.x, e.x); box.y = Math.min(box.y, e.y); box.right = Math.max(box.right, e.x + e.width); box.bottom = Math.max(box.bottom, e.y + e.height); }
@@ -736,6 +760,11 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     g.setAttribute("class", cls);
     g.appendChild(document.createElementNS(NS, "line"));
     g.appendChild(document.createElementNS(NS, "path"));
+    const ring = document.createElementNS(NS, "circle");
+    ring.setAttribute("class", "ghost");
+    ring.setAttribute("r", "5");
+    ring.style.display = "none";
+    g.appendChild(ring);
     leaders.appendChild(g);
     return g;
   }
@@ -758,11 +787,18 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     const dx = ex - sxx, dy = ey - sy, len = Math.hypot(dx, dy) || 1;
     const ux = dx / len, uy = dy / len;
     head.setAttribute("d", `M${ex},${ey} L${ex - 8 * ux + 4 * uy},${ey - 8 * uy - 4 * ux} L${ex - 8 * ux - 4 * uy},${ey - 8 * uy + 4 * ux} Z`);
+    // an invisible glyph gets a hollow ring where it is, so the reader sees what is meant
+    const ring = g.querySelector("circle");
+    if (ring) {
+      const ghost = g.dataset.ghost === "1";
+      ring.style.display = ghost ? "" : "none";
+      if (ghost) { ring.setAttribute("cx", cx); ring.setAttribute("cy", cy); }
+    }
   }
   function clear() {
     for (const s of shown) { s.box.remove(); s.g.remove(); }
     shown = [];
-    root.hidden = true;
+    root.hidden = !document.querySelector(".focus-rings circle");
   }
 
   // one callout above (or below) its anchor, clamped to the viewport
@@ -784,6 +820,7 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     root.hidden = false;
     const box = makeBox(doc, "near");
     const g = makeLeader("near");
+    if (doc.invisible) g.dataset.ghost = "1";
     const r = anchorRect(el, point);
     placeSingle(box, r);
     drawLeader(g, box, r);
@@ -843,7 +880,9 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     root.hidden = false;
     pick.forEach((c, i) => {
       const cls = i === 0 ? "near" : "far";
-      shown.push({ el: c.el, doc: c.doc, box: makeBox(c.doc, cls), g: makeLeader(cls), side: i % 2 === 0 ? -1 : 1 });
+      const g = makeLeader(cls);
+      if (c.doc.invisible) g.dataset.ghost = "1";
+      shown.push({ el: c.el, doc: c.doc, box: makeBox(c.doc, cls), g, side: i % 2 === 0 ? -1 : 1 });
     });
     layout();
     startFollowing();
@@ -964,6 +1003,30 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     document.body.classList.toggle("no-hints", !enabled);
     if (!enabled) { clearTimeout(timer); clear(); mode = null; }
   });
+
+  // focus rings: every focused token that renders invisibly gets a ring too
+  const focusRings = document.createElementNS(NS, "g");
+  focusRings.setAttribute("class", "focus-rings");
+  leaders.appendChild(focusRings);
+  let ringing = false;
+  function drawFocusRings() {
+    const targets = [...document.querySelectorAll(".rs-token.focus")].filter((t) => t.tagName === "tspan" && isInvisible(t.textContent));
+    while (focusRings.childNodes.length > targets.length) focusRings.lastChild.remove();
+    while (focusRings.childNodes.length < targets.length) { const c = document.createElementNS(NS, "circle"); c.setAttribute("r", "5"); c.setAttribute("class", "ghost"); focusRings.appendChild(c); }
+    targets.forEach((t, i) => { const r = anchorRect(t, null); const c = focusRings.childNodes[i]; c.setAttribute("cx", r.left + r.width / 2); c.setAttribute("cy", r.top + r.height / 2); });
+    root.hidden = root.hidden && !targets.length;
+    return targets.length;
+  }
+  function startRinging() {
+    if (ringing) return;
+    ringing = true;
+    const step = () => {
+      if (!drawFocusRings() && !shown.length) { ringing = false; if (!shown.length) root.hidden = true; return; }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  window.addEventListener("rs-focus", startRinging);
 
   return {
     refresh: layout,

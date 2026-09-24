@@ -116,8 +116,10 @@ framework. The script has three parts, none of which knows what a neuron is:
   (their whole box, and wide invisible twins behind the Visual edges), and
   a face's own callout is on its header. Controls, the minimap and the
   readout get a single callout each. Keyboard focus shows one too. The
-  face card lists the front face's lines with their docs. Callouts stay anchored to the
-  glyph they were made for: as the stone turns, drags, scales or enters
+  face card lists the front face's lines with their docs. An invisible token (the Math
+  face's juxtaposition multiply) says so in its title and gets a hollow ring
+  at its place, for callouts and for focus alike. Callouts stay anchored to
+  the glyph they were made for: as the stone turns, drags, scales or enters
   read mode, every box and leader follows its own glyph, and the set only
   changes when the pointer really moves. `?hover=ID` and `?near=ID` show
   them for stills, `?then=yaw:DEG` moves the view afterwards. Keyboard focus and taps show them too; Esc

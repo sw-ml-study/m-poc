@@ -1,6 +1,6 @@
 number = 16
 slug = "invisible-tokens"
-status = "pending"
+status = "in-progress"
 description = "Invisible tokens must announce themselves in callouts and focus (pages/rosett..."
 role = "production"
 context_files = []

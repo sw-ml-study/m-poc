@@ -194,6 +194,7 @@ footer .colophon { border-top: 1px solid var(--edge); padding-top: 8px; font-siz
 .callout-leader { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .callout-leader line { stroke: var(--edge); stroke-width: 1.5; }
 .callout-leader path { fill: var(--edge); }
+.callout-leader .ghost { fill: none; stroke: var(--warm); stroke-width: 1.5; }
 .callout-leader .near line { stroke: var(--warm); }
 .callout-leader .near path { fill: var(--warm); }
 /* generous hit areas: a token's whole box, not its glyph outline */
