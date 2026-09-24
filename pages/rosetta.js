@@ -27,6 +27,7 @@ const initialFocus = params.get("focus");
 const initialRead = params.get("read");
 const initialScale = params.has("scale") ? Number(params.get("scale")) : null;
 const showHelp = params.has("help");
+const initialHover = params.get("hover");
 
 // ------------------------------------------------------------- the geometry
 
@@ -71,6 +72,16 @@ function makeGeometry(widths) {
     const offset = (M[0] - T[0]) * t[0] + (M[1] - T[1]) * t[1];
     out[face] = { width: w, angle, offset, from: [Pi[0] - I[0], Pi[1] - I[1]], to: [Pj[0] - I[0], Pj[1] - I[1]] };
   });
+  // turn the whole cross-section so the first face listed after the widest
+  // (the Math face) has its normal at 0: yaw 0 then means "Math toward you",
+  // and no face sits at exactly 180, which Chrome's 3D hit boxes mishandle
+  const zero = out.math ? out.math.angle : 0;
+  for (const g of Object.values(out)) {
+    g.angle = ((g.angle - zero) % 360 + 540) % 360 - 180;
+    const c = Math.cos(-zero * Math.PI / 180), sn = Math.sin(-zero * Math.PI / 180);
+    g.from = [g.from[0] * c - g.from[1] * sn, g.from[0] * sn + g.from[1] * c];
+    g.to = [g.to[0] * c - g.to[1] * sn, g.to[0] * sn + g.to[1] * c];
+  }
   return { faces: out, r, height: FACE_HEIGHT, stoneWidth: Math.max(a, b, c) };
 }
 
@@ -310,6 +321,24 @@ function makeProjector(svg, scene) {
   }
   svg.appendChild(labelGroup);
 
+  // panels: invisible hit rectangles the callouts explain; nothing drawn
+  if (scene.panels && scene.panels.count) {
+    const panelGroup = document.createElementNS(NS, "g");
+    panelGroup.setAttribute("class", "panels");
+    const b = scene.panels.bounds.values;
+    for (let k = 0; k < scene.panels.count; k++) {
+      const rect = document.createElementNS(NS, "rect");
+      rect.setAttribute("class", "panel-hit");
+      rect.setAttribute("x", px(b[k * 4]));
+      rect.setAttribute("y", py(b[k * 4 + 3]));
+      rect.setAttribute("width", (b[k * 4 + 2] - b[k * 4]) * 100);
+      rect.setAttribute("height", (b[k * 4 + 3] - b[k * 4 + 1]) * 100);
+      rect.dataset.panel = scene.panels.ids[k];
+      panelGroup.appendChild(rect);
+    }
+    svg.insertBefore(panelGroup, edgeGroup);
+  }
+
   function frame(t) {
     const base = t * n * 3;
     for (let e = 0; e < m; e++) {
@@ -423,17 +452,19 @@ const FACE_DOCS = {
   visual: {
     title: "Visual: the structure of the computation and its live data",
     purpose: "Three panels on one plane, redrawn at every epoch from the recorded trace. Click any box, line or label to focus that symbol on every face.",
-    legend: [
-      ["#c7ccdf", "Dataflow (left)", "the equation as boxes: values flow left to right from x, w and b through × and + to ŷ, then with y through − and ² to the loss L."],
-      ["#ff9940", "Gradient paths", "the orange lines carry ∂L/∂w and ∂L/∂b back from L to w and b; η beside them is the step size."],
-      ["#f2d966", "Data (middle)", "the four training points as diamonds on x and y axes."],
-      ["#66d9f2", "Fitted line", "ŷ = wx + b at this epoch, with each point's residual y − ŷ in red; watch it settle onto the points."],
-      ["#b894f2", "Parameters (right)", "the path (w, b) has taken so far in parameter space, and the arrow to next epoch's (w, b): its legs are −η ∂L/∂w and −η ∂L/∂b."],
-    ],
+    legend: [],
   },
 };
 
-function makeFaceCard(root, equation) {
+function makeFaceCard(root, equation, scene) {
+  // the Visual legend comes from the scene's panels, not from page text
+  if (scene.panels && scene.panels.count) {
+    const c = scene.panels.colors.values;
+    FACE_DOCS.visual.legend = scene.panels.ids.map((id, k) => {
+      const rgb = `rgb(${Math.round(c[k * 4] * 255)},${Math.round(c[k * 4 + 1] * 255)},${Math.round(c[k * 4 + 2] * 255)})`;
+      return [rgb, scene.panels.titles[k], scene.panels.docs[k]];
+    });
+  }
   const purpose = root.querySelector("#stone-purpose");
   const title = root.querySelector("#face-card-title");
   const text = root.querySelector("#face-card-purpose");
@@ -467,6 +498,22 @@ function makeFaceCard(root, equation) {
 // face or in the readout, is both a target and a highlight; focus knows only
 // ids. The caption names the symbol from the equation record and shows its
 // value at the current epoch when the trace has one.
+// The value a symbol has at an epoch, as text: a channel row, a constant,
+// or nothing for an operator.
+function valueText(trace, id, epoch) {
+  const ch = trace.channels[id];
+  if (Array.isArray(ch)) return fmt(ch[epoch]);
+  if (ch && ch.values) {
+    const w = ch.shape[1];
+    return ch.values.slice(epoch * w, (epoch + 1) * w).map(fmt).join("  ");
+  }
+  if (id in trace.constants) {
+    const c = trace.constants[id];
+    return Array.isArray(c) ? c.map(fmt).join("  ") : fmt(c);
+  }
+  return "";
+}
+
 function makeFocus(caption, clearButton, trace, equation) {
   let current = null;
   let epoch = 0;
@@ -523,6 +570,169 @@ function makeFocus(caption, clearButton, trace, equation) {
   return {
     set: apply,
     epoch(t) { epoch = t; if (current !== null) describe(current); },
+  };
+}
+
+// --------------------------------------------------------------- callouts
+
+// What the page's own parts are for. Page vocabulary; the symbols' and the
+// Visual panels' docs come from the records instead.
+const CHROME_DOCS = {
+  "face-math": ["The Math face", "The equation as written on paper. Every symbol is a token you can click to focus or rest on to read about."],
+  "face-m": ["The M face", "The same equation in the proposed array notation, rendered from the same record. Nothing runs it; the glyphs are placeholders."],
+  "face-visual": ["The Visual face", "The structure of the computation and its live data, redrawn at every epoch from the recorded trace."],
+  "minimap": ["Where you are", "The stone seen from above, with you below it. The lit edge is the face toward you."],
+  "back": ["Back", "Leave read mode and return to the stone at the view you had."],
+  "rotate": ["Rotate", "Show me this differently: the stone turns and each face is one representation. Drag the stone, press a button, or use the r key."],
+  "turn-math": ["Turn to Math", "Bring the Math face toward you (key 1)."],
+  "turn-m": ["Turn to M", "Bring the M face toward you (key 2)."],
+  "turn-visual": ["Turn to Visual", "Bring the Visual face toward you (key 3)."],
+  "spin": ["Auto-rotate", "Let the stone turn on its own; dragging or turning to a face stops it (key a)."],
+  "view": ["View", "Magnify without changing meaning: read a face flat, scale the stone, or reset."],
+  "read": ["Read this face", "The face toward you comes flat and enlarged, never cropped, still live (Enter, or double-click a face). Esc returns."],
+  "scale": ["View scale", "Grow or shrink the stone (key s, then move the mouse). Not the plan's Zoom, which would change abstraction level."],
+  "reset": ["Reset view", "Put the stone back: default angle, size and position, auto-rotating (Home or 0)."],
+  "travel": ["Travel", "Show me this at another time: every number on the page is replayed from the recorded trace at the chosen epoch."],
+  "play": ["Play / Pause", "Step through the epochs on their own (Space)."],
+  "epoch": ["Epoch", "One full pass of gradient descent over the data. Epoch 0 is the untrained state; the last epoch is the trained one."],
+  "scrubber": ["Scrubber", "Drag to any epoch; the Visual face, the readout and the focused value follow (key t, then move the mouse; arrows step one)."],
+  "readout": ["Readout", "Every value the trace recorded at this epoch, labelled with the Math face's spelling. Click a row to focus that symbol."],
+  "focus": ["Focus", "What am I looking at: click a symbol on any face and the same symbol lights up on every face, with its value here."],
+  "keys": ["Keys", "Blender's grammar: press a key to arm a mode, move the mouse, click or Enter to confirm, Esc to cancel."],
+  "hints": ["Hints", "Turn these callouts off or on."],
+  "help": ["Help", "The full list of keys."],
+};
+
+function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
+  const box = root.querySelector(".callout-box");
+  const title = root.querySelector("#callout-title");
+  const body = root.querySelector("#callout-body");
+  const extra = root.querySelector("#callout-extra");
+  const line = root.querySelector("line");
+  const head = root.querySelector("path");
+  let timer = null;
+  let target = null;
+  let enabled = true;
+
+  const symbolDoc = (id) => {
+    const k = equation.symbols.ids.indexOf(id);
+    if (k < 0) return null;
+    return { title: `${labelFor(equation, id)}  ${equation.symbols.names[k]}`, body: equation.symbols.docs[k] || "", extra: `${equation.symbols.roles[k]} · ${valueAt(id)}` };
+  };
+  const panelDoc = (id) => {
+    const k = scene.panels ? scene.panels.ids.indexOf(id) : -1;
+    if (k < 0) return null;
+    return { title: scene.panels.titles[k], body: scene.panels.docs[k], extra: "" };
+  };
+  const chromeDoc = (key) => (CHROME_DOCS[key] ? { title: CHROME_DOCS[key][0], body: CHROME_DOCS[key][1], extra: "" } : null);
+
+  function docFor(el) {
+    if (el.dataset.id) return symbolDoc(el.dataset.id);
+    if (el.dataset.panel) return panelDoc(el.dataset.panel);
+    if (el.dataset.doc) return chromeDoc(el.dataset.doc);
+    return null;
+  }
+
+  // Where to point. A pointer-triggered callout points at the pointer itself,
+  // which is always right. Otherwise (keyboard focus, stills) the element's
+  // box is used; for SVG content that box is computed from the SVG root's
+  // rect and the element's bbox in viewBox units, because the browser's own
+  // client rect for SVG children inside a 3D-rotated face comes back
+  // mirrored in Chrome.
+  function anchorRect(el, point) {
+    if (point) return { left: point[0], top: point[1], width: 0, height: 0, right: point[0], bottom: point[1] };
+    const svg = el.ownerSVGElement;
+    if (svg && svg.viewBox && svg.viewBox.baseVal.width) {
+      const host = el.getBBox ? el : el.closest("text");
+      if (host && host.getBBox) {
+        const b = host.getBBox();
+        const sr = svg.getBoundingClientRect();
+        const vb = svg.viewBox.baseVal;
+        const k = Math.min(sr.width / vb.width, sr.height / vb.height);
+        const ox = sr.left + (sr.width - vb.width * k) / 2 - vb.x * k;
+        const oy = sr.top + (sr.height - vb.height * k) / 2 - vb.y * k;
+        const left = ox + b.x * k, top = oy + b.y * k, width = b.width * k, height = b.height * k;
+        return { left, top, width, height, right: left + width, bottom: top + height };
+      }
+    }
+    return el.getBoundingClientRect();
+  }
+
+  // place the box above the anchor, or below if there is no room; keep it in
+  // the viewport; draw the leader from the box's nearest edge to the anchor
+  function place(el, point) {
+    const r = anchorRect(el, point);
+    const vw = window.innerWidth, vh = window.innerHeight;
+    root.hidden = false;
+    box.style.left = "0px"; box.style.top = "0px";
+    const bw = box.offsetWidth, bh = box.offsetHeight;
+    const gap = 14;
+    let above = r.top - gap - bh >= 8;
+    let top = above ? r.top - gap - bh : r.bottom + gap;
+    if (!above && top + bh > vh - 8) { above = true; top = Math.max(8, r.top - gap - bh); }
+    let left = r.left + r.width / 2 - bw / 2;
+    left = Math.max(8, Math.min(vw - bw - 8, left));
+    box.style.left = `${left}px`; box.style.top = `${top}px`;
+    const ax = Math.max(left + 12, Math.min(left + bw - 12, r.left + r.width / 2));
+    const ay = above ? top + bh : top;
+    const tx = r.left + r.width / 2, ty = above ? r.top - 2 : r.bottom + 2;
+    line.setAttribute("x1", ax); line.setAttribute("y1", ay);
+    line.setAttribute("x2", tx); line.setAttribute("y2", ty);
+    const d = above ? -1 : 1; // arrowhead points at the element
+    head.setAttribute("d", `M${tx},${ty} L${tx - 5},${ty - 7 * d} L${tx + 5},${ty - 7 * d} Z`);
+  }
+
+  let lastPoint = null;
+  function show(el, point) {
+    const doc = docFor(el);
+    if (!doc) return;
+    target = el;
+    lastPoint = point;
+    title.textContent = doc.title;
+    body.textContent = doc.body;
+    extra.textContent = doc.extra;
+    place(el, point);
+  }
+  function hide() {
+    clearTimeout(timer); timer = null; target = null;
+    root.hidden = true;
+  }
+  const targetOf = (e) => e.target.closest && e.target.closest("[data-id], [data-panel], [data-doc]");
+
+  document.addEventListener("pointerover", (e) => {
+    if (!enabled) return;
+    const el = targetOf(e);
+    if (!el || el === target) return;
+    clearTimeout(timer);
+    const point = [e.clientX, e.clientY];
+    timer = setTimeout(() => show(el, point), 220);
+  });
+  // follow the pointer while it stays on the same element
+  document.addEventListener("pointermove", (e) => {
+    if (target && lastPoint && targetOf(e) === target) { lastPoint = [e.clientX, e.clientY]; place(target, lastPoint); }
+  });
+  document.addEventListener("pointerout", (e) => {
+    const el = targetOf(e);
+    if (!el) return;
+    if (e.relatedTarget && el.contains(e.relatedTarget)) return;
+    hide();
+  });
+  document.addEventListener("focusin", (e) => { if (enabled) { const el = targetOf(e); if (el) show(el, null); } });
+  document.addEventListener("focusout", hide);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
+  document.addEventListener("scroll", () => { if (target) place(target, lastPoint); }, true);
+  window.addEventListener("resize", () => { if (target) place(target, lastPoint); });
+
+  hintsButton.addEventListener("click", () => {
+    enabled = !enabled;
+    hintsButton.setAttribute("aria-pressed", String(enabled));
+    document.body.classList.toggle("no-hints", !enabled);
+    if (!enabled) hide();
+  });
+
+  return {
+    refresh() { if (target) show(target, lastPoint); },
+    showFor(selector) { const el = document.querySelector(selector); if (el) show(el, null); },
   };
 }
 
@@ -675,7 +885,7 @@ async function main() {
     minimapPrism.querySelector("polygon").setAttribute("points", pts.join(" "));
   }
   titleFaces(equation);
-  const faceCard = makeFaceCard(document.getElementById("face-card"), equation);
+  const faceCard = makeFaceCard(document.getElementById("face-card"), equation, scene);
   // orientation cues follow the view: the front face's button and minimap edge light up
   const stone = makeStone(stage, document.getElementById("stone"), geometry, (v) => {
     faceCard(v.reading || v.front);
@@ -689,6 +899,15 @@ async function main() {
   const projector = makeProjector(document.getElementById("face-visual"), scene);
   const show = makeReadout(document.getElementById("readout"), trace, equation);
   const focus = makeFocus(document.getElementById("focus-caption"), document.getElementById("unfocus"), trace, equation);
+  let epochNow = 0;
+  const callouts = makeCallouts({
+    root: document.getElementById("callout"), equation, trace, scene,
+    valueAt: (id) => {
+      const v = valueText(trace, id, epochNow);
+      return v ? `at ${trace.axis.name} ${epochNow}: ${v}` : "an operator, no value of its own";
+    },
+    hintsButton: document.getElementById("hints"),
+  });
 
   const range = document.getElementById("epoch");
   const out = document.getElementById("epoch-out");
@@ -704,6 +923,8 @@ async function main() {
     projector.frame(t);
     show(t);
     focus.epoch(t);
+    epochNow = t;
+    callouts.refresh();
   }
   range.addEventListener("input", () => setEpoch(Number(range.value)));
 
@@ -746,8 +967,15 @@ async function main() {
   makeModes({ stone, time, focus, legend: document.getElementById("key-legend"), help });
   if (showHelp) help.hidden = false;
 
+  fetch("data/build-info.json").then((r) => (r.ok ? r.json() : null)).then((b) => {
+    if (!b) return;
+    document.getElementById("build-info").textContent = `built on ${b.host} at ${b.sha}, ${b.timestamp}`;
+  }).catch(() => {});
+
   setEpoch(fixedEpoch ?? 0);
   if (initialFocus) focus.set(initialFocus);
+  // for stills: after read mode and the layout have settled
+  if (initialHover) setTimeout(() => callouts.showFor(`[data-id="${initialHover}"], [data-panel="${initialHover}"], [data-doc="${initialHover}"]`), 700);
   if (initialRead) stone.read(initialRead);
   if (!reducedMotion && fixedEpoch === null) setPlaying(true);
 }

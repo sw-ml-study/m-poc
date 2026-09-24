@@ -132,12 +132,22 @@ def u:on_param_panel(scene, trace, t) {
   u:rs_scene_polyline(scene, u:on_points([nx - dx * back - dy * side, nx, nx - dx * back + dy * side], [ny - dy * back + dx * side, ny, ny - dy * back - dx * side]), 0, "assign", c.path)
 }
 
+def u:on_panels(scene) {
+  "Name the three panels and the gradient paths for the page's legend and callouts: what each region shows and why.";
+  c = u:on_palette();
+  scene = u:rs_scene_panel(scene, "dataflow", "Dataflow", "The equation as boxes: values flow left to right from x, w and b through × and + to ŷ, then with y through − and ² to the loss L. Click a box to focus that symbol everywhere.", [0, 0.8, 7.2, 9], c.structure)?;
+  scene = u:rs_scene_panel(scene, "gradients", "Gradient paths", "The orange lines carry ∂L/∂w and ∂L/∂b back from L to w and b; η beside them is the step size that scales them into the update.", [0.1, 1, 1, 7.3], c.grad)?;
+  scene = u:rs_scene_panel(scene, "data", "Data", "The four training points as diamonds on x and y axes, and the line the neuron fits at this epoch, ŷ = wx + b; each red stroke is a residual y − ŷ. Watch the line settle onto the points.", [8.2, 0.8, 12.8, 9], c.fit)?;
+  u:rs_scene_panel(scene, "parameters", "Parameters", "Parameter space: the path (w, b) has taken so far, the current point, and the arrow to next epoch's (w, b); its legs are −η ∂L/∂w and −η ∂L/∂b, the two scaled gradients.", [13, 0.8, 16.4, 9], c.path)
+}
+
 def u:on_visual(trace, t) {
   "The whole Visual face at epoch t of a parsed trace record.";
   scene = u:rs_scene_new(trace.axis.name);
   scene = u:on_dataflow(scene)?;
   scene = u:on_data_panel(scene, trace, t)?;
-  u:on_param_panel(scene, trace, t)
+  scene = u:on_param_panel(scene, trace, t)?;
+  u:on_panels(scene)
 }
 
 def u:on_scene(trace) {

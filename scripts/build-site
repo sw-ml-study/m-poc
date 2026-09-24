@@ -12,4 +12,12 @@ mkdir -p pages/data/faces
 cp fixtures/one-neuron/trace.json fixtures/one-neuron/scene.json pages/data/
 cp fixtures/one-neuron/faces/math.svg fixtures/one-neuron/faces/m.svg fixtures/one-neuron/faces/equation.json pages/data/faces/
 
-echo "built pages/ (data from fixtures/one-neuron)"
+# build facts for the footer: host, short SHA (-dirty if the tree differs), UTC time
+sha=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
+if [ -n "$(git status --porcelain -- . ':!pages/data/build-info.json' 2>/dev/null)" ]; then
+    sha="$sha-dirty"
+fi
+printf '{"host":"%s","sha":"%s","timestamp":"%s"}\n' \
+    "$(hostname 2>/dev/null || echo unknown)" "$sha" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > pages/data/build-info.json
+
+echo "built pages/ (data from fixtures/one-neuron; $sha)"

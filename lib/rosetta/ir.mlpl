@@ -7,7 +7,7 @@ def u:rs_face_new() {
 
 def u:rs_ir_new(name, description) {
   "Start an empty equation record with a name and a one-line description.";
-  {schema: "sw-ml-study.rosetta.equation", version: 1, name: name, description: description, symbol_count: 0, symbol_ids: "", symbol_roles: "", symbol_names: "", faces: {math: u:rs_face_new(), m: u:rs_face_new()}}
+  {schema: "sw-ml-study.rosetta.equation", version: 1, name: name, description: description, symbol_count: 0, symbol_ids: "", symbol_roles: "", symbol_names: "", symbol_docs: "", faces: {math: u:rs_face_new(), m: u:rs_face_new()}}
 }
 
 def u:rs_delimited_append(text, count, item) {
@@ -50,26 +50,46 @@ def u:rs_ir_symbol_index(ir, id) {
   u:rs_delimited_index(ir.symbol_ids, ir.symbol_count, id)
 }
 
-def u:rs_ir_symbol(ir, id, role, name) {
-  "Add one symbol: an id shared by every face, a role, and a human name. Fails closed on a bad id, a bad role, a name holding the delimiter, or a duplicate.";
+def u:rs_ir_symbol_doc(ir, id, role, name, doc) {
+  "Add one symbol: an id shared by every face, a role, a human name, and a one-sentence doc for the page's callouts. Fails closed on a bad id, a bad role, a name or doc holding the delimiter, or a duplicate.";
   if 1 - u:rs_id_valid(id) {
     err({kind: "rosetta_symbol", message: str_concat("invalid symbol id: ", id)})
   } else {
     if 1 - u:rs_role_valid(role) {
       err({kind: "rosetta_symbol", message: str_concat("invalid symbol role: ", role)})
     } else {
-      if 1 - eq(str_find(name, "|"), -1) {
-        err({kind: "rosetta_symbol", message: str_concat("symbol name holds a delimiter: ", name)})
+      if 1 - (eq(str_find(name, "|"), -1) * eq(str_find(doc, "|"), -1)) {
+        err({kind: "rosetta_symbol", message: str_concat("symbol name or doc holds a delimiter: ", name)})
       } else {
         if 1 - eq(u:rs_ir_symbol_index(ir, id), -1) {
           err({kind: "rosetta_symbol", message: str_concat("duplicate symbol id: ", id)})
         } else {
           n = ir.symbol_count;
-          ok({schema: ir.schema, version: ir.version, name: ir.name, description: ir.description, symbol_count: n + 1, symbol_ids: u:rs_delimited_append(ir.symbol_ids, n, id), symbol_roles: u:rs_delimited_append(ir.symbol_roles, n, role), symbol_names: u:rs_delimited_append(ir.symbol_names, n, name), faces: ir.faces})
+          ok({schema: ir.schema, version: ir.version, name: ir.name, description: ir.description, symbol_count: n + 1, symbol_ids: u:rs_delimited_append(ir.symbol_ids, n, id), symbol_roles: u:rs_delimited_append(ir.symbol_roles, n, role), symbol_names: u:rs_delimited_append(ir.symbol_names, n, name), symbol_docs: u:rs_delimited_append(ir.symbol_docs, n, doc), faces: ir.faces})
         }
       }
     }
   }
+}
+
+def u:rs_ir_symbol(ir, id, role, name) {
+  "Add one symbol without a doc; the same as u:rs_ir_symbol_doc with an empty doc.";
+  u:rs_ir_symbol_doc(ir, id, role, name, "")
+}
+
+def u:rs_ir_undocumented(ir) {
+  "The first symbol id whose doc is empty, or the empty string when every symbol is documented.";
+  ids = str_split(ir.symbol_ids, "|");
+  docs = str_split(ir.symbol_docs, "|");
+  index = 0;
+  missing = "";
+  while lt(index, ir.symbol_count) {
+    if eq(str_len(unwrap(list_get(docs, index))), 0) {
+      missing = unwrap(list_get(ids, index))
+    };
+    index = index + 1
+  };
+  missing
 }
 
 def u:rs_face_named(ir, face_name) {
@@ -92,7 +112,7 @@ def u:rs_ir_with_face(ir, face_name, face) {
   } else {
     {math: ir.faces.math, m: face}
   };
-  {schema: ir.schema, version: ir.version, name: ir.name, description: ir.description, symbol_count: ir.symbol_count, symbol_ids: ir.symbol_ids, symbol_roles: ir.symbol_roles, symbol_names: ir.symbol_names, faces: faces}
+  {schema: ir.schema, version: ir.version, name: ir.name, description: ir.description, symbol_count: ir.symbol_count, symbol_ids: ir.symbol_ids, symbol_roles: ir.symbol_roles, symbol_names: ir.symbol_names, symbol_docs: ir.symbol_docs, faces: faces}
 }
 
 def u:rs_face_token(face, id, text, sep, line) {
@@ -219,7 +239,7 @@ def u:rs_face_export(face) {
 def u:rs_ir_export(ir) {
   "The validated record as lists and arrays, for JSON.";
   u:rs_ir_validate(ir)?;
-  ok({schema: ir.schema, version: ir.version, name: ir.name, description: ir.description, symbols: {count: ir.symbol_count, ids: str_split(ir.symbol_ids, "|"), roles: str_split(ir.symbol_roles, "|"), names: str_split(ir.symbol_names, "|")}, faces: {math: u:rs_face_export(ir.faces.math), m: u:rs_face_export(ir.faces.m)}})
+  ok({schema: ir.schema, version: ir.version, name: ir.name, description: ir.description, symbols: {count: ir.symbol_count, ids: str_split(ir.symbol_ids, "|"), roles: str_split(ir.symbol_roles, "|"), names: str_split(ir.symbol_names, "|"), docs: str_split(ir.symbol_docs, "|")}, faces: {math: u:rs_face_export(ir.faces.math), m: u:rs_face_export(ir.faces.m)}})
 }
 
 def u:rs_ir_json(ir) {

@@ -1,6 +1,6 @@
 number = 10
 slug = "hover-callouts"
-status = "pending"
+status = "in-progress"
 description = "Hover callouts that explain each and every thing on the stone page. (1) Conte..."
 role = "production"
 context_files = []

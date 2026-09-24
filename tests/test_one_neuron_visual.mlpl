@@ -80,4 +80,13 @@ def u:test_visual_fixture() {
   u:assert_eq(str_eq(on_disk, unwrap(u:rs_json(out))), 1, "scene.json is fresh")
 }
 
+@test {name: "the Visual face names its panels for the legend and the callouts", tags: ["one-neuron", "visual", "panels"]}
+def u:test_visual_panels() {
+  "Four regions, each with a title and a doc; their bounds cover the three panels.";
+  out = unwrap(u:rs_scene_export(unwrap(u:on_visual(u:t_trace(), 0)), 4));
+  u:assert_eq(out.panels.count, 4, "four panels")?;
+  u:assert_text_eq(str_join(out.panels.ids, ","), "dataflow,gradients,data,parameters", "panel ids")?;
+  u:assert_gt(reduce(:min, str_len(unwrap(list_get(out.panels.docs, 0)))), 40, "docs are sentences")
+}
+
 u:run_registered_tests()

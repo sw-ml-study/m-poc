@@ -26,8 +26,8 @@ b ← b − η ∂L/∂b              B ← B − η×∇B L             b, ∂L
 Both columns are rendered from one record,
 [`demos/one-neuron/equation.mlpl`](demos/one-neuron/equation.mlpl), built
 with the IR in [`lib/rosetta/ir.mlpl`](lib/rosetta/ir.mlpl): seventeen
-symbols (each with a role and a name), and per face an ordered list of
-tokens that render them. `=` on the Math face and `←` on the M face are the
+symbols (each with a role, a name and a one-sentence doc), and per face an
+ordered list of tokens that render them. `=` on the Math face and `←` on the M face are the
 same symbol; so are `²` and `*2`; and the multiplication that paper notation
 leaves invisible in `wx` is carried on the Math face by U+2062 INVISIBLE
 TIMES so a click on `×` has somewhere to land. `just mlpl
@@ -105,6 +105,13 @@ framework. The script has three parts, none of which knows what a neuron is:
   reads the front face, Space plays or pauses, `a` toggles auto-rotate,
   Home or `0` resets the view, `?` lists the keys. The Keys row names the
   armed mode;
+- **callouts**: rest the pointer on anything and a 2D callout with a
+  leader line explains it: every symbol on every face (its glyph, name,
+  role, one-sentence doc from the equation record, and value at this
+  epoch), each panel of the Visual face (from the scene's `panels`), and
+  every control of the page. Keyboard focus and taps show them too; Esc
+  hides one; the Hints button turns them off. `?hover=ID` shows one for a
+  still;
 - **focus**: click any symbol on any face, or in the readout, and every
   element carrying the same symbol id lights up on every face (token tspans
   on the text faces, edges and labels on the Visual face, the readout row),
@@ -112,15 +119,20 @@ framework. The script has three parts, none of which knows what a neuron is:
   at the current epoch. Esc or Clear ends it. Focus knows only ids.
 
 `just serve-site` serves it at <http://127.0.0.1:8765/>; the page fetches
-its data, so it needs HTTP rather than `file://`.
+its data, so it needs HTTP rather than `file://`. The footer carries the
+copyright, the license, the repository link and the build facts that
+`scripts/build-site` writes to `pages/data/build-info.json`: host, short
+SHA (`-dirty` when the tree had uncommitted changes), UTC time.
 
 ## Status
 
-Steps 1–9 of [the plan](docs/plan.md) are done: the gate; the equation IR
-with the one-neuron instance; the training trace; the three faces as
+Steps 1–10 of [the plan](docs/plan.md) are done: the gate; the equation
+IR with the one-neuron instance; the training trace; the three faces as
 fixtures; the page; focus; read mode with view scale, orientation cues and
-the face card; the scalene prism with faces sized to their content; and the
-modal keys. Every face header names the equation it shows, from the record.
+the face card; the scalene prism with faces sized to their content; the
+modal keys; and hover callouts with every symbol's doc in the record and
+the Visual face's panels in the scene. Every face header names the
+equation it shows, from the record.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -145,9 +157,9 @@ modal keys. Every face header names the equation it shows, from the record.
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next: hover callouts that explain every element from the equation record,
-then the plan update, IR v2 for sums and indices, the multi-stone page, and
-the dot-product, matmul, softmax and CNN stones, then captures.
+Next: the plan update, IR v2 for sums and indices, the multi-stone page
+with a stone selector, and the dot-product, matmul, softmax and CNN stones,
+then captures.
 
 ## License
 

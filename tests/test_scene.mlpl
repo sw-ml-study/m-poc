@@ -85,4 +85,21 @@ def u:test_scene_helpers() {
   u:assert_eq(u:rs_color_valid([0, -0.1, 1, 1]), 0, "below zero")
 }
 
+@test {name: "panels name regions with a title, a doc, bounds and a color, and fail closed", tags: ["scene", "panels"]}
+def u:test_scene_panels() {
+  "Panels are explanation for the page's legend and callouts; nothing is drawn for them.";
+  scene = unwrap(u:t_square());
+  scene = unwrap(u:rs_scene_panel(scene, "left", "Left half", "the left half of the square", [0, 0, 0.5, 1], [1, 0, 0, 1]));
+  u:assert_eq(is_err(u:rs_scene_panel(scene, "bad", "", "doc", [0, 0, 1, 1], [1, 0, 0, 1])), 1, "empty title")?;
+  u:assert_eq(is_err(u:rs_scene_panel(scene, "bad", "t", "doc", [1, 0, 0, 1], [1, 0, 0, 1])), 1, "x0 must be below x1")?;
+  u:assert_eq(is_err(u:rs_scene_panel(scene, "bad", "t", "doc", [0, 0, 1], [1, 0, 0, 1])), 1, "four bounds")?;
+  u:assert_eq(is_err(u:rs_scene_panel(scene, "bad", "t", "a|b", [0, 0, 1, 1], [1, 0, 0, 1])), 1, "a delimiter in a doc")?;
+  out = unwrap(u:rs_scene_export(scene, 3));
+  u:assert_eq(out.panels.count, 1, "one panel")?;
+  u:assert_text_eq(unwrap(list_get(out.panels.titles, 0)), "Left half", "title")?;
+  u:assert_eq(out.panels.bounds.shape, [1, 4], "bounds shape")?;
+  u:assert_eq(out.panels.colors.shape, [1, 4], "colors shape")?;
+  u:assert_eq(scene.edge_count, 4, "panels add no edges")
+}
+
 u:run_registered_tests()

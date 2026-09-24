@@ -167,6 +167,26 @@ button[aria-pressed="true"] { background: var(--accent); color: #11111b; border-
 .focus-caption b { color: var(--fg); font-family: "Latin Modern Math", "Cambria Math", "STIX Two Math", serif; font-weight: 600; }
 .focus-caption .val { color: var(--warm); font-variant-numeric: tabular-nums; }
 footer { color: var(--dim); font-size: 0.9rem; padding-bottom: 32px; }
+footer .colophon { border-top: 1px solid var(--edge); padding-top: 8px; font-size: 0.85rem; }
+
+/* Callouts: one 2D box in page space with a leader line and arrowhead to the
+   hovered element. The box never covers the element; the script places it
+   above or below and flips it to stay in the viewport. */
+.callout { position: fixed; inset: 0; z-index: 9; pointer-events: none; }
+.callout[hidden] { display: none; }
+.callout-box {
+  position: absolute; max-width: 22rem; padding: 8px 12px;
+  background: var(--panel); color: var(--fg); border: 1px solid var(--warm); border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5); font-size: 0.9rem; line-height: 1.4;
+}
+.callout-box b { display: block; font-family: "Latin Modern Math", "Cambria Math", "STIX Two Math", serif; font-size: 1.05rem; margin-bottom: 2px; }
+.callout-box small { display: block; color: var(--warm); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.callout-box small:empty { display: none; }
+.callout-leader { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.callout-leader line { stroke: var(--warm); stroke-width: 1.5; }
+.callout-leader path { fill: var(--warm); }
+.scene .panel-hit { fill: transparent; stroke: none; pointer-events: all; }
+body.no-hints .callout { display: none; }
 
 /* Focus: every element carrying data-id is a target. The script marks the
    matching ones .focus and the body .has-focus; CSS does the rest, the same

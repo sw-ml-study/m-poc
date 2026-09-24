@@ -50,9 +50,17 @@ plus flat row-major `values`.
   "labels":    {"count": K, "ids": [K strings], "texts": [K strings],
                 "positions": {"shape": [K, 3], "values": [...]}},
   "frames":    {"axis": "epoch", "count": T,
-                "positions": {"shape": [T, N, 3], "values": [...]}}
+                "positions": {"shape": [T, N, 3], "values": [...]}},
+  "panels":    {"count": P, "ids": [...], "titles": [...], "docs": [...],
+                "bounds": {"shape": [P, 4], "values": [x0, y0, x1, y1, ...]},
+                "colors": {"shape": [P, 4], "values": [...]}}
 }
 ```
+
+`panels` is explanation, not geometry: each names a region of the plane
+with a title, a one-sentence doc and a swatch color. The page builds the
+Visual face's legend from them and shows a callout when the pointer rests
+on a region. Nothing is drawn for a panel.
 
 Every frame holds every vertex; edges, ids, colors and labels never change.
 A projector draws frame `t` by projecting `frames.positions[t]` and joining

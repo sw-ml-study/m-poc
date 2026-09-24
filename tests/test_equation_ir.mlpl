@@ -110,4 +110,25 @@ def u:test_one_neuron_links() {
   u:assert_eq(str_len(unwrap(list_get(back.faces.math.texts, 3))), 1, "as one invisible character")
 }
 
+@test {name: "symbols carry a doc, the delimiter is refused in it, and the undocumented symbol is named", tags: ["ir", "docs"]}
+def u:test_symbol_docs() {
+  "The page's callouts read each symbol's doc from the record, so a record can say which symbol still lacks one.";
+  ir = u:rs_ir_new("t", "t");
+  ir = unwrap(u:rs_ir_symbol_doc(ir, "a", "var", "left", "the left side"));
+  ir = unwrap(u:rs_ir_symbol(ir, "b", "var", "right"));
+  u:assert_text_eq(u:rs_ir_undocumented(ir), "b", "b has no doc")?;
+  u:assert_eq(is_err(u:rs_ir_symbol_doc(ir, "c", "var", "c", "no|pipes")), 1, "a delimiter in a doc")?;
+  ir = unwrap(u:rs_ir_line(ir, "math", "a:a|b:b"));
+  ir = unwrap(u:rs_ir_line(ir, "m", "a:A|b:B"));
+  back = unwrap(parse_json(unwrap(u:rs_ir_json(ir))));
+  u:assert_text_eq(str_join(back.symbols.docs, ","), "the left side,", "docs travel with the export, empty for b")
+}
+
+@test {name: "every one-neuron symbol is documented", tags: ["one-neuron", "docs"]}
+def u:test_one_neuron_docs() {
+  "Each of the seventeen symbols has a one-sentence doc for the page.";
+  ir = unwrap(u:on_equation());
+  u:assert_text_eq(u:rs_ir_undocumented(ir), "", "no symbol without a doc")
+}
+
 u:run_registered_tests()

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rosetta M</title>
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 <header>
@@ -24,7 +24,7 @@
 
 <main>
   <div class="stage" id="stage" aria-label="The stone: drag to rotate, double-click a face to read it">
-    <svg class="minimap" id="minimap" viewBox="-40 -40 80 80" aria-label="Which face is toward you">
+    <svg class="minimap" id="minimap" viewBox="-40 -40 80 80" data-doc="minimap" aria-label="Which face is toward you">
       <g id="minimap-prism">
         <polygon points="0,-23 20,11.5 -20,11.5"/>
         <line data-face="math"/>
@@ -33,17 +33,17 @@
       </g>
       <path class="eye" d="M-6,38 L0,32 L6,38"/>
     </svg>
-    <button type="button" class="back" id="back" hidden>Back to the stone</button>
+    <button type="button" class="back" id="back" data-doc="back" hidden>Back to the stone</button>
     <div class="stone" id="stone">
-      <section class="face" data-face="math" aria-label="Math face">
+      <section class="face" data-face="math" data-doc="face-math" aria-label="Math face">
         <h2>Math</h2>
         <div class="text-face" id="face-math"></div>
       </section>
-      <section class="face" data-face="m" aria-label="Proposed M face">
+      <section class="face" data-face="m" data-doc="face-m" aria-label="Proposed M face">
         <h2>M <small>proposed notation · placeholder glyphs</small></h2>
         <div class="text-face" id="face-m"></div>
       </section>
-      <section class="face" data-face="visual" aria-label="Visual face">
+      <section class="face" data-face="visual" data-doc="face-visual" aria-label="Visual face">
         <h2>Visual <small>structure and data at this epoch</small></h2>
         <svg class="scene" id="face-visual" role="img" aria-label="Dataflow, data fit and parameter space"></svg>
       </section>
@@ -59,38 +59,39 @@
 
   <div class="controls">
     <div class="row faces" role="group" aria-label="Rotate to a face">
-      <span class="verb">Rotate</span>
-      <button type="button" data-turn="math">Math</button>
-      <button type="button" data-turn="m">M</button>
-      <button type="button" data-turn="visual">Visual</button>
-      <button type="button" id="spin" aria-pressed="true">Auto-rotate</button>
+      <span class="verb" data-doc="rotate">Rotate</span>
+      <button type="button" data-turn="math" data-doc="turn-math">Math</button>
+      <button type="button" data-turn="m" data-doc="turn-m">M</button>
+      <button type="button" data-turn="visual" data-doc="turn-visual">Visual</button>
+      <button type="button" id="spin" data-doc="spin" aria-pressed="true">Auto-rotate</button>
     </div>
     <div class="row view" role="group" aria-label="View">
-      <span class="verb">View</span>
-      <button type="button" id="read">Read this face</button>
-      <span class="scale-group">
+      <span class="verb" data-doc="view">View</span>
+      <button type="button" id="read" data-doc="read">Read this face</button>
+      <span class="scale-group" data-doc="scale">
         <button type="button" id="scale-down" aria-label="Smaller">−</button>
         <output id="scale-out">100%</output>
         <button type="button" id="scale-up" aria-label="Larger">+</button>
       </span>
-      <button type="button" id="reset-view">Reset view</button>
+      <button type="button" id="reset-view" data-doc="reset">Reset view</button>
     </div>
     <div class="row time">
-      <span class="verb">Travel</span>
-      <button type="button" id="play" aria-pressed="false">Play</button>
-      <label for="epoch">epoch <output id="epoch-out" for="epoch">0</output></label>
-      <input type="range" id="epoch" min="0" max="0" value="0" step="1">
+      <span class="verb" data-doc="travel">Travel</span>
+      <button type="button" id="play" data-doc="play" aria-pressed="false">Play</button>
+      <label for="epoch" data-doc="epoch">epoch <output id="epoch-out" for="epoch">0</output></label>
+      <input type="range" id="epoch" data-doc="scrubber" min="0" max="0" value="0" step="1">
     </div>
-    <dl class="readout" id="readout" aria-live="polite"></dl>
+    <dl class="readout" id="readout" data-doc="readout" aria-live="polite"></dl>
     <div class="row focus-row">
-      <span class="verb">Focus</span>
+      <span class="verb" data-doc="focus">Focus</span>
       <p class="focus-caption" id="focus-caption" aria-live="polite">Click any symbol on any face, or in the readout, to focus it everywhere. Esc clears.</p>
       <button type="button" id="unfocus" hidden>Clear</button>
     </div>
     <div class="row keys-row">
-      <span class="verb">Keys</span>
+      <span class="verb" data-doc="keys">Keys</span>
       <p class="key-legend" id="key-legend"></p>
-      <button type="button" id="help-button" aria-label="Keyboard help">?</button>
+      <button type="button" id="hints" data-doc="hints" aria-pressed="true">Hints</button>
+      <button type="button" id="help-button" data-doc="help" aria-label="Keyboard help">?</button>
     </div>
   </div>
 
@@ -120,11 +121,18 @@
 
 <footer>
   <p>Rendered from one equation record by <a href="https://github.com/sw-ml-study/sw-mlpl">sw-MLPL</a>;
-    the trace was produced by its <code>grad</code>. Source, plan and fixtures:
-    <a href="https://github.com/sw-ml-study/m-poc">sw-ml-study/m-poc</a>.
-    Serve this page over HTTP (<code>just serve-site</code>) if you open it locally: it fetches its data.</p>
+    the trace was produced by its <code>grad</code>. Serve this page over HTTP
+    (<code>just serve-site</code>) if you open it locally: it fetches its data.</p>
+  <p class="colophon">© 2026 Michael A Wright · <a href="https://github.com/sw-ml-study/m-poc/blob/main/LICENSE">MIT license</a>
+    · <a href="https://github.com/sw-ml-study/m-poc">github.com/sw-ml-study/m-poc</a>
+    · <span id="build-info">build info unavailable</span></p>
 </footer>
 
-<script src="rosetta.js?v=9"></script>
+<div class="callout" id="callout" hidden role="tooltip">
+  <div class="callout-box"><b id="callout-title"></b><span id="callout-body"></span><small id="callout-extra"></small></div>
+  <svg class="callout-leader" aria-hidden="true"><line/><path/></svg>
+</div>
+
+<script src="rosetta.js?v=10"></script>
 </body>
 </html>
