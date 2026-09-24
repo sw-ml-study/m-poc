@@ -1,8 +1,9 @@
 number = 16
 slug = "invisible-tokens"
-status = "in-progress"
+status = "completed"
 description = "Invisible tokens must announce themselves in callouts and focus (pages/rosett..."
 role = "production"
 context_files = []
 created_at = "2026-09-24T12:54:47"
-commits = []
+completed_at = "2026-09-24T13:09:18"
+commits = ["43e1f9d38aa15cd14bd380f381a49d489c2def1b"]
