@@ -73,8 +73,15 @@ framework. The script has three parts, none of which knows what a neuron is:
 
 - **the stone**: a CSS 3D triangular prism (`preserve-3d`) whose three
   faces are the two renderer SVGs, inlined so every token tspan is a DOM
-  node, and the Visual face. It auto-rotates, drags with the pointer, and
-  the Rotate buttons turn it to a face;
+  node, and the Visual face. Each face has its own width, sized to its
+  content (the Visual face is wide, the text faces are not), so the
+  cross-section is the scalene triangle with those three sides. Every side
+  of a triangle is tangent to its inscribed circle, so every face sits at
+  the inradius from the axis and differs only in the angle of its outward
+  normal and a small in-plane offset; the script computes those from the
+  widths and hands them to CSS as variables, and the minimap draws the real
+  triangle. It auto-rotates, drags with the pointer, and the Rotate buttons
+  turn it to a face;
 - **a line projector**: draws any line-scene record (see
   [`docs/scene.md`](docs/scene.md)) into an SVG with a fixed orthographic
   camera fitted to the scene's bounding box over every frame, one `<line>`
@@ -102,10 +109,10 @@ its data, so it needs HTTP rather than `file://`.
 
 ## Status
 
-Steps 1–7 of [the plan](docs/plan.md) are done: the gate; the equation IR
+Steps 1–8 of [the plan](docs/plan.md) are done: the gate; the equation IR
 with the one-neuron instance; the training trace; the three faces as
-fixtures; the page; focus; and read mode with view scale, orientation cues
-and the face card.
+fixtures; the page; focus; read mode with view scale, orientation cues and
+the face card; and the scalene prism with faces sized to their content.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -131,8 +138,9 @@ and the face card.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
 Next: Blender-style modal keys (g, r, s, t, f), hover callouts that explain
-every element from the equation record, then captures and the README with
-the stone.
+every element from the equation record, then the plan update, IR v2 for
+sums and indices, the multi-stone page, and the dot-product, matmul,
+softmax and CNN stones, then captures.
 
 ## License
 

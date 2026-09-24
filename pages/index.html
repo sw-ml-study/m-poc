@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rosetta M</title>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 <header>
@@ -27,11 +27,11 @@
     <svg class="minimap" id="minimap" viewBox="-40 -40 80 80" aria-label="Which face is toward you">
       <g id="minimap-prism">
         <polygon points="0,-23 20,11.5 -20,11.5"/>
-        <line data-face="math" x1="-20" y1="11.5" x2="20" y2="11.5"/>
-        <line data-face="m" x1="20" y1="11.5" x2="0" y2="-23"/>
-        <line data-face="visual" x1="0" y1="-23" x2="-20" y2="11.5"/>
+        <line data-face="math"/>
+        <line data-face="m"/>
+        <line data-face="visual"/>
       </g>
-      <path class="eye" d="M-7,33 L0,25 L7,33"/>
+      <path class="eye" d="M-6,38 L0,32 L6,38"/>
     </svg>
     <button type="button" class="back" id="back" hidden>Back to the stone</button>
     <div class="stone" id="stone">
@@ -97,6 +97,6 @@
     Serve this page over HTTP (<code>just serve-site</code>) if you open it locally: it fetches its data.</p>
 </footer>
 
-<script src="rosetta.js?v=7"></script>
+<script src="rosetta.js?v=8"></script>
 </body>
 </html>

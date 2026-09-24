@@ -27,12 +27,71 @@ const initialFocus = params.get("focus");
 const initialRead = params.get("read");
 const initialScale = params.has("scale") ? Number(params.get("scale")) : null;
 
+// ------------------------------------------------------------- the geometry
+
+// Face widths come from the content: the Visual face is wide, the text faces
+// are not. The stone is the triangular prism whose cross-section has those
+// three widths as its sides. Every side of a triangle is tangent to its
+// inscribed circle, so every face sits at the inradius r from the axis and
+// differs only in the angle of its outward normal and in a small in-plane
+// offset (a side's midpoint is not its tangent point unless the triangle is
+// isosceles about it). All in abstract units; --unit is pixels per unit.
+const FACE_WIDTHS = { visual: 720, m: 480, math: 480 };
+const FACE_HEIGHT = 440;
+
+function makeGeometry(widths) {
+  const faces = Object.keys(widths);
+  let [a, b, c] = faces.map((f) => widths[f]);
+  if (a >= b + c || b >= a + c || c >= a + b) {
+    console.error("face widths violate the triangle inequality; using equal widths", widths);
+    a = b = c = Math.max(a, b, c);
+  }
+  // vertices (x, z): P0-P1 is the first face's side, counterclockwise seen from above
+  const P0 = [0, 0], P1 = [a, 0];
+  const x2 = (a * a + c * c - b * b) / (2 * a);
+  const P2 = [x2, Math.sqrt(Math.max(0, c * c - x2 * x2))];
+  const sides = [[P0, P1, a], [P1, P2, b], [P2, P0, c]];
+  const s = (a + b + c) / 2;
+  const area = Math.sqrt(s * (s - a) * (s - b) * (s - c));
+  const r = area / s;
+  // incenter: vertices weighted by the opposite side lengths
+  const I = [(b * P0[0] + c * P1[0] + a * P2[0]) / (2 * s), (b * P0[1] + c * P1[1] + a * P2[1]) / (2 * s)];
+  const out = {};
+  faces.forEach((face, k) => {
+    const [Pi, Pj, w] = sides[k];
+    const M = [(Pi[0] + Pj[0]) / 2, (Pi[1] + Pj[1]) / 2];
+    const len = Math.hypot(Pj[0] - Pi[0], Pj[1] - Pi[1]);
+    const u = [(Pj[0] - Pi[0]) / len, (Pj[1] - Pi[1]) / len];
+    let n = [u[1], -u[0]];                               // a perpendicular
+    if ((M[0] - I[0]) * n[0] + (M[1] - I[1]) * n[1] < 0) n = [-n[0], -n[1]]; // outward
+    const angle = Math.atan2(n[0], n[1]) * 180 / Math.PI; // rotateY(angle) sends +z to (sin, cos)
+    const T = [I[0] + r * n[0], I[1] + r * n[1]];        // tangent point
+    const t = [Math.cos(angle * Math.PI / 180), -Math.sin(angle * Math.PI / 180)]; // the face's local x
+    const offset = (M[0] - T[0]) * t[0] + (M[1] - T[1]) * t[1];
+    out[face] = { width: w, angle, offset, from: [Pi[0] - I[0], Pi[1] - I[1]], to: [Pj[0] - I[0], Pj[1] - I[1]] };
+  });
+  return { faces: out, r, height: FACE_HEIGHT, stoneWidth: Math.max(a, b, c) };
+}
+
 // ---------------------------------------------------------------- the stone
 
-function makeStone(stage, stone, onChange) {
-  const FACE_ANGLE = { math: 0, m: -120, visual: -240 };
+function makeStone(stage, stone, geometry, onChange) {
+  // the yaw at which a face looks at the viewer cancels its normal's angle
+  const FACE_ANGLE = {};
+  for (const [face, g] of Object.entries(geometry.faces)) FACE_ANGLE[face] = -g.angle;
   const FACES = Object.keys(FACE_ANGLE);
-  const DEFAULT = { yaw: -20, pitch: -4, scale: 1 };
+  stone.style.setProperty("--r", String(geometry.r));
+  stone.style.setProperty("--stone-w", String(geometry.stoneWidth));
+  stone.style.setProperty("--face-hu", String(geometry.height));
+  stage.style.setProperty("--face-hu", String(geometry.height));
+  for (const el of stone.querySelectorAll(".face")) {
+    const g = geometry.faces[el.dataset.face];
+    if (!g) continue;
+    el.style.setProperty("--w", String(g.width));
+    el.style.setProperty("--a", String(g.angle));
+    el.style.setProperty("--o", String(g.offset));
+  }
+  const DEFAULT = { yaw: FACE_ANGLE.math - 20, pitch: -4, scale: 1 };
   const SPEED = 9; // degrees per second
   const SCALES = [0.5, 0.65, 0.8, 1, 1.25, 1.6, 2, 2.5];
   let yaw = fixedYaw ?? DEFAULT.yaw;
@@ -69,6 +128,12 @@ function makeStone(stage, stone, onChange) {
     apply();
     requestAnimationFrame(tick);
   }
+  function restoreGeometry() {
+    stone.style.removeProperty("--unit");
+    stone.style.setProperty("--stone-w", String(geometry.stoneWidth));
+    stone.style.setProperty("--r", String(geometry.r));
+    for (const el of stone.querySelectorAll(".face")) el.style.setProperty("--o", String(geometry.faces[el.dataset.face].offset));
+  }
   function settle(fn) {
     stone.classList.add("settling");
     fn();
@@ -80,12 +145,13 @@ function makeStone(stage, stone, onChange) {
     const delta = ((target - yaw) % 360 + 540) % 360 - 180;
     yaw += delta;
   }
-  // the face width that fills the viewport height in read mode, width permitting;
-  // read mode enlarges the layout box itself, so the stage sizes to it
-  function fitWidth() {
+  // the pixels per unit at which a face fills the viewport height in read
+  // mode, width permitting; read mode enlarges the layout box itself, so the
+  // stage sizes to it
+  function fitUnit(face) {
     const width = stage.getBoundingClientRect().width - 16;
     const height = Math.max(240, window.innerHeight - 32 - 68);
-    return Math.max(200, Math.min(width, height / 0.78));
+    return Math.max(0.25, Math.min(width / geometry.faces[face].width, height / geometry.height));
   }
   stage.addEventListener("pointerdown", (e) => {
     if (reading) return;
@@ -137,7 +203,10 @@ function makeStone(stage, stone, onChange) {
       for (const el of stone.querySelectorAll(".face")) el.classList.toggle("reading-face", el.dataset.face === face);
       // the stage has its reading height after the class change; fit to it on the next frame
       requestAnimationFrame(() => {
-        stone.style.setProperty("--face-w", `${fitWidth()}px`);
+        stone.style.setProperty("--unit", `${fitUnit(face)}px`);
+        stone.style.setProperty("--stone-w", String(geometry.faces[face].width));
+        stone.style.setProperty("--r", "0");
+        for (const el of stone.querySelectorAll(".face")) el.style.setProperty("--o", el.dataset.face === face ? "0" : String(geometry.faces[el.dataset.face].offset));
         settle(() => { turnTo(face); pitch = 0; scale = 1; });
         stage.scrollIntoView({ block: "start" });
       });
@@ -145,7 +214,7 @@ function makeStone(stage, stone, onChange) {
     endRead() {
       if (!reading) return;
       reading = null;
-      stone.style.removeProperty("--face-w");
+      restoreGeometry();
       document.body.classList.remove("reading");
       for (const el of stone.querySelectorAll(".face")) el.classList.remove("reading-face");
       settle(() => { ({ yaw, pitch, scale, spinning } = before); });
@@ -154,7 +223,7 @@ function makeStone(stage, stone, onChange) {
     reset() {
       const wasReading = reading;
       reading = null;
-      stone.style.removeProperty("--face-w");
+      restoreGeometry();
       document.body.classList.remove("reading");
       for (const el of stone.querySelectorAll(".face")) el.classList.remove("reading-face");
       settle(() => { yaw = DEFAULT.yaw; pitch = DEFAULT.pitch; scale = DEFAULT.scale; spinning = !reducedMotion; });
@@ -446,9 +515,24 @@ async function main() {
   const turnButtons = [...document.querySelectorAll("[data-turn]")];
   const minimapLines = [...document.querySelectorAll("#minimap line")];
   const minimapPrism = document.getElementById("minimap-prism");
+  const geometry = makeGeometry(FACE_WIDTHS);
+  // the minimap is the real cross-section, incenter at the origin, viewer below (+z down)
+  {
+    const reach = Math.max(...Object.values(geometry.faces).map((g) => Math.hypot(g.from[0], g.from[1])));
+    const k = 27 / reach;
+    const pts = [];
+    for (const line of minimapLines) {
+      const g = geometry.faces[line.dataset.face];
+      if (!g) continue;
+      line.setAttribute("x1", (g.from[0] * k).toFixed(1)); line.setAttribute("y1", (g.from[1] * k).toFixed(1));
+      line.setAttribute("x2", (g.to[0] * k).toFixed(1)); line.setAttribute("y2", (g.to[1] * k).toFixed(1));
+      pts.push(`${(g.from[0] * k).toFixed(1)},${(g.from[1] * k).toFixed(1)}`);
+    }
+    minimapPrism.querySelector("polygon").setAttribute("points", pts.join(" "));
+  }
   const faceCard = makeFaceCard(document.getElementById("face-card"), equation);
   // orientation cues follow the view: the front face's button and minimap edge light up
-  const stone = makeStone(stage, document.getElementById("stone"), (v) => {
+  const stone = makeStone(stage, document.getElementById("stone"), geometry, (v) => {
     faceCard(v.reading || v.front);
     for (const b of turnButtons) b.setAttribute("aria-pressed", String(b.dataset.turn === v.front));
     for (const l of minimapLines) l.classList.toggle("front", l.dataset.face === v.front);

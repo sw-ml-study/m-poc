@@ -10,10 +10,14 @@
   --dim: #a6adc8;
   --accent: #89b4fa;
   --warm: #fab387;
-  --face-w: min(560px, 92vw);
-  --face-h: calc(var(--face-w) * 0.78);
-  /* apothem of an equilateral triangular prism whose faces are --face-w wide */
-  --apothem: calc(var(--face-w) * 0.2887);
+  /* The stone's geometry is in abstract units; --unit is the pixels per unit.
+     Face widths, the shared height, the inradius and each face's angle and
+     in-plane offset are computed by the script from the widths and set as
+     variables on the stone (see makeGeometry in rosetta.js). */
+  --unit: min(1px, 92vw / 720);
+  --stone-w: 720;
+  --face-hu: 440;
+  --face-h: calc(var(--face-hu) * var(--unit));
 }
 * { box-sizing: border-box; }
 body {
@@ -41,22 +45,22 @@ code { font-size: 0.95em; }
 }
 .stage.dragging { cursor: grabbing; }
 .stone {
-  /* recomputed here so a read-mode --face-w set on the stone carries through */
-  --face-h: calc(var(--face-w) * 0.78);
-  --apothem: calc(var(--face-w) * 0.2887);
-  position: relative; width: var(--face-w); height: var(--face-h);
+  /* recomputed here so a read-mode --unit set on the stone carries through */
+  --face-h: calc(var(--face-hu) * var(--unit));
+  position: relative; width: calc(var(--stone-w) * var(--unit)); height: var(--face-h);
   transform-style: preserve-3d;
   transform: scale(var(--view-scale, 1)) rotateX(var(--pitch, -4deg)) rotateY(var(--yaw, 0deg));
 }
 .stone.settling { transition: transform 0.35s ease-out; }
 body.reading .stage { height: auto; padding: 56px 0 12px; cursor: default; }
 body.reading .minimap { width: 44px; height: 44px; }
-body.reading .stone { --apothem: 0px; transition: transform 0.35s ease-out; }
+body.reading .stone { transition: transform 0.35s ease-out; }
 body.reading .face:not(.reading-face) { visibility: hidden; }
 
 /* orientation cues: a top-down minimap of the prism with the viewer below it */
 .minimap { position: absolute; top: 8px; right: 8px; width: 64px; height: 64px; z-index: 2; pointer-events: none; }
 .minimap polygon { fill: var(--panel); stroke: none; }
+.minimap .eye { fill: none; stroke: var(--dim); stroke-width: 2; }
 .minimap line { stroke: var(--edge); stroke-width: 5; stroke-linecap: round; transition: stroke 0.15s; }
 .minimap line.front { stroke: var(--warm); }
 .minimap .eye { fill: none; stroke: var(--dim); stroke-width: 2; }
@@ -64,15 +68,17 @@ body.reading .face:not(.reading-face) { visibility: hidden; }
 .scale-group { display: inline-flex; align-items: center; gap: 4px; }
 .scale-group output { min-width: 3.5ch; text-align: center; font-variant-numeric: tabular-nums; color: var(--dim); }
 .face {
-  position: absolute; inset: 0;
+  /* each face: its own width --w (units), angle --a (deg), in-plane offset --o
+     (units); all faces sit at the inradius --r (units) from the axis */
+  position: absolute; top: 0; bottom: 0;
+  width: calc(var(--w) * var(--unit));
+  left: calc((var(--stone-w) - var(--w)) / 2 * var(--unit));
   background: var(--face); border: 1px solid var(--edge); border-radius: 6px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
   backface-visibility: hidden;
   display: flex; flex-direction: column; overflow: hidden;
 }
-.face[data-face="math"]   { transform: rotateY(0deg)   translateZ(var(--apothem)); }
-.face[data-face="m"]      { transform: rotateY(120deg) translateZ(var(--apothem)); }
-.face[data-face="visual"] { transform: rotateY(240deg) translateZ(var(--apothem)); }
+.face { transform: rotateY(calc(var(--a) * 1deg)) translateZ(calc(var(--r) * var(--unit))) translateX(calc(var(--o) * var(--unit))); }
 .face h2 {
   margin: 0; padding: 8px 14px; font-size: 0.95rem; font-weight: 600;
   color: var(--dim); border-bottom: 1px solid var(--edge); letter-spacing: 0.04em;
