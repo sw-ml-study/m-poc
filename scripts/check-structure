@@ -41,6 +41,9 @@ for path in \
     tests/reg/rosetta_one_neuron_faces.rgt \
     tests/reg/rosetta_one_neuron_scene.rgt \
     docs/scene.md \
+    tests/sums_record.mlpl \
+    tests/render_sums.mlpl \
+    tests/reg/rosetta_sums_faces.rgt \
     fixtures/one-neuron/faces/equation.json \
     scripts/build-site \
     scripts/check-site \

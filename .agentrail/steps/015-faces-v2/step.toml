@@ -1,6 +1,6 @@
 number = 15
 slug = "faces-v2"
-status = "pending"
+status = "in-progress"
 description = "IR and faces v2, for equations with sums and indices (lib/rosetta/ir.mlpl, li..."
 role = "production"
 context_files = []

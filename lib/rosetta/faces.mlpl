@@ -1,33 +1,9 @@
-# The text faces of the stone as SVG. The glyphs are laid out upstream by sw-MLPL's equation renderer (svg(text, "equation")): one text element per line, one tspan holding the line. This module renders a face's text through it and then wraps every token of the line in its own tspan carrying the token's symbol id, so a page can find a token without doing any layout of its own. The wrapped tspans concatenate to exactly the line the renderer laid out, and the render fails closed if they would not.
+# The text faces of the stone as SVG. The glyphs are laid out upstream by sw-MLPL's equation renderer (svg(text, "equation")). For a line it emits a sequence of text elements: plain runs holding tspans (plain, subscript with baseline-shift sub, superscript with baseline-shift super), and for a big operator a centred text with the glyph followed by centred texts for its upper and then its lower limit. This module renders a face's text through the renderer, then walks those runs in order against the face's tokens and re-emits every token as its own tspan carrying the token's symbol id (a big operator and its limits keep their centred texts, with the tspan inside), tags every text element of a line with data-line, and fails closed if the runs and the tokens do not spell the same characters. No layout happens here.
 include "ir.mlpl";
 
 def u:rs_svg_text_safe(text) {
   "Token text may be placed inside SVG markup verbatim: no angle brackets, ampersands, or quotes.";
   eq(str_find(text, "<"), -1) * eq(str_find(text, ">"), -1) * eq(str_find(text, "&"), -1) * eq(str_find(text, "\""), -1)
-}
-
-def u:rs_face_line_tspans(face, line) {
-  "One line of a face as tspans: every token wrapped with its symbol id, and a bare space between tokens that asked for one.";
-  out = "";
-  first = 1;
-  texts = str_split(face.texts, "|");
-  ids = str_split(face.ids, "|");
-  index = 0;
-  while lt(index, face.count) {
-    if eq(take(face.lines, 0, index), line) {
-      if (1 - first) * take(face.seps, 0, index) {
-        out = str_concat(out, " ")
-      };
-      out = str_concat(out, "<tspan class=\"rs-token\" data-id=\"");
-      out = str_concat(out, unwrap(list_get(ids, index)));
-      out = str_concat(out, "\">");
-      out = str_concat(out, unwrap(list_get(texts, index)));
-      out = str_concat(out, "</tspan>");
-      first = 0
-    };
-    index = index + 1
-  };
-  out
 }
 
 def u:rs_face_unsafe_text(face) {
@@ -45,53 +21,270 @@ def u:rs_face_unsafe_text(face) {
   unsafe
 }
 
-def u:rs_face_svg(ir, face_name) {
-  "Render one face of a record to SVG: the upstream equation renderer lays the text out, then each line's text element is tagged with data-line and its single tspan is replaced by one tspan per token carrying data-id. Fails closed if the renderer did not emit one plain tspan per line holding exactly the line's text, or if a token text is not safe in markup.";
-  face = u:rs_face_named(ir, face_name)?;
-  unsafe = u:rs_face_unsafe_text(face);
-  if gt(str_len(unsafe), 0) {
-    err({kind: "rosetta_svg", message: str_concat("token text is not safe in markup: ", unsafe)})
+def u:rs_svg_attr(tag, name) {
+  "The value of an attribute in an opening tag, or the empty string.";
+  key = str_concat(name, "=\"");
+  at = str_find(tag, key);
+  if lt(at, 0) {
+    ""
   } else {
-    text = u:rs_face_text(face);
-    raw = svg(text, "equation");
-    lines = str_split(text, "\n");
-    out = "";
-    cursor = 0;
-    line = 0;
-    failure = "";
-    while lt(line, face.line_count) * eq(str_len(failure), 0) {
-      rest = str_slice(raw, cursor, str_len(raw));
-      open = str_find(rest, "<tspan>");
-      close = str_find(rest, "</tspan>");
-      if lt(open, 0) + lt(close, open) {
-        failure = "the renderer emitted fewer plain tspans than the face has lines"
+    rest = str_slice(tag, at + str_len(key), str_len(tag));
+    str_slice(rest, 0, str_find(rest, "\""))
+  }
+}
+
+def u:rs_svg_tspan_mode(tag) {
+  "The mode a renderer tspan tag renders: 1 for a subscript, 2 for a superscript, 0 for plain text.";
+  if gt(str_find(tag, "baseline-shift=\"sub\""), -1) {
+    1
+  } else {
+    if gt(str_find(tag, "baseline-shift=\"super\""), -1) {
+      2
+    } else {
+      0
+    }
+  }
+}
+
+def u:rs_tspan_open(id, mode) {
+  "The opening tag of a token's tspan: the class and symbol id, and the shift the renderer uses for a subscript or a superscript.";
+  shift = if eq(mode, 1) {
+    " baseline-shift=\"sub\" font-size=\"0.7em\""
+  } else {
+    if eq(mode, 2) {
+      " baseline-shift=\"super\" font-size=\"0.7em\""
+    } else {
+      ""
+    }
+  };
+  str_concat(str_concat(str_concat("<tspan class=\"rs-token\" data-id=\"", id), "\""), str_concat(shift, ">"))
+}
+
+def u:rs_face_run_text(face, first, last, expect_mode, with_spaces) {
+  "The characters a run of tokens first..last of one mode should spell in the renderer's output: the texts, with the spaces plain tokens asked for when with_spaces is set. Empty if any token has another mode.";
+  texts = str_split(face.texts, "|");
+  out = "";
+  index = first;
+  ok_run = 1;
+  while lt(index, last + 1) {
+    if 1 - eq(take(face.modes, 0, index), expect_mode) {
+      ok_run = 0
+    };
+    if with_spaces * gt(index, first) * take(face.seps, 0, index) {
+      out = str_concat(out, " ")
+    };
+    out = str_concat(out, unwrap(list_get(texts, index)));
+    index = index + 1
+  };
+  if ok_run {
+    out
+  } else {
+    ""
+  }
+}
+
+def u:rs_face_run_end(face, first, line) {
+  "The index of the last token of the run that starts at first: same line, same mode.";
+  mode = take(face.modes, 0, first);
+  last = first;
+  while lt(last + 1, face.count) * eq(take(face.lines, 0, if lt(last + 1, face.count) {
+        last + 1
       } else {
-        inner = str_slice(rest, open + 7, close - open - 7);
-        if 1 - str_eq(inner, unwrap(list_get(lines, line))) {
-          failure = str_concat("the renderer changed a line: ", inner)
+        last
+      }), line) * eq(take(face.modes, 0, if lt(last + 1, face.count) {
+        last + 1
+      } else {
+        last
+      }), mode) {
+    last = last + 1
+  };
+  last
+}
+
+def u:rs_face_run_tspans(face, first, last, leading_space) {
+  "The tokens first..last (one mode) as tspans, a bare space before the tokens that asked for one; leading_space says whether the first token's space is emitted too.";
+  texts = str_split(face.texts, "|");
+  ids = str_split(face.ids, "|");
+  out = "";
+  index = first;
+  while lt(index, last + 1) {
+    if take(face.seps, 0, index) * (gt(index, first) + leading_space) {
+      out = str_concat(out, " ")
+    };
+    out = str_concat(out, u:rs_tspan_open(unwrap(list_get(ids, index)), take(face.modes, 0, index)));
+    out = str_concat(out, unwrap(list_get(texts, index)));
+    out = str_concat(out, "</tspan>");
+    index = index + 1
+  };
+  out
+}
+
+def u:rs_svg_tag_line(head, line) {
+  "Mark every text element in a piece of markup with data-line.";
+  out = "";
+  rest = head;
+  at = str_find(rest, "<text ");
+  while gt(at, -1) {
+    out = str_concat(str_concat(out, str_slice(rest, 0, at + 5)), str_concat(str_concat(" data-line=\"", to_string(line)), "\""));
+    rest = str_slice(rest, at + 5, str_len(rest));
+    at = str_find(rest, "<text ")
+  };
+  str_concat(out, rest)
+}
+
+def u:rs_face_element(face, index, line, element) {
+  "Re-emit one renderer text element of a line with the tokens from index on: a plain element's tspans become one tspan per token (the run of each tspan must spell the tokens' characters exactly), a centred element (a big operator or a limit) gets its tspan inside. Returns the markup and the next token index, or an error.";
+  open_end = str_find(element, ">");
+  tag = str_slice(element, 0, open_end + 1);
+  inner = str_slice(element, open_end + 1, str_len(element) - open_end - 1 - 7);
+  centred = gt(str_find(tag, "text-anchor=\"middle\""), -1);
+  if centred {
+    mode = take(face.modes, 0, index);
+    last = u:rs_face_run_end(face, index, line);
+    expected = u:rs_face_run_text(face, index, last, mode, 0);
+    if 1 - str_eq(expected, inner) {
+      err({kind: "rosetta_svg", message: str_concat("a centred run does not spell its tokens: ", inner)})
+    } else {
+      ok({markup: str_concat(str_concat(tag, u:rs_face_run_tspans(face, index, last, 0)), "</text>"), next: last + 1})
+    }
+  } else {
+    out = tag;
+    rest = inner;
+    at = index;
+    failure = "";
+    while gt(str_len(rest), 0) * eq(str_len(failure), 0) {
+      t_open = str_find(rest, "<tspan");
+      t_close = str_find(rest, "</tspan>");
+      if lt(t_open, 0) + lt(t_close, t_open) {
+        failure = str_concat("unexpected markup in a run: ", rest)
+      } else {
+        t_tag_end = str_find(rest, ">");
+        t_tag = str_slice(rest, t_open, t_tag_end - t_open + 1);
+        content = str_slice(rest, t_tag_end + 1, t_close - t_tag_end - 1);
+        t_mode = u:rs_svg_tspan_mode(t_tag);
+        leading = str_eq(str_slice(content, 0, 1), " ");
+        body = if leading {
+          str_slice(content, 1, str_len(content))
         } else {
-          out = str_concat(out, u:rs_svg_tag_line(str_slice(rest, 0, open), line));
-          out = str_concat(out, u:rs_face_line_tspans(face, line));
-          cursor = cursor + close + 8;
-          line = line + 1
+          content
+        };
+        trailing = gt(str_len(body), 0) * str_eq(str_slice(body, str_len(body) - 1, 1), " ");
+        body = if trailing {
+          str_slice(body, 0, str_len(body) - 1)
+        } else {
+          body
+        };
+        last = u:rs_face_run_end(face, at, line);
+        expected = u:rs_face_run_text(face, at, last, t_mode, eq(t_mode, 0));
+        if 1 - str_eq(expected, body) {
+          failure = str_concat(str_concat("a run does not spell its tokens: ", body), str_concat(" vs ", expected))
+        } else {
+          if leading {
+            out = str_concat(out, " ")
+          };
+          out = str_concat(out, u:rs_face_run_tspans(face, at, last, 0));
+          if trailing {
+            out = str_concat(out, " ")
+          };
+          at = last + 1;
+          rest = str_slice(rest, t_close + 8, str_len(rest))
         }
       }
     };
     if gt(str_len(failure), 0) {
       err({kind: "rosetta_svg", message: failure})
     } else {
-      ok(str_concat(out, str_slice(raw, cursor, str_len(raw))))
+      ok({markup: str_concat(out, "</text>"), next: at})
     }
   }
 }
 
-def u:rs_svg_tag_line(head, line) {
-  "Mark the line's text element with data-line: the markup before a line's tspan holds exactly one opening text tag, and the attribute goes right after its name.";
-  at = str_find(head, "<text ");
-  if lt(at, 0) {
-    head
+def u:rs_svg_line_of(tag, first_y) {
+  "Which line a text element belongs to, from its baseline: the renderer spaces lines 64 units apart and keeps limits within 32 of their line.";
+  y = unwrap(to_number(u:rs_svg_attr(tag, "y")));
+  round((y - first_y) / 64)
+}
+
+def u:rs_face_svg(ir, face_name) {
+  "Render one face of a record to SVG: the upstream equation renderer lays the text out; then every text element is tagged with its line, and its runs are re-emitted as one tspan per token carrying data-id, in the order the renderer emits them (a big operator's upper limit before its lower, so a lower-limit run is deferred while the upper one is matched). Fails closed if the runs do not spell the face's tokens or a token text is not safe in markup.";
+  face = u:rs_face_named(ir, face_name)?;
+  unsafe = u:rs_face_unsafe_text(face);
+  if gt(str_len(unsafe), 0) {
+    err({kind: "rosetta_svg", message: str_concat("token text is not safe in markup: ", unsafe)})
   } else {
-    str_concat(str_concat(str_concat(str_slice(head, 0, at + 5), " data-line=\""), str_concat(to_string(line), "\"")), str_slice(head, at + 5, str_len(head)))
+    raw = svg(u:rs_face_text(face), "equation");
+    out = "";
+    rest = raw;
+    first_y = -1;
+    line = -1;
+    next = 0;
+    deferred = -1;
+    resume = -1;
+    failure = "";
+    at = str_find(rest, "<text ");
+    while gt(at, -1) * eq(str_len(failure), 0) {
+      out = str_concat(out, str_slice(rest, 0, at));
+      rest = str_slice(rest, at, str_len(rest));
+      close = str_find(rest, "</text>");
+      element = str_slice(rest, 0, close + 7);
+      tag = str_slice(element, 0, str_find(element, ">") + 1);
+      if lt(first_y, 0) {
+        first_y = unwrap(to_number(u:rs_svg_attr(tag, "y")))
+      };
+      this_line = u:rs_svg_line_of(tag, first_y);
+      if 1 - eq(this_line, line) {
+        if gt(line, -1) * lt(next, face.count) * eq(take(face.lines, 0, next), line) {
+          failure = "the renderer ended a line before its tokens did"
+        };
+        line = this_line
+      };
+      if eq(str_len(failure), 0) {
+        if 1 - (lt(next, face.count) * eq(take(face.lines, 0, next), line)) {
+          failure = "the renderer emitted more runs than the face has tokens"
+        } else {
+          start = next;
+          upper_first = 0;
+          if gt(deferred, -1) {
+            start = deferred
+          } else {
+            if eq(take(face.modes, 0, next), 4) {
+              after = u:rs_face_run_end(face, next, line) + 1;
+              if lt(after, face.count) {
+                if eq(take(face.modes, 0, after), 5) * eq(take(face.lines, 0, after), line) {
+                  start = after;
+                  upper_first = 1
+                }
+              }
+            }
+          };
+          done = u:rs_face_element(face, start, line, element)?;
+          out = str_concat(out, u:rs_svg_tag_line(done.markup, line));
+          if gt(deferred, -1) {
+            next = resume;
+            deferred = -1;
+            resume = -1
+          } else {
+            if upper_first {
+              deferred = next;
+              resume = done.next
+            } else {
+              next = done.next
+            }
+          }
+        }
+      };
+      rest = str_slice(rest, close + 7, str_len(rest));
+      at = str_find(rest, "<text ")
+    };
+    if gt(str_len(failure), 0) {
+      err({kind: "rosetta_svg", message: failure})
+    } else {
+      if lt(next, face.count) + gt(deferred, -1) {
+        err({kind: "rosetta_svg", message: "the face has tokens the renderer did not emit"})
+      } else {
+        ok(str_concat(out, rest))
+      }
+    }
   }
 }
 

@@ -1,6 +1,7 @@
 # The SVG text faces: the upstream equation renderer lays the glyphs out, and lib/rosetta/faces.mlpl wraps each token in a tspan carrying its symbol id without changing a character of any line; unknown faces and unsafe token texts fail closed.
 include "lib/rosetta/faces.mlpl";
 include "demos/one-neuron/equation.mlpl";
+include "tests/sums_record.mlpl";
 
 def u:t_tiny_face() {
   "A two-line record whose tokens exercise both spacing rules.";
@@ -46,10 +47,10 @@ def u:test_face_svg_validation() {
   u:assert_eq(is_err(u:rs_face_svg(ir, "visual")), 1, "unknown face")?;
   bad = u:rs_ir_new("bad", "markup in a token");
   bad = unwrap(u:rs_ir_symbol(bad, "a", "var", "left"));
-  bad = unwrap(u:rs_ir_symbol(bad, "lt", "op", "less than"));
-  bad = unwrap(u:rs_ir_line(bad, "math", "a:a|lt:<|a:a"));
-  bad = unwrap(u:rs_ir_line(bad, "m", "a:A|lt:<|a:A"));
-  u:assert_eq(is_err(u:rs_face_svg(bad, "math")), 1, "an angle bracket in a token")?;
+  bad = unwrap(u:rs_ir_symbol(bad, "amp", "op", "and"));
+  bad = unwrap(u:rs_ir_line(bad, "math", "a:a|amp:&|a:a"));
+  bad = unwrap(u:rs_ir_line(bad, "m", "a:A|amp:&|a:A"));
+  u:assert_eq(is_err(u:rs_face_svg(bad, "math")), 1, "an ampersand in a token")?;
   u:assert_eq(u:rs_svg_text_safe("∂L/∂w"), 1, "ordinary glyphs are safe")?;
   u:assert_eq(u:rs_svg_text_safe("a&b"), 0, "an ampersand is not")
 }
@@ -79,6 +80,36 @@ def u:test_one_neuron_faces() {
   u:assert_eq(u:rs_svg_count(m, "data-id=\"grad_w\""), 1, "and on the m face")?;
   u:assert_eq(str_eq(read_text("fixtures/one-neuron/faces/math.svg")?, math), 1, "math.svg is fresh")?;
   u:assert_eq(str_eq(read_text("fixtures/one-neuron/faces/m.svg")?, m), 1, "m.svg is fresh")
+}
+
+@test {name: "a stacked sum, subscripts and a superscript render as the renderer's source and every token is tagged", tags: ["faces", "svg", "sums"]}
+def u:test_sums_faces() {
+  "The dot-product, matmul, softmax and CNN stones need these shapes: the face text carries the renderer's markers, and the SVG has one tagged tspan per token with the limits in the renderer's order (upper before lower).";
+  ir = unwrap(u:sums_record());
+  u:assert_text_eq(u:rs_ir_math_text(ir), "s = ∑_{i=1}^{n} w_{i} x_{i}\ns = (x_{i})^{2}", "renderer source with markers")?;
+  out = unwrap(u:rs_face_svg(ir, "math"));
+  u:assert_eq(u:rs_svg_count(out, "data-id=\""), ir.faces.math.count, "one tagged tspan per token")?;
+  u:assert_eq(u:rs_svg_count(out, "<tspan>"), 0, "no untagged tspan")?;
+  u:assert_gt(str_find(out, "text-anchor=\"middle\"><tspan class=\"rs-token\" data-id=\"sum\">∑</tspan></text>"), -1, "the big operator keeps its centred text, tagged")?;
+  u:assert_gt(str_find(out, "data-id=\"n\">n</tspan></text>"), -1, "the upper limit is tagged")?;
+  u:assert_gt(str_find(out, "data-id=\"i\">i</tspan><tspan class=\"rs-token\" data-id=\"eq\">=</tspan><tspan class=\"rs-token\" data-id=\"one\">1</tspan></text>"), -1, "the lower limit's three tokens are tagged")?;
+  u:assert_gt(str_find(out, "data-id=\"w\">w</tspan><tspan class=\"rs-token\" data-id=\"i\" baseline-shift=\"sub\" font-size=\"0.7em\">i</tspan>"), -1, "a subscript token keeps the renderer's shift")?;
+  u:assert_gt(str_find(out, "data-id=\"two\" baseline-shift=\"super\" font-size=\"0.7em\">2</tspan>"), -1, "a superscript token keeps the renderer's shift")?;
+  u:assert_eq(u:rs_svg_count(out, "data-line=\"0\""), 5, "every text element of the first line is tagged with its line: the plain run, the sum, its two limits, the rest")?;
+  u:assert_text_eq(u:rs_svg_strip_tags(out), "s = ∑ni=1 wi xis = (xi)2", "the visible characters, in the renderer's order")?;
+  m = unwrap(u:rs_face_svg(ir, "m"));
+  u:assert_eq(u:rs_svg_count(m, "data-id=\""), ir.faces.m.count, "the m face too")
+}
+
+@test {name: "rendering fails closed when the tokens and the renderer's runs disagree", tags: ["faces", "validation", "sums"]}
+def u:test_sums_mismatch() {
+  "A token spelled as a subscript that the renderer lays out as plain text is a mismatch, not a silent mis-tag.";
+  ir = u:rs_ir_new("bad", "bad");
+  ir = unwrap(u:rs_ir_symbol(ir, "a", "var", "a"));
+  ir = unwrap(u:rs_ir_symbol(ir, "b", "var", "b"));
+  ir = unwrap(u:rs_ir_line(ir, "math", "a:a|b:<b"));
+  ir = unwrap(u:rs_ir_line(ir, "m", "a:A|b:B"));
+  u:assert_eq(is_err(u:rs_face_svg(ir, "math")), 1, "a lower limit without a big operator does not match the renderer's runs")
 }
 
 u:run_registered_tests()

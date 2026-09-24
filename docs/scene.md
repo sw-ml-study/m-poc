@@ -24,7 +24,14 @@ replaces each line's single tspan with one tspan per token:
 ```
 
 `data-id` is the token's symbol id from the equation record, the same id the
-other faces and the trace use. The tspans (and the bare spaces between the
+other faces and the trace use. Tokens may be scripted: a line spec marks a
+token `_` subscript, `^` superscript, `!` big operator, `<` lower limit or
+`>` upper limit (lower-limit tokens listed before upper-limit ones), the
+face's text carries the renderer's `_{ }` and `^{ }` markers for such runs,
+and the wrapper follows the renderer's several runs per line: plain and
+shifted tspans, and for a big operator its centred glyph followed by its
+upper and then its lower limit as centred text elements, each getting its
+own tagged tspan inside. Every text element of a line carries `data-line`. The tspans (and the bare spaces between the
 tokens that asked for one) concatenate to exactly the line the renderer laid
 out, so the layout still applies; the render fails closed if the renderer
 did not emit one plain tspan per line holding exactly the line's text, or if

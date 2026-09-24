@@ -137,15 +137,18 @@ SHA (`-dirty` when the tree had uncommitted changes), UTC time.
 
 ## Status
 
-Steps 1–13 of [the plan](docs/plan.md) are done: the gate; the equation
+Steps 1–15 of [the plan](docs/plan.md) are done: the gate; the equation
 IR with the one-neuron instance; the training trace; the three faces as
 fixtures; the page; focus; read mode with view scale, orientation cues and
 the face card; the scalene prism with faces sized to their content; the
 modal keys; hover callouts with every symbol's doc in the record and the
 Visual face's panels in the scene; per-line docs on the text faces;
-proximity callouts; and the plan update that turns the page into a tour of
+proximity callouts; the plan update that turns the page into a tour of
 five stones (one neuron, dot product, matmul, softmax, CNN) chosen from a
-dropdown. Every face header names the equation it shows, from the record.
+dropdown; callouts that stay anchored to their glyphs; and faces v2, whose
+tokens may be subscripts, superscripts, big operators and their limits, so
+the tour's sums render and stay focusable. Every face header names the
+equation it shows, from the record.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -170,8 +173,8 @@ dropdown. Every face header names the equation it shows, from the record.
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next: IR v2 for sums and indices, the multi-stone page with the dropdown,
-and the dot-product, matmul, softmax and CNN stones, then captures.
+Next: the multi-stone page with the dropdown, and the dot-product, matmul,
+softmax and CNN stones, then captures.
 
 ## License
 

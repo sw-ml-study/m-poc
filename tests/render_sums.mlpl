@@ -1,0 +1,12 @@
+# Print the sums record's Math text and its tagged Math and M SVGs; the reg-rs baseline rosetta_sums_faces pins them. Not a test file: mlplunit collects test_*.mlpl only.
+include "../lib/rosetta/faces.mlpl";
+include "sums_record.mlpl";
+
+ir = unwrap(u:sums_record());
+print("MATH TEXT");
+print(u:rs_ir_math_text(ir));
+print("MATH SVG");
+print(unwrap(u:rs_face_svg(ir, "math")));
+print("M SVG");
+print(unwrap(u:rs_face_svg(ir, "m")));
+"rendered"

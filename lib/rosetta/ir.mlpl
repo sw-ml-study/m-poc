@@ -2,7 +2,7 @@
 
 def u:rs_face_new() {
   "Start an empty face: no tokens and no lines.";
-  {count: 0, line_count: 0, ids: "", texts: "", seps: fill([0], 0), lines: fill([0], 0), line_docs: ""}
+  {count: 0, line_count: 0, ids: "", texts: "", seps: fill([0], 0), lines: fill([0], 0), modes: fill([0], 0), line_docs: ""}
 }
 
 def u:rs_ir_new(name, description) {
@@ -115,18 +115,43 @@ def u:rs_ir_with_face(ir, face_name, face) {
   {schema: ir.schema, version: ir.version, name: ir.name, description: ir.description, symbol_count: ir.symbol_count, symbol_ids: ir.symbol_ids, symbol_roles: ir.symbol_roles, symbol_names: ir.symbol_names, symbol_docs: ir.symbol_docs, faces: faces}
 }
 
-def u:rs_face_token(face, id, text, sep, line) {
-  "Append one token to a face: the symbol it renders, its surface text, whether a space precedes it, and its line.";
+def u:rs_face_token(face, id, text, sep, line, mode) {
+  "Append one token to a face: the symbol it renders, its surface text, whether a space precedes it, its line, and its mode: 0 plain, 1 subscript, 2 superscript, 3 big operator, 4 lower limit, 5 upper limit.";
   n = face.count;
-  {count: n + 1, line_count: line + 1, ids: u:rs_delimited_append(face.ids, n, id), texts: u:rs_delimited_append(face.texts, n, text), seps: concat(face.seps, sep), lines: concat(face.lines, line), line_docs: if gt(line, face.line_count - 1) {
+  {count: n + 1, line_count: line + 1, ids: u:rs_delimited_append(face.ids, n, id), texts: u:rs_delimited_append(face.texts, n, text), seps: concat(face.seps, sep), lines: concat(face.lines, line), modes: concat(face.modes, mode), line_docs: if gt(line, face.line_count - 1) {
       u:rs_delimited_append(face.line_docs, line, "")
     } else {
       face.line_docs
     }}
 }
 
+def u:rs_token_mode(marker) {
+  "The mode a token spec's marker character asks for: underscore subscript, caret superscript, bang big operator, less-than lower limit, greater-than upper limit; anything else is plain (negative one).";
+  if str_eq(marker, "_") {
+    1
+  } else {
+    if str_eq(marker, "^") {
+      2
+    } else {
+      if str_eq(marker, "!") {
+        3
+      } else {
+        if str_eq(marker, "<") {
+          4
+        } else {
+          if str_eq(marker, ">") {
+            5
+          } else {
+            -1
+          }
+        }
+      }
+    }
+  }
+}
+
 def u:rs_ir_line(ir, face_name, spec) {
-  "Append one line to a face from a spec: tokens separated by pipes, each id:text, where a text starting with a tilde takes no space before it. Every id must already be a symbol.";
+  "Append one line to a face from a spec: tokens separated by pipes, each id:text, where a text starting with a tilde takes no space before it, and a text starting with a marker sets its mode: _ subscript, ^ superscript, ! big operator, < lower limit, > upper limit (after a big operator, lower-limit tokens come first, then upper-limit tokens; scripted tokens take no space). Every id must already be a symbol.";
   face = u:rs_face_named(ir, face_name)?;
   tokens = str_split(spec, "|");
   line = face.line_count;
@@ -141,10 +166,21 @@ def u:rs_ir_line(ir, face_name, spec) {
       id = str_slice(token, 0, colon);
       raw = str_slice(token, colon + 1, str_len(token));
       tilde = str_eq(str_slice(raw, 0, 1), "~");
-      text = if tilde {
+      raw = if tilde {
         str_slice(raw, 1, str_len(raw))
       } else {
         raw
+      };
+      mode = u:rs_token_mode(str_slice(raw, 0, 1));
+      text = if lt(mode, 0) {
+        raw
+      } else {
+        str_slice(raw, 1, str_len(raw))
+      };
+      mode = if lt(mode, 0) {
+        0
+      } else {
+        mode
       };
       if eq(u:rs_ir_symbol_index(ir, id), -1) {
         failure = str_concat("token names an unknown symbol: ", id)
@@ -152,7 +188,7 @@ def u:rs_ir_line(ir, face_name, spec) {
         if eq(str_len(text), 0) {
           failure = str_concat("token without text: ", token)
         } else {
-          face = u:rs_face_token(face, id, text, 1 - tilde, line)
+          face = u:rs_face_token(face, id, text, (1 - tilde) * eq(mode, 0) + eq(mode, 3) * (1 - tilde), line, mode)
         }
       }
     };
@@ -186,7 +222,7 @@ def u:rs_ir_line_doc(ir, face_name, line, doc) {
         out = u:rs_delimited_append(out, index, item);
         index = index + 1
       };
-      ok(u:rs_ir_with_face(ir, face_name, {count: face.count, line_count: face.line_count, ids: face.ids, texts: face.texts, seps: face.seps, lines: face.lines, line_docs: out}))
+      ok(u:rs_ir_with_face(ir, face_name, {count: face.count, line_count: face.line_count, ids: face.ids, texts: face.texts, seps: face.seps, lines: face.lines, modes: face.modes, line_docs: out}))
     }
   }
 }
@@ -220,25 +256,59 @@ def u:rs_ir_undocumented_line(ir) {
   missing
 }
 
+def u:rs_mode_open(mode) {
+  "The renderer's opening marker for a run of tokens in a mode: _{ for subscripts and lower limits, ^{ for superscripts and upper limits, nothing otherwise.";
+  if eq(mode, 1) + eq(mode, 4) {
+    "_{"
+  } else {
+    if eq(mode, 2) + eq(mode, 5) {
+      "^{"
+    } else {
+      ""
+    }
+  }
+}
+
 def u:rs_face_text(face) {
-  "Render a face as text: tokens joined by the spaces they asked for, lines separated by newlines.";
+  "Render a face as the text the equation renderer reads: tokens joined by the spaces they asked for, lines separated by newlines, and runs of scripted tokens wrapped in the renderer's _{ } and ^{ } markers.";
   out = "";
   if gt(face.count, 0) {
     texts = str_split(face.texts, "|");
     index = 0;
+    open = 0;
     while lt(index, face.count) {
       line = take(face.lines, 0, index);
-      if gt(index, 0) {
-        if 1 - eq(line, take(face.lines, 0, index - 1)) {
-          out = str_concat(out, "\n")
-        } else {
-          if take(face.seps, 0, index) {
-            out = str_concat(out, " ")
-          }
+      mode = take(face.modes, 0, index);
+      new_line = if gt(index, 0) {
+        1 - eq(line, take(face.lines, 0, index - 1))
+      } else {
+        0
+      };
+      run_ends = if gt(index, 0) {
+        new_line + (1 - eq(mode, take(face.modes, 0, index - 1)))
+      } else {
+        1
+      };
+      if gt(run_ends, 0) * open {
+        out = str_concat(out, "}");
+        open = 0
+      };
+      if new_line {
+        out = str_concat(out, "\n")
+      } else {
+        if gt(index, 0) * take(face.seps, 0, index) {
+          out = str_concat(out, " ")
         }
+      };
+      if gt(run_ends, 0) * gt(str_len(u:rs_mode_open(mode)), 0) {
+        out = str_concat(out, u:rs_mode_open(mode));
+        open = 1
       };
       out = str_concat(out, unwrap(list_get(texts, index)));
       index = index + 1
+    };
+    if open {
+      out = str_concat(out, "}")
     }
   };
   out
@@ -292,7 +362,7 @@ def u:rs_ir_validate(ir) {
 
 def u:rs_face_export(face) {
   "A face as lists and arrays, for JSON: the token table the page links faces with.";
-  {count: face.count, line_count: face.line_count, ids: str_split(face.ids, "|"), texts: str_split(face.texts, "|"), seps: face.seps, lines: face.lines, line_docs: str_split(face.line_docs, "|"), text: u:rs_face_text(face)}
+  {count: face.count, line_count: face.line_count, ids: str_split(face.ids, "|"), texts: str_split(face.texts, "|"), seps: face.seps, lines: face.lines, modes: face.modes, line_docs: str_split(face.line_docs, "|"), text: u:rs_face_text(face)}
 }
 
 def u:rs_ir_export(ir) {

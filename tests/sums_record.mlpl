@@ -1,0 +1,24 @@
+# A small record with a stacked sum, subscripts and a superscript: the shapes the faces must tag for the dot-product, matmul, softmax and CNN stones. Shared by the faces tests and the reg-rs baseline rosetta_sums_faces.
+include "../lib/rosetta/ir.mlpl";
+
+def u:sums_record() {
+  "s = ∑ from i = 1 to n of w_i x_i, and s = (x_i)² as a second line; the M face spells the sum as +/ (a big operator glyph is always centred by the renderer, so it cannot be plain text).";
+  ir = u:rs_ir_new("sums", "A weighted sum with a stacked summation sign, subscripts and a superscript.");
+  ir = u:rs_ir_symbol(ir, "s", "var", "sum")?;
+  ir = u:rs_ir_symbol(ir, "eq", "op", "definition")?;
+  ir = u:rs_ir_symbol(ir, "sum", "op", "summation")?;
+  ir = u:rs_ir_symbol(ir, "i", "var", "index")?;
+  ir = u:rs_ir_symbol(ir, "one", "hyper", "one")?;
+  ir = u:rs_ir_symbol(ir, "n", "hyper", "count")?;
+  ir = u:rs_ir_symbol(ir, "w", "param", "weight")?;
+  ir = u:rs_ir_symbol(ir, "x", "var", "input")?;
+  ir = u:rs_ir_symbol(ir, "lp", "punct", "open")?;
+  ir = u:rs_ir_symbol(ir, "rp", "punct", "close")?;
+  ir = u:rs_ir_symbol(ir, "two", "hyper", "two")?;
+  ir = u:rs_ir_line(ir, "math", "s:s|eq:=|sum:!∑|i:<i|eq:<=|one:<1|n:>n|w:w|i:_i|x:x|i:_i")?;
+  ir = u:rs_ir_line(ir, "math", "s:s|eq:=|lp:(|x:~x|i:_i|rp:~)|two:^2")?;
+  ir = u:rs_ir_line(ir, "m", "s:S|eq:←|sum:+/|w:W|x:~X|i:~[i|n:~n|one:~1")?;
+  ir = u:rs_ir_line(ir, "m", "s:S|eq:←|lp:(|x:~X|rp:~)|two:~*2")?;
+  u:rs_ir_validate(ir)?;
+  ok(ir)
+}

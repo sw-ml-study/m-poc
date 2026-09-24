@@ -1,0 +1,3 @@
+command = """sh -c "./scripts/run-mlpl tests/render_sums.mlpl | grep -v '^viz: '""""
+exit_code = 0
+desc = "A record with a stacked summation, subscripts and a superscript: its renderer source and its tagged Math and M SVGs. Pins the faces v2 wrapper that the dot-product, matmul, softmax and CNN stones rely on."
