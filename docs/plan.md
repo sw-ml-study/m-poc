@@ -48,6 +48,15 @@ The four interaction verbs from the research, and what each means here:
 | Focus  | what am I looking at?          | click a token on any face; the linked tokens highlight on every face  |
 | Zoom   | show me what is inside         | **not in v1** (one abstraction level only); listed as a next step     |
 
+Three page-level conveniences grew around the verbs while the first stone
+was looked at (steps 7–12). They change legibility, not meaning:
+
+| Convenience | What it does                                                                                                   |
+|-------------|----------------------------------------------------------------------------------------------------------------|
+| View        | read mode (a face flat and enlarged, never cropped, still live), a *view scale* control with reset, a face card naming the equation and the face, a minimap of the prism. "View scale" is magnification; the word Zoom stays reserved for abstraction levels. |
+| Keys        | Blender's modal grammar: `g` grab, `r` rotate, `s` scale, `t` travel, `f` focus; `1 2 3` faces, Enter read, Space play, `a` spin, Home/`0` reset, `?` help |
+| Callouts    | rest the pointer on a face and everything within reach is explained at once, fanned around the row: symbols (glyph, name, role, doc, value at this epoch, what its line says), lines, Visual panels, controls. The docs come from the equation record and the scene, not from page text. |
+
 "4D" is used the way the research finally defines it — representation ×
 time, with abstraction and provenance deferred — and the stone is the
 literal UI manifestation of it, as the research suggests for a landing-page
@@ -73,10 +82,43 @@ separator, right-to-left evaluation. It is a mock-up of a notation, not a
 language definition; the research explicitly defers glyph selection until
 after the semantic inventory, and so do we.
 
-The second equation, if the first stone works, is matrix multiplication
-`C ← A +.× B` (research §61: "the first true Rosetta Stone"), where time is
-the contraction index `k` rather than epochs. It proves the stone is not
-one-neuron-shaped. It is the last planned step and may be cut.
+## The tour: five stones
+
+The first stone worked, so the page becomes a tour of stones, from the
+simplest sum to three nested sums, each adding exactly one notation
+feature. A dropdown on the page selects the stone; every stone is the same
+three faces, the same verbs, the same record shape. Time means something
+different on each.
+
+| # | Stone        | Math face                                                        | M face (provisional)                     | Time axis                          | Visual face                                                                                   | Source                       |
+|---|--------------|------------------------------------------------------------------|------------------------------------------|------------------------------------|-----------------------------------------------------------------------------------------------|------------------------------|
+| 1 | one-neuron   | ŷ = wx + b, L = (y − ŷ)², w ← w − η ∂L/∂w                       | Ŷ ← B + W×X … ∇W L                       | training epochs                    | dataflow boxes, data with the fitted line, parameter path with the update arrow               | research §37 (built)         |
+| 2 | dot-product  | s = ∑ᵢ wᵢ xᵢ                                                     | S ← +/ W×X                               | the index i (running sum)          | two vectors as cells with the current pair lit, the products row, the running-sum bar          | the first ∑                  |
+| 3 | matmul       | Cᵢⱼ = ∑ₖ Aᵢₖ Bₖⱼ                                                 | C ← A +.× B                              | the contraction index k            | the A row and B column lit, the C cell accumulating                                           | research §61                 |
+| 4 | softmax      | σ(z)ᵢ = eᶻⁱ / ∑ⱼ eᶻʲ                                             | P ← (*Z) ÷ +/ *Z                         | the temperature, high to low       | bar rows: logits, exponentials, the normaliser, probabilities summing to one                  | research §18 (front page)    |
+| 5 | cnn          | y[r,x,y] = ∑q ∑u ∑v W[r,q,u,v] · X[q, x+u, y+v]                  | Y ← +/[channel,kernel_y,kernel_x] W × ⧉[Mw,Nw] X | the output position the window slides over | the input grid with the sliding receptive field, the kernel, the products, the output filling in | Zhao et al. 2018 §2.1, as sw-MLPL says it: [`cnn-convolution.org`](../../sw-mlpl/examples/literate/cnn-convolution.org) and the blog post [*Teaching an Array Language to Say CNN*](https://blog.softwarewrighter.com/2026/09/10/ml-cnn-from-equations-mlpl/) (2026-09-10) |
+
+Matmul comes before the CNN because the CNN's im2col form *is* a matmul.
+The CNN's time axis is the window sweep rather than epochs; training the
+kernel by gradient descent, which sw-MLPL can do, is a later variant. The
+M glyphs on stones 2–5 use the research's placeholder vocabulary (`+/`
+reduce, `⧉` window, `∇` gradient) and say so on the face.
+
+What the IR and the faces need for stones 2–5 (step 14, *faces v2*):
+tokens with subscripts, superscripts and stacked ∑ limits in the
+renderer's own syntax; index groups such as `W[r,q,u,v]` as per-index
+tokens so every index symbol is focusable; and the face wrapper following
+the several text runs the renderer emits for such a line (a centred ∑ with
+its limits, baseline-shifted sub/superscripts) instead of one tspan per
+line, still changing no character of the layout.
+
+What the page needs (step 15, *multi-stone page*): a manifest of stones
+emitted by MLPL (`fixtures/stones.json`: id, title, purpose, face-width
+hint), one fixture directory per stone, per-stone face docs in each
+record, `build-site`/`check-site`/`check-fixtures` iterating the manifest,
+and a **dropdown** in the page header that swaps the stone
+(`?stone=ID`): faces, projector, readout and focus re-initialise from the
+chosen stone's data.
 
 ## Architecture
 
@@ -182,8 +224,23 @@ Each step ends with `just check` green, a commit to `main`, a push and an
 | 4  | faces                | `lib/rosetta/faces.mlpl` renders the Math and M faces through `svg(…,"equation")`; `demos/one-neuron/scene.mlpl` builds the Visual face as line-scene arrays (dataflow boxes; data points, fitted line and gradient arrow per epoch) into `scene.json`; schema tests; reg-rs baselines |
 | 5  | stone-page           | `pages/`: CSS 3D stone (`preserve-3d`) with the three face SVGs, auto-rotation plus drag to rotate, epoch scrubber with play/pause replaying `trace.json`, generic line projector for `scene.json`; `scripts/build-site` copies fixtures; `just serve-site` |
 | 6  | focus                | click a token on any face and the linked ids highlight on all faces; the Visual face highlights the matching box/edge; epoch readout shows the focused value |
-| 7  | capture-and-publish  | `captures/` still + animated WebP, README with the stone, the provisional-glyph note and the run-it-yourself link, Pages deploy verified                          |
-| 8  | matmul-stone         | optional: second IR instance `C ← A +.× B`, time = `k`; proves the IR and page are not one-neuron-shaped                                                          |
+| 7  | read-mode            | done: read mode, view scale with reset, orientation cues (minimap, lit Rotate button), the face card                                                              |
+| 8  | scalene-prism        | done: each face sized to its content; the cross-section is the triangle with those sides, faces tangent to its incircle                                          |
+| 9  | modal-keys           | done: Blender-style `g r s t f`, `1 2 3`, Enter, Space, `a`, Home/`0`, `?`; every face header names its equation from the record                                  |
+| 10 | hover-callouts       | done: symbol docs in the IR, Visual panels in the scene, callouts with leader lines, the footer with build facts                                                  |
+| 11 | line-docs            | done: per-line docs on the text faces, `data-line` tagging, line callouts, lines listed in the face card                                                          |
+| 12 | proximity-callouts   | done: everything near the pointer at once, fanned around the row; per-token anchors; generous hit areas                                                          |
+| 13 | plan-stones          | this update                                                                                                                                                       |
+| 14 | faces-v2             | IR tokens with sub/superscripts, stacked ∑ limits and per-index tokens; the face wrapper follows the renderer's several runs per line; tests and baselines        |
+| 15 | multi-stone-page     | `fixtures/stones.json` manifest, per-stone fixtures and face docs, `build-site`/checks per stone, the dropdown stone selector (`?stone=ID`)                        |
+| 16 | dot-product-stone    | s = ∑ᵢ wᵢ xᵢ; time = i; cells, products, running-sum bar; named face labels and symbol docs for callouts                                                          |
+| 17 | matmul-stone         | C ← A +.× B; time = k; the research's first true Rosetta Stone                                                                                                    |
+| 18 | softmax-stone        | σ(z)ᵢ; time = temperature; bar rows summing to one                                                                                                                |
+| 19 | cnn-stone            | the triple sum as the paper writes it and as sw-MLPL says it; time = the window sweep; input grid, kernel, products, output filling in                            |
+| 20 | capture-and-publish  | `captures/` stills + animated WebP of every stone, README with the stone, the provisional-glyph note and the run-it-yourself link, Pages deploy verified          |
+
+Steps 7–12 were inserted after the first stone was looked at (2026-09-23);
+their prompts are in `.agentrail/steps/`.
 
 ## Non-goals (v1)
 
@@ -195,12 +252,22 @@ Each step ends with `just check` green, a commit to `main`, a push and an
   line-scene JSON keeps that door open.
 - WASM / Yew / any build toolchain for the page.
 - Choosing M's glyph set. The glyphs used are placeholders.
-- A neural network larger than one neuron; sigmoid; Adam; tuples.
+- A neural network larger than one neuron; sigmoid; Adam; tuples;
+  attention. The tour stops at the CNN; Adam and attention are the
+  research's next demos and would come after v1.
 
 ## Open decisions
 
-- Whether the second stone (step 8) is matmul or softmax. Matmul is the
-  research's pick; softmax is the research's front-page equation. Decide
-  when step 7 is done and the first stone has been looked at.
+- Resolved 2026-09-23: the second stone is *both*, in the tour order dot
+  product, matmul, softmax, CNN (see "The tour").
 - Whether the Visual face is one face (structure and data overlaid) or the
-  stone gets a fourth face. Start with one; split it if it is unreadable.
+  stone gets a fourth face. One face has been readable so far. If the stone
+  ever becomes a box (two wide sides), the fourth face is the **Trace**: the
+  loss over epochs with a moving epoch marker, built by MLPL as another
+  line scene. The scalene prism (step 8) made the box unnecessary for now.
+- The CNN's time axis: the window sweep (chosen, because it explains the
+  triple sum) versus training the kernel (real `grad`, like stone 1). Both
+  are honest; the second may become a variant.
+- Whether the placeholder glyphs `+/`, `⧉` and `∇` on the M face survive
+  the research's semantic inventory. They are marked provisional everywhere
+  they appear.

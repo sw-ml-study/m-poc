@@ -1,6 +1,6 @@
 number = 13
 slug = "plan-stones"
-status = "pending"
+status = "in-progress"
 description = "Planning step: update docs/plan.md (the authority for scope) for what the use..."
 role = "meta"
 context_files = []
