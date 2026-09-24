@@ -1,0 +1,8 @@
+number = 22
+slug = "callout-projection"
+status = "pending"
+description = "Three fixes to the page's faces and callouts (pages/rosetta.js, style.css, in..."
+role = "production"
+context_files = []
+created_at = "2026-09-24T16:18:44"
+commits = []
