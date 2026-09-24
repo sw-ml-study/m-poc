@@ -29,6 +29,14 @@ def u:on_equation() {
   ir = u:rs_ir_line(ir, "m", "L:L|eq:←|lp:(|y:~Y|sub:~−|yhat:~Ŷ|rp:~)|sq:~*2")?;
   ir = u:rs_ir_line(ir, "m", "w:W|assign:←|w:W|sub:−|eta:η|mul:~×|grad_w:~∇W L")?;
   ir = u:rs_ir_line(ir, "m", "b:B|assign:←|b:B|sub:−|eta:η|mul:~×|grad_b:~∇B L")?;
+  ir = u:rs_ir_line_doc(ir, "math", 0, "The prediction: the neuron's guess for y is a straight line through x, with slope w and intercept b.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 1, "The loss: how far the guess is from the target, squared so misses in either direction count and big misses count more.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 2, "The weight update: move w a small step (η) against its gradient, so the loss is lower next epoch.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 3, "The bias update: the same step for b.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 0, "The prediction in the proposed notation: read right to left, W×X first, then + B, assigned to Ŷ.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 1, "The loss: Y−Ŷ raised to the power 2 (*2 is APL's power), assigned to L.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 2, "The weight update: ∇W L is the gradient of L with respect to W; scaled by η and subtracted, the result becomes the new W.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 3, "The bias update: the same step for B.")?;
   u:rs_ir_validate(ir)?;
   ok(ir)
 }

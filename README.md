@@ -107,9 +107,11 @@ framework. The script has three parts, none of which knows what a neuron is:
   armed mode;
 - **callouts**: rest the pointer on anything and a 2D callout with a
   leader line explains it: every symbol on every face (its glyph, name,
-  role, one-sentence doc from the equation record, and value at this
-  epoch), each panel of the Visual face (from the scene's `panels`), and
-  every control of the page. Keyboard focus and taps show them too; Esc
+  role, one-sentence doc from the equation record, its value at this
+  epoch, and what its line says), each line of a text face (rest on the
+  line outside a token), each panel of the Visual face (from the scene's
+  `panels`), and every control of the page. The face card also lists the
+  front face's lines with their docs. Keyboard focus and taps show them too; Esc
   hides one; the Hints button turns them off. `?hover=ID` shows one for a
   still;
 - **focus**: click any symbol on any face, or in the readout, and every
@@ -126,13 +128,13 @@ SHA (`-dirty` when the tree had uncommitted changes), UTC time.
 
 ## Status
 
-Steps 1–10 of [the plan](docs/plan.md) are done: the gate; the equation
+Steps 1–11 of [the plan](docs/plan.md) are done: the gate; the equation
 IR with the one-neuron instance; the training trace; the three faces as
 fixtures; the page; focus; read mode with view scale, orientation cues and
 the face card; the scalene prism with faces sized to their content; the
-modal keys; and hover callouts with every symbol's doc in the record and
-the Visual face's panels in the scene. Every face header names the
-equation it shows, from the record.
+modal keys; hover callouts with every symbol's doc in the record and the
+Visual face's panels in the scene; and per-line docs on the text faces.
+Every face header names the equation it shows, from the record.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -157,9 +159,9 @@ equation it shows, from the record.
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next: the plan update, IR v2 for sums and indices, the multi-stone page
-with a stone selector, and the dot-product, matmul, softmax and CNN stones,
-then captures.
+Next: proximity callouts (several at once, easy to hit), the plan update,
+IR v2 for sums and indices, the multi-stone page with a stone selector, and
+the dot-product, matmul, softmax and CNN stones, then captures.
 
 ## License
 

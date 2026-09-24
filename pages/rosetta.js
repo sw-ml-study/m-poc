@@ -469,6 +469,7 @@ function makeFaceCard(root, equation, scene) {
   const title = root.querySelector("#face-card-title");
   const text = root.querySelector("#face-card-purpose");
   const legend = root.querySelector("#face-card-legend");
+  const lines = root.querySelector("#face-card-lines");
   purpose.textContent = `${equation.description} This stone shows that one computation three ways; time runs along the epochs below.`;
   let shown = null;
   return function show(face) {
@@ -489,6 +490,22 @@ function makeFaceCard(root, equation, scene) {
       return li;
     }));
     legend.hidden = doc.legend.length === 0;
+    // the lines of a text face, each with its doc from the record
+    const f = equation.faces[face];
+    if (f && f.line_docs) {
+      const texts = f.text.split("\n");
+      lines.replaceChildren(...texts.map((t, i) => {
+        const li = document.createElement("li");
+        const b = document.createElement("b");
+        b.textContent = t;
+        li.append(b, f.line_docs[i] || "");
+        return li;
+      }));
+      lines.hidden = false;
+    } else {
+      lines.replaceChildren();
+      lines.hidden = true;
+    }
   };
 }
 
@@ -614,10 +631,26 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
   let target = null;
   let enabled = true;
 
-  const symbolDoc = (id) => {
+  // the doc of a line of a text face, by the face the element sits in
+  const lineDoc = (el, index) => {
+    const section = el.closest("[data-face]");
+    const face = section && equation.faces[section.dataset.face];
+    if (!face || !face.line_docs) return null;
+    const texts = face.text.split("\n");
+    return { text: texts[index] || "", doc: face.line_docs[index] || "" };
+  };
+  const symbolDoc = (el, id) => {
     const k = equation.symbols.ids.indexOf(id);
     if (k < 0) return null;
-    return { title: `${labelFor(equation, id)}  ${equation.symbols.names[k]}`, body: equation.symbols.docs[k] || "", extra: `${equation.symbols.roles[k]} · ${valueAt(id)}` };
+    const textEl = el.closest && el.closest("text[data-line]");
+    const line = textEl ? lineDoc(el, Number(textEl.dataset.line)) : null;
+    const where = line && line.doc ? ` · line ${Number(textEl.dataset.line) + 1}: ${line.doc}` : "";
+    return { title: `${labelFor(equation, id)}  ${equation.symbols.names[k]}`, body: equation.symbols.docs[k] || "", extra: `${equation.symbols.roles[k]} · ${valueAt(id)}${where}` };
+  };
+  const lineCallout = (el) => {
+    const line = lineDoc(el, Number(el.dataset.line));
+    if (!line) return null;
+    return { title: line.text, body: line.doc || "", extra: `line ${Number(el.dataset.line) + 1}` };
   };
   const panelDoc = (id) => {
     const k = scene.panels ? scene.panels.ids.indexOf(id) : -1;
@@ -627,7 +660,8 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
   const chromeDoc = (key) => (CHROME_DOCS[key] ? { title: CHROME_DOCS[key][0], body: CHROME_DOCS[key][1], extra: "" } : null);
 
   function docFor(el) {
-    if (el.dataset.id) return symbolDoc(el.dataset.id);
+    if (el.dataset.id) return symbolDoc(el, el.dataset.id);
+    if (el.dataset.line !== undefined) return lineCallout(el);
     if (el.dataset.panel) return panelDoc(el.dataset.panel);
     if (el.dataset.doc) return chromeDoc(el.dataset.doc);
     return null;
@@ -697,7 +731,7 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     clearTimeout(timer); timer = null; target = null;
     root.hidden = true;
   }
-  const targetOf = (e) => e.target.closest && e.target.closest("[data-id], [data-panel], [data-doc]");
+  const targetOf = (e) => e.target.closest && e.target.closest("[data-id], [data-line], [data-panel], [data-doc]");
 
   document.addEventListener("pointerover", (e) => {
     if (!enabled) return;
@@ -975,7 +1009,7 @@ async function main() {
   setEpoch(fixedEpoch ?? 0);
   if (initialFocus) focus.set(initialFocus);
   // for stills: after read mode and the layout have settled
-  if (initialHover) setTimeout(() => callouts.showFor(`[data-id="${initialHover}"], [data-panel="${initialHover}"], [data-doc="${initialHover}"]`), 700);
+  if (initialHover) setTimeout(() => callouts.showFor(`[data-id="${initialHover}"], [data-panel="${initialHover}"], [data-doc="${initialHover}"], ${/^line\d$/.test(initialHover) ? `.face[data-face="math"] text[data-line="${initialHover.slice(4)}"]` : "#none"}`), 700);
   if (initialRead) stone.read(initialRead);
   if (!reducedMotion && fixedEpoch === null) setPlaying(true);
 }

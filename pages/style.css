@@ -110,6 +110,11 @@ body.reading .face:not(.reading-face) { visibility: hidden; }
 .stone-purpose { margin: 0 0 6px; color: var(--dim); font-size: 0.9rem; }
 .face-card h2 { margin: 0; font-size: 1.05rem; }
 .face-card p { margin: 4px 0 0; }
+.lines { margin: 8px 0 0; padding-left: 1.4rem; color: var(--dim); font-size: 0.92rem; }
+.lines[hidden] { display: none; }
+.lines li { margin: 2px 0; }
+.lines b { color: var(--fg); font-family: "Latin Modern Math", "Cambria Math", "STIX Two Math", serif; font-weight: 600; margin-right: 6px; }
+.text-face text { cursor: help; }
 .legend { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px 20px; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); color: var(--dim); font-size: 0.92rem; }
 .legend li { display: flex; gap: 8px; align-items: baseline; }
 .legend .swatch { flex: none; width: 1.6em; height: 0.35em; border-radius: 2px; background: var(--edge); }

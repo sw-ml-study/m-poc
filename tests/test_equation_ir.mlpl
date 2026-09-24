@@ -131,4 +131,30 @@ def u:test_one_neuron_docs() {
   u:assert_text_eq(u:rs_ir_undocumented(ir), "", "no symbol without a doc")
 }
 
+@test {name: "lines carry docs, the undocumented line is named, and bad docs fail closed", tags: ["ir", "docs"]}
+def u:test_line_docs() {
+  "A line's doc says what the line means; the page shows it for the line and with every token on it.";
+  ir = unwrap(u:t_tiny());
+  u:assert_text_eq(u:rs_ir_undocumented_line(ir), "m:0", "the last undocumented line is named (m checked after math)")?;
+  ir = unwrap(u:rs_ir_line_doc(ir, "math", 0, "a equals b"));
+  u:assert_text_eq(u:rs_ir_undocumented_line(ir), "m:0", "the m line still lacks one")?;
+  ir = unwrap(u:rs_ir_line_doc(ir, "m", 0, "A gets B"));
+  u:assert_text_eq(u:rs_ir_undocumented_line(ir), "", "all documented")?;
+  u:assert_eq(is_err(u:rs_ir_line_doc(ir, "math", 1, "no such line")), 1, "line index past the face")?;
+  u:assert_eq(is_err(u:rs_ir_line_doc(ir, "math", 0, "")), 1, "empty doc")?;
+  u:assert_eq(is_err(u:rs_ir_line_doc(ir, "math", 0, "a|b")), 1, "delimiter in a doc")?;
+  u:assert_eq(is_err(u:rs_ir_line_doc(ir, "visual", 0, "x")), 1, "unknown face")?;
+  back = unwrap(parse_json(unwrap(u:rs_ir_json(ir))));
+  u:assert_text_eq(str_join(back.faces.math.line_docs, ","), "a equals b", "line docs travel with the export")?;
+  u:assert_text_eq(u:rs_face_line_doc(ir.faces.m, 0), "A gets B", "read back by line")
+}
+
+@test {name: "every one-neuron line on both faces is documented", tags: ["one-neuron", "docs"]}
+def u:test_one_neuron_line_docs() {
+  "Four lines per face, each with a sentence.";
+  ir = unwrap(u:on_equation());
+  u:assert_text_eq(u:rs_ir_undocumented_line(ir), "", "no line without a doc")?;
+  u:assert_eq(list_len(str_split(ir.faces.math.line_docs, "|")), 4, "four math docs")
+}
+
 u:run_registered_tests()

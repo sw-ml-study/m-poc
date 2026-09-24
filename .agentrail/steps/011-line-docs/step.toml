@@ -1,6 +1,6 @@
 number = 11
 slug = "line-docs"
-status = "pending"
+status = "in-progress"
 description = "Per-line explanations on the text faces. Extend lib/rosetta/ir.mlpl so each l..."
 role = "production"
 context_files = []

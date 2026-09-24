@@ -46,7 +46,7 @@ def u:rs_face_unsafe_text(face) {
 }
 
 def u:rs_face_svg(ir, face_name) {
-  "Render one face of a record to SVG: the upstream equation renderer lays the text out, then each line's single tspan is replaced by one tspan per token carrying data-id. Fails closed if the renderer did not emit one plain tspan per line holding exactly the line's text, or if a token text is not safe in markup.";
+  "Render one face of a record to SVG: the upstream equation renderer lays the text out, then each line's text element is tagged with data-line and its single tspan is replaced by one tspan per token carrying data-id. Fails closed if the renderer did not emit one plain tspan per line holding exactly the line's text, or if a token text is not safe in markup.";
   face = u:rs_face_named(ir, face_name)?;
   unsafe = u:rs_face_unsafe_text(face);
   if gt(str_len(unsafe), 0) {
@@ -70,7 +70,7 @@ def u:rs_face_svg(ir, face_name) {
         if 1 - str_eq(inner, unwrap(list_get(lines, line))) {
           failure = str_concat("the renderer changed a line: ", inner)
         } else {
-          out = str_concat(out, str_slice(rest, 0, open));
+          out = str_concat(out, u:rs_svg_tag_line(str_slice(rest, 0, open), line));
           out = str_concat(out, u:rs_face_line_tspans(face, line));
           cursor = cursor + close + 8;
           line = line + 1
@@ -82,6 +82,16 @@ def u:rs_face_svg(ir, face_name) {
     } else {
       ok(str_concat(out, str_slice(raw, cursor, str_len(raw))))
     }
+  }
+}
+
+def u:rs_svg_tag_line(head, line) {
+  "Mark the line's text element with data-line: the markup before a line's tspan holds exactly one opening text tag, and the attribute goes right after its name.";
+  at = str_find(head, "<text ");
+  if lt(at, 0) {
+    head
+  } else {
+    str_concat(str_concat(str_concat(str_slice(head, 0, at + 5), " data-line=\""), str_concat(to_string(line), "\"")), str_slice(head, at + 5, str_len(head)))
   }
 }
 

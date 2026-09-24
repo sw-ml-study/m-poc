@@ -2,7 +2,7 @@
 
 def u:rs_face_new() {
   "Start an empty face: no tokens and no lines.";
-  {count: 0, line_count: 0, ids: "", texts: "", seps: fill([0], 0), lines: fill([0], 0)}
+  {count: 0, line_count: 0, ids: "", texts: "", seps: fill([0], 0), lines: fill([0], 0), line_docs: ""}
 }
 
 def u:rs_ir_new(name, description) {
@@ -118,7 +118,11 @@ def u:rs_ir_with_face(ir, face_name, face) {
 def u:rs_face_token(face, id, text, sep, line) {
   "Append one token to a face: the symbol it renders, its surface text, whether a space precedes it, and its line.";
   n = face.count;
-  {count: n + 1, line_count: line + 1, ids: u:rs_delimited_append(face.ids, n, id), texts: u:rs_delimited_append(face.texts, n, text), seps: concat(face.seps, sep), lines: concat(face.lines, line)}
+  {count: n + 1, line_count: line + 1, ids: u:rs_delimited_append(face.ids, n, id), texts: u:rs_delimited_append(face.texts, n, text), seps: concat(face.seps, sep), lines: concat(face.lines, line), line_docs: if gt(line, face.line_count - 1) {
+      u:rs_delimited_append(face.line_docs, line, "")
+    } else {
+      face.line_docs
+    }}
 }
 
 def u:rs_ir_line(ir, face_name, spec) {
@@ -159,6 +163,61 @@ def u:rs_ir_line(ir, face_name, spec) {
   } else {
     ok(u:rs_ir_with_face(ir, face_name, face))
   }
+}
+
+def u:rs_ir_line_doc(ir, face_name, line, doc) {
+  "Give one line of a face a one-sentence doc for the page: what that line says. Fails closed on an unknown face, a line index past the face's lines, an empty doc, or a doc holding the delimiter.";
+  face = u:rs_face_named(ir, face_name)?;
+  if 1 - (gt(str_len(doc), 0) * eq(str_find(doc, "|"), -1)) {
+    err({kind: "rosetta_line", message: "a line doc must be non-empty and free of the delimiter"})
+  } else {
+    if (lt(line, 0) + (1 - lt(line, face.line_count))) {
+      err({kind: "rosetta_line", message: str_concat("no such line to document: ", to_string(line))})
+    } else {
+      docs = str_split(face.line_docs, "|");
+      out = "";
+      index = 0;
+      while lt(index, face.line_count) {
+        item = if eq(index, line) {
+          doc
+        } else {
+          unwrap(list_get(docs, index))
+        };
+        out = u:rs_delimited_append(out, index, item);
+        index = index + 1
+      };
+      ok(u:rs_ir_with_face(ir, face_name, {count: face.count, line_count: face.line_count, ids: face.ids, texts: face.texts, seps: face.seps, lines: face.lines, line_docs: out}))
+    }
+  }
+}
+
+def u:rs_face_line_doc(face, line) {
+  "The doc of one line of a face, or the empty string.";
+  if lt(line, face.line_count) {
+    unwrap(list_get(str_split(face.line_docs, "|"), line))
+  } else {
+    ""
+  }
+}
+
+def u:rs_ir_undocumented_line(ir) {
+  "The first line without a doc, as face:index, or the empty string when every line of both faces is documented.";
+  missing = "";
+  index = 0;
+  while lt(index, ir.faces.math.line_count) {
+    if eq(str_len(u:rs_face_line_doc(ir.faces.math, index)), 0) {
+      missing = str_concat("math:", to_string(index))
+    };
+    index = index + 1
+  };
+  index = 0;
+  while lt(index, ir.faces.m.line_count) {
+    if eq(str_len(u:rs_face_line_doc(ir.faces.m, index)), 0) {
+      missing = str_concat("m:", to_string(index))
+    };
+    index = index + 1
+  };
+  missing
 }
 
 def u:rs_face_text(face) {
@@ -233,7 +292,7 @@ def u:rs_ir_validate(ir) {
 
 def u:rs_face_export(face) {
   "A face as lists and arrays, for JSON: the token table the page links faces with.";
-  {count: face.count, line_count: face.line_count, ids: str_split(face.ids, "|"), texts: str_split(face.texts, "|"), seps: face.seps, lines: face.lines, text: u:rs_face_text(face)}
+  {count: face.count, line_count: face.line_count, ids: str_split(face.ids, "|"), texts: str_split(face.texts, "|"), seps: face.seps, lines: face.lines, line_docs: str_split(face.line_docs, "|"), text: u:rs_face_text(face)}
 }
 
 def u:rs_ir_export(ir) {

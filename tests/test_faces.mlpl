@@ -24,6 +24,8 @@ def u:test_face_text_preserved() {
   u:assert_text_eq(str_slice(out, 0, 4), "<svg", "an SVG document")?;
   u:assert_text_eq(u:rs_svg_strip_tags(out), "a = b²b = a", "the lines' text, and nothing else, survives stripping the tags")?;
   u:assert_eq(u:rs_svg_count(out, "<text "), 2, "one text element per line")?;
+  u:assert_eq(u:rs_svg_count(out, "<text data-line=\"0\" "), 1, "the first line's text element is tagged")?;
+  u:assert_eq(u:rs_svg_count(out, "<text data-line=\"1\" "), 1, "and the second")?;
   u:assert_eq(u:rs_svg_count(out, "<tspan>"), 0, "no untagged tspan remains")
 }
 
@@ -72,6 +74,7 @@ def u:test_one_neuron_faces() {
   u:assert_text_eq(u:rs_svg_strip_tags(m), "Ŷ ← B + W×XL ← (Y−Ŷ)*2W ← W − η×∇W LB ← B − η×∇B L", "m face text")?;
   u:assert_eq(u:rs_svg_count(math, "data-id=\""), ir.faces.math.count, "every math token tagged")?;
   u:assert_eq(u:rs_svg_count(m, "data-id=\""), ir.faces.m.count, "every m token tagged")?;
+  u:assert_eq(u:rs_svg_count(math, "data-line=\""), 4, "four tagged lines on the math face")?;
   u:assert_eq(u:rs_svg_count(math, "data-id=\"grad_w\""), 1, "the gradient symbol is findable on the math face")?;
   u:assert_eq(u:rs_svg_count(m, "data-id=\"grad_w\""), 1, "and on the m face")?;
   u:assert_eq(str_eq(read_text("fixtures/one-neuron/faces/math.svg")?, math), 1, "math.svg is fresh")?;
