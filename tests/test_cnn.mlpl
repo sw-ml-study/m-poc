@@ -1,0 +1,107 @@
+# The CNN stone: the windowed, multiplied and reduced output equals conv2d and the im2col matmul exactly, the window under the kernel at each step is the right patch of the input, the trace is keyed by the record's symbols, every symbol, line and face is documented, the Visual face's ids are symbols, and the committed fixtures are what the programs emit.
+include "lib/rosetta/faces.mlpl";
+include "demos/cnn/cn.mlpl";
+include "demos/cnn/visual.mlpl";
+
+def u:t_cn_unknown(ir, ids) {
+  "The first id in a string list that is not a symbol of the record, or the empty string.";
+  index = 0;
+  unknown = "";
+  while lt(index, list_len(ids)) {
+    id = unwrap(list_get(ids, index));
+    if eq(u:rs_ir_symbol_index(ir, id), -1) {
+      unknown = id
+    };
+    index = index + 1
+  };
+  unknown
+}
+
+def u:t_cn_im2col(x, kernel) {
+  "The literate derivation's im2col convolution: windows, reshape into columns, one matmul.";
+  patches = windows(x, [3, 3]);
+  ps = shape(patches);
+  out_h = take(ps, 0, 0);
+  out_w = take(ps, 0, 1);
+  cols = reshape(patches, [out_h * out_w, tally(flatten(kernel))]);
+  reshape(matmul(cols, flatten(kernel)), [out_h, out_w])
+}
+
+@test {name: "window, multiply, reduce equals conv2d and the im2col matmul, and the edge shows up", tags: ["cnn", "trace"]}
+def u:test_cn_output() {
+  "The numbers are real: three spellings of the same convolution agree to the last bit.";
+  out = u:cn_output();
+  oracle = reshape(conv2d(reshape(cn_x, [1, 1, 6, 6]), reshape(cn_w, [1, 1, 3, 3]), 1, 0), [4, 4]);
+  u:assert_eq(reduce(:max, abs(flatten(out - oracle))), 0, "conv2d oracle")?;
+  u:assert_eq(reduce(:max, abs(flatten(out - u:t_cn_im2col(cn_x, cn_w)))), 0, "im2col oracle")?;
+  u:assert_shape(out, [4, 4], "a 4 by 4 output map")?;
+  u:assert_lt(take(take(out, 0, 0), 0, 1), -2.5, "the edge columns are strongly negative")?;
+  u:assert_lt(abs(take(take(out, 0, 0), 0, 0)), 0.001, "away from the edge the response is nothing")
+}
+
+@test {name: "each step's window is the input under the kernel at that position and the steps sum to the output", tags: ["cnn", "trace"]}
+def u:test_cn_steps() {
+  "Row-major over the output: step t sits at row t div 4, column t mod 4; its nine products sum to that output cell.";
+  rows = u:cn_steps();
+  u:assert_eq(rows.count, 16, "sixteen positions")?;
+  x = take(cn_x, 0, 0);
+  t = 5;
+  win = take(rows.win, 0, t);
+  r = take(rows.px, 0, t) - 1;
+  c = take(rows.py, 0, t) - 1;
+  u:assert_eq(r, 1, "row of step 5")?;
+  u:assert_eq(c, 1, "column of step 5")?;
+  u:assert_eq(take(take(win, 0, 0), 0, 0), take(take(x, 0, r), 0, c), "the window's top-left is the input at (x, y)")?;
+  u:assert_eq(take(take(win, 0, 2), 0, 2), take(take(x, 0, r + 2), 0, c + 2), "its bottom-right is two further")?;
+  u:assert_lt(abs(take(rows.sum, 0, t) - take(take(rows.out, 0, r), 0, c)), 0.000000001, "the nine products sum to the output cell")?;
+  u:assert_eq(reduce(:max, abs(flatten(take(rows.filled, 0, 15) - rows.out))), 0, "the last step has the whole map filled")
+}
+
+@test {name: "the trace is keyed by the record's symbols with the window and the products per step", tags: ["cnn", "trace", "json"]}
+def u:test_cn_trace() {
+  "Focus and the readout look values up by symbol id.";
+  ir = unwrap(u:cn_equation());
+  trace = u:cn_trace(u:cn_steps(), 6);
+  u:assert_eq(trace.axis.count, 16, "sixteen steps")?;
+  u:assert_text_eq(trace.axis.name, "position", "the axis is the output position")?;
+  u:assert_eq(trace.channels.win.shape, [16, 3, 3], "a window per step")?;
+  u:assert_text_eq(u:t_cn_unknown(ir, record_keys(trace.channels)), "", "channel keys are symbols")?;
+  u:assert_text_eq(u:t_cn_unknown(ir, record_keys(trace.constants)), "", "constant keys are symbols")?;
+  on_disk = read_text("fixtures/cnn/trace.json")?;
+  u:assert_eq(str_eq(on_disk, unwrap(u:rs_json(trace))), 1, "trace fixture is fresh")
+}
+
+@test {name: "every symbol, line and face of the CNN record is documented, the three sums and every index are tokens, and the faces are fresh", tags: ["cnn", "docs", "faces"]}
+def u:test_cn_docs() {
+  "The page explains everything from the record; the window glyph and the axis names live on the M face only, the indices on the Math face only.";
+  ir = unwrap(u:cn_equation());
+  u:assert_text_eq(ir.title, "CNN triple sum", "title")?;
+  u:assert_text_eq(u:rs_ir_undocumented(ir), "", "every symbol")?;
+  u:assert_text_eq(u:rs_ir_undocumented_line(ir), "", "every line")?;
+  u:assert_text_eq(u:rs_ir_undocumented_face(ir), "", "every face")?;
+  u:assert_text_eq(u:rs_ir_math_text(ir), "y[r,x,y] = ∑_{q=1}^{Q} ∑_{u=1}^{Mw} ∑_{v=1}^{Nw} W[r,q,u,v] · X[q, x+u, y+v]", "math source")?;
+  u:assert_text_eq(u:rs_ir_m_text(ir), "Y ← +/[channel,kernel-y,kernel-x] W × ⧉[Mw,Nw] X", "m text")?;
+  u:assert_eq(u:rs_face_uses(ir.faces.m, "q"), 0, "q is implicit in the notation")?;
+  u:assert_eq(u:rs_face_uses(ir.faces.math, "win"), 0, "the window glyph has no paper form")?;
+  math = unwrap(u:rs_face_svg(ir, "math"));
+  u:assert_eq(u:rs_svg_count(math, "data-id=\""), ir.faces.math.count, "every math token tagged")?;
+  u:assert_eq(u:rs_svg_count(math, "data-id=\"sum\">∑</tspan>"), 3, "three summation signs, each a token")?;
+  u:assert_eq(str_eq(read_text("fixtures/cnn/faces/math.svg")?, math), 1, "math.svg fresh")?;
+  u:assert_eq(str_eq(read_text("fixtures/cnn/faces/m.svg")?, unwrap(u:rs_face_svg(ir, "m"))), 1, "m.svg fresh")
+}
+
+@test {name: "the Visual face's ids are symbols, one frame per position, and scene.json is fresh", tags: ["cnn", "visual", "fixture"]}
+def u:test_cn_visual() {
+  "The geometry follows the trace.";
+  ir = unwrap(u:cn_equation());
+  trace = unwrap(u:cn_read_trace("fixtures/cnn/trace.json"));
+  out = unwrap(u:rs_scene_export(unwrap(u:cn_visual(trace, 6)), 4));
+  u:assert_text_eq(u:t_cn_unknown(ir, out.ids), "", "edge ids")?;
+  u:assert_text_eq(u:t_cn_unknown(ir, out.labels.ids), "", "label ids")?;
+  u:assert_eq(out.panels.count, 4, "four panels")?;
+  full = unwrap(u:rs_scene_export(unwrap(u:cn_scene(trace)), 4));
+  u:assert_eq(full.frames.count, 16, "one frame per position")?;
+  u:assert_eq(str_eq(read_text("fixtures/cnn/scene.json")?, unwrap(u:rs_json(full))), 1, "scene.json fresh")
+}
+
+u:run_registered_tests()

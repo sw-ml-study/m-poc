@@ -74,6 +74,18 @@ for path in \
     fixtures/softmax/trace.json \
     fixtures/softmax/scene.json \
     tests/test_softmax.mlpl \
+    demos/cnn/equation.mlpl \
+    demos/cnn/cn.mlpl \
+    demos/cnn/train.mlpl \
+    demos/cnn/faces.mlpl \
+    demos/cnn/visual.mlpl \
+    demos/cnn/scene.mlpl \
+    fixtures/cnn/trace.json \
+    fixtures/cnn/scene.json \
+    tests/test_cnn.mlpl \
+    tests/reg/rosetta_cnn_trace.rgt \
+    tests/reg/rosetta_cnn_faces.rgt \
+    tests/reg/rosetta_cnn_scene.rgt \
     tests/reg/rosetta_softmax_trace.rgt \
     tests/reg/rosetta_softmax_faces.rgt \
     tests/reg/rosetta_softmax_scene.rgt \
@@ -103,7 +115,7 @@ do
     [ -f "$repo_root/$path" ] || { echo "missing required file: $path" >&2; exit 1; }
 done
 
-for dir in lib/rosetta demos/one-neuron demos/dot-product demos/matmul demos/softmax fixtures fixtures/one-neuron fixtures/dot-product fixtures/matmul fixtures/softmax pages tests tests/reg scripts docs; do
+for dir in lib/rosetta demos/one-neuron demos/dot-product demos/matmul demos/softmax demos/cnn fixtures fixtures/one-neuron fixtures/dot-product fixtures/matmul fixtures/softmax fixtures/cnn pages tests tests/reg scripts docs; do
     [ -d "$repo_root/$dir" ] || { echo "missing required directory: $dir" >&2; exit 1; }
 done
 

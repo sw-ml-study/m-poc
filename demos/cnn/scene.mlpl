@@ -1,0 +1,14 @@
+# Build the Visual face of the convolution from the committed trace and write it: fixtures/cnn/scene.json by default, or the path given as the script's argument. The JSON written is also printed; the reg-rs baseline rosetta_cnn_scene pins it.
+include "visual.mlpl";
+
+cn_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/cnn/scene.json"
+};
+
+trace = unwrap(u:cn_read_trace("fixtures/cnn/trace.json"));
+scene = unwrap(u:cn_scene(trace));
+text = unwrap(u:rs_write_json(cn_path, unwrap(u:rs_scene_export(scene, 4))));
+print(text);
+str_concat("wrote ", cn_path)

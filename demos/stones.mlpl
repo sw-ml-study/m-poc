@@ -4,6 +4,7 @@ include "one-neuron/equation.mlpl";
 include "dot-product/equation.mlpl";
 include "matmul/equation.mlpl";
 include "softmax/equation.mlpl";
+include "cnn/equation.mlpl";
 
 def u:stones_manifest() {
   "The manifest record: parallel lists, one entry per stone, in tour order.";
@@ -11,7 +12,8 @@ def u:stones_manifest() {
   dot = u:dp_equation()?;
   mm = u:mm_equation()?;
   sm = u:sm_equation()?;
-  ok({schema: "sw-ml-study.rosetta.stones", version: 1, ids: [neuron.name, dot.name, mm.name, sm.name], titles: [neuron.title, dot.title, mm.title, sm.title], purposes: [neuron.description, dot.description, mm.description, sm.description], widths: {math: [480, 480, 480, 520], m: [480, 480, 480, 480], visual: [720, 720, 720, 720]}})
+  cn = u:cn_equation()?;
+  ok({schema: "sw-ml-study.rosetta.stones", version: 1, ids: [neuron.name, dot.name, mm.name, sm.name, cn.name], titles: [neuron.title, dot.title, mm.title, sm.title, cn.title], purposes: [neuron.description, dot.description, mm.description, sm.description, cn.description], widths: {math: [480, 480, 480, 520, 720], m: [480, 480, 480, 480, 600], visual: [720, 720, 720, 720, 780]}})
 }
 
 st_path = if gt(list_len(args()), 0) {

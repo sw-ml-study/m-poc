@@ -6,8 +6,17 @@ def u:test_manifest() {
   "The page's dropdown is built from this.";
   m = unwrap(u:stones_manifest());
   u:assert_text_eq(m.schema, "sw-ml-study.rosetta.stones", "schema")?;
-  u:assert_eq(list_len(m.ids), 4, "four stones so far")?;
+  u:assert_eq(list_len(m.ids), 5, "five stones")?;
   u:assert_text_eq(unwrap(list_get(m.ids, 3)), "softmax", "the fourth stone")?;
+  u:assert_text_eq(unwrap(list_get(m.ids, 4)), "cnn", "the fifth stone")?;
+  k = 0;
+  while lt(k, 5) {
+    a = take(m.widths.visual, 0, k);
+    b = take(m.widths.math, 0, k);
+    c = take(m.widths.m, 0, k);
+    u:assert_eq(lt(a, b + c) * lt(b, a + c) * lt(c, a + b), 1, "every stone's widths make a triangle")?;
+    k = k + 1
+  };
   u:assert_text_eq(unwrap(list_get(m.ids, 1)), "dot-product", "the second stone")?;
   u:assert_text_eq(unwrap(list_get(m.ids, 2)), "matmul", "the third stone")?;
   u:assert_text_eq(unwrap(list_get(m.ids, 0)), "one-neuron", "the first stone")?;

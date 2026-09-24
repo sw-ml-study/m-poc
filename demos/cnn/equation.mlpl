@@ -1,0 +1,39 @@
+# The fifth stone's equation: one convolutional layer, the CNN triple sum, as Zhao, Wang, Wang and Liu (2018, §2.1) write it and as sw-MLPL says it (the literate derivation examples/literate/cnn-convolution.org in sw-mlpl and the blog post "Teaching an Array Language to Say CNN", 2026-09-10). Math face: y[r,x,y] = ∑_q ∑_u ∑_v W[r,q,u,v] · X[q, x+u, y+v], every index its own token. M face: Y ← +/[channel,kernel-y,kernel-x] W × ⧉[Mw,Nw] X (hyphens because the renderer reads an underscore as a subscript), where ⧉ is the research's placeholder glyph for the sliding window and +/[…] a reduce over named axes; q, u, v, r and the output position never appear. The paper's output map and its column index are both written y; here they are different symbols (out and py) with the same glyph. Placeholder glyphs (see docs/plan.md).
+include "../../lib/rosetta/ir.mlpl";
+
+def u:cn_equation() {
+  "Build the CNN record: one line per face, every symbol, line and face documented for the page.";
+  ir = u:rs_ir_new("cnn", "Convolution: every output cell is a weighted sum over a small window of the input, the same kernel slid over every position.");
+  ir = u:rs_ir_titled(ir, "CNN triple sum")?;
+  ir = u:rs_ir_face_doc(ir, "math", "The layer as the paper writes it", "One line, three nested sums: for output filter r at position (x, y), sum over the input channels q and the kernel offsets u, v the weight W[r,q,u,v] times the input entry X[q, x+u, y+v]. Every bound is a dimension of one of the two arrays.")?;
+  ir = u:rs_ir_face_doc(ir, "m", "The same layer as sw-MLPL says it", "Read right to left: ⧉[Mw,Nw] X gathers every sliding window of the input at once, W × multiplies each window by the kernel (the kernel broadcasts against the stack of windows), +/[channel,kernel_y,kernel_x] sums the three named axes away in one pass, Y receives the whole output map. No index appears. Placeholder glyphs.")?;
+  ir = u:rs_ir_face_doc(ir, "visual", "The window sliding, the products, the output filling in", "The input as a grid with the current 3×3 window outlined, the kernel, the nine products of this window as bars, and the output grid filling in one cell per step; the finished cells keep their bars.")?;
+  ir = u:rs_ir_symbol_doc(ir, "out", "var", "output map", "The output feature map y: one number per output position, per filter.")?;
+  ir = u:rs_ir_symbol_doc(ir, "lb", "punct", "open bracket", "Open bracket: the indices of an array entry.")?;
+  ir = u:rs_ir_symbol_doc(ir, "rb", "punct", "close bracket", "Close bracket.")?;
+  ir = u:rs_ir_symbol_doc(ir, "comma", "punct", "comma", "Separates indices.")?;
+  ir = u:rs_ir_symbol_doc(ir, "r", "var", "filter index", "Which output filter; here there is one.")?;
+  ir = u:rs_ir_symbol_doc(ir, "px", "var", "output row", "The output position's row x: where the window's top edge sits in the input.")?;
+  ir = u:rs_ir_symbol_doc(ir, "py", "var", "output column", "The output position's column, also written y in the paper: where the window's left edge sits in the input.")?;
+  ir = u:rs_ir_symbol_doc(ir, "eq", "op", "definition", "Definition: the left side is computed from the right side.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sum", "op", "summation", "Add up every term: three sums on paper (channels, kernel rows, kernel columns), one reduce over three named axes in the notation.")?;
+  ir = u:rs_ir_symbol_doc(ir, "q", "var", "input channel", "Which input channel; here there is one.")?;
+  ir = u:rs_ir_symbol_doc(ir, "Q", "hyper", "channel count", "How many input channels; here 1.")?;
+  ir = u:rs_ir_symbol_doc(ir, "u", "var", "kernel row offset", "Which row of the kernel window, 1 to Mw; added to the output row to reach the input row.")?;
+  ir = u:rs_ir_symbol_doc(ir, "Mw", "hyper", "kernel height", "How many rows the kernel has; here 3.")?;
+  ir = u:rs_ir_symbol_doc(ir, "v", "var", "kernel column offset", "Which column of the kernel window, 1 to Nw; added to the output column to reach the input column.")?;
+  ir = u:rs_ir_symbol_doc(ir, "Nw", "hyper", "kernel width", "How many columns the kernel has; here 3.")?;
+  ir = u:rs_ir_symbol_doc(ir, "one", "hyper", "one", "Where each sum starts; the paper counts from 1.")?;
+  ir = u:rs_ir_symbol_doc(ir, "W", "param", "kernel", "The kernel (the filter's weights): a small grid slid over the whole input, the same at every position. Here a 3×3 vertical-edge detector.")?;
+  ir = u:rs_ir_symbol_doc(ir, "mul", "op", "multiply", "Multiply a weight by the input entry under it; · on paper, × in the notation, where the kernel meets every window at once.")?;
+  ir = u:rs_ir_symbol_doc(ir, "X", "var", "input", "The input feature map: here one channel, a 6×6 grid with a vertical edge in it. X[q, x+u, y+v] is the entry under kernel cell (u, v) when the window sits at (x, y).")?;
+  ir = u:rs_ir_symbol_doc(ir, "plus", "op", "offset", "Add the kernel offset to the output position to find the input entry under it: this index arithmetic is what the window glyph replaces.")?;
+  ir = u:rs_ir_symbol_doc(ir, "win", "op", "window", "⧉: every sliding window of the input as one array (sw-MLPL's windows); the receptive fields, with no index arithmetic.")?;
+  ir = u:rs_ir_symbol_doc(ir, "axes", "hyper", "axis names", "The axes the reduce sums away, by name rather than position: channel, kernel-y, kernel-x (sw-MLPL spells them kernel_y and kernel_x; the renderer would read an underscore as a subscript).")?;
+  ir = u:rs_ir_line(ir, "math", "out:y|lb:~[|r:~r|comma:~,|px:~x|comma:~,|py:~y|rb:~]|eq:=|sum:!∑|q:<q|eq:<=|one:<1|Q:>Q|sum:!∑|u:<u|eq:<=|one:<1|Mw:>Mw|sum:!∑|v:<v|eq:<=|one:<1|Nw:>Nw|W:W|lb:~[|r:~r|comma:~,|q:~q|comma:~,|u:~u|comma:~,|v:~v|rb:~]|mul:·|X:X|lb:~[|q:~q|comma:~,|px:x|plus:~+|u:~u|comma:~,|py:y|plus:~+|v:~v|rb:~]")?;
+  ir = u:rs_ir_line(ir, "m", "out:Y|eq:←|sum:+/|lb:~[|axes:~channel,kernel-y,kernel-x|rb:~]|W:W|mul:×|win:⧉|lb:~[|Mw:~Mw|comma:~,|Nw:~Nw|rb:~]|X:X")?;
+  ir = u:rs_ir_line_doc(ir, "math", 0, "Output cell (r, x, y): over every channel q and every kernel cell (u, v), multiply the weight by the input entry the kernel cell sits on, and add all those products up.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 0, "The whole output map at once: window the input, multiply every window by the kernel, sum the three window axes away by name.")?;
+  u:rs_ir_validate(ir)?;
+  ok(ir)
+}

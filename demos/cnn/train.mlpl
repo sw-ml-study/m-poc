@@ -1,0 +1,12 @@
+# Slide the kernel over the input and write the trace the page replays: fixtures/cnn/trace.json by default, or the path given as the script's argument. The JSON written is also printed; the reg-rs baseline rosetta_cnn_trace pins it.
+include "cn.mlpl";
+
+cn_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/cnn/trace.json"
+};
+
+text = unwrap(u:rs_write_json(cn_path, u:cn_trace(u:cn_steps(), 6)));
+print(text);
+str_concat("wrote ", cn_path)

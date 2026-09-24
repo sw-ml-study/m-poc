@@ -1,0 +1,126 @@
+# The Visual face of the convolution, as a line scene built from the trace. Left, the dataflow: X into ⧉ (window), into × with W, into +/, into Y. Middle, the input as a 6×6 grid of labelled cells with the current 3×3 window outlined. Right, the kernel as a labelled 3×3 grid, the nine products of the current window as bars in a 3×3 grid, and the 4×4 output grid filling in one cell per step, each finished cell holding a bar for its value, the current cell outlined. Every edge and label carries a symbol id of the equation record. Coordinates are scene units, roughly 18 wide by 9 high.
+include "../../lib/rosetta/scene.mlpl";
+include "equation.mlpl";
+
+def u:cn_palette() {
+  "The RGBA colours of the face.";
+  {structure: [0.78, 0.8, 0.88, 1], input: [0.4, 0.85, 0.95, 1], kernel: [0.95, 0.85, 0.4, 1], product: [0.95, 0.5, 0.45, 1], output: [0.72, 0.58, 0.95, 1], flow: [0.55, 0.58, 0.68, 1], lit: [1, 0.6, 0.25, 1]}
+}
+
+def u:cn_dataflow(scene) {
+  "The structure panel: the input is windowed, the windows are multiplied by the kernel, the products are reduced, the output map results.";
+  c = u:cn_palette();
+  scene = u:rs_scene_box(scene, 0.9, 6.2, 0.9, 0.6, "X", "X", c.input)?;
+  scene = u:rs_scene_box(scene, 2.6, 6.2, 0.9, 0.6, "win", "⧉", c.structure)?;
+  scene = u:rs_scene_box(scene, 4.3, 6.2, 0.9, 0.6, "mul", "×", c.structure)?;
+  scene = u:rs_scene_box(scene, 4.3, 4.4, 0.9, 0.6, "W", "W", c.kernel)?;
+  scene = u:rs_scene_box(scene, 6.0, 6.2, 0.9, 0.6, "sum", "+/", c.structure)?;
+  scene = u:rs_scene_box(scene, 7.7, 6.2, 0.9, 0.6, "out", "Y", c.output)?;
+  scene = u:rs_scene_segment(scene, 1.35, 6.2, 2.15, 6.2, "X", c.flow)?;
+  scene = u:rs_scene_segment(scene, 3.05, 6.2, 3.85, 6.2, "win", c.flow)?;
+  scene = u:rs_scene_segment(scene, 4.3, 4.7, 4.3, 5.9, "W", c.flow)?;
+  scene = u:rs_scene_segment(scene, 4.75, 6.2, 5.55, 6.2, "mul", c.flow)?;
+  u:rs_scene_segment(scene, 6.45, 6.2, 7.25, 6.2, "sum", c.flow)
+}
+
+def u:cn_grid_labels(scene, values, rows, cols, x0, y0, step, id, color) {
+  "A grid of labelled cells for a matrix: row r, column c at (x0 + c·step, y0 − r·step).";
+  r = 0;
+  while lt(r, rows) {
+    c = 0;
+    while lt(c, cols) {
+      scene = u:rs_scene_box(scene, x0 + c * step, y0 - r * step, step * 0.86, step * 0.86, id, to_string(take(take(values, 0, r), 0, c)), color)?;
+      c = c + 1
+    };
+    r = r + 1
+  };
+  ok(scene)
+}
+
+def u:cn_grid_bars(scene, values, rows, cols, x0, y0, step, top, id, color) {
+  "A grid of plain cells each holding a horizontal bar for its value, scaled so that top fills a cell; negative bars point left from the cell's centre.";
+  r = 0;
+  while lt(r, rows) {
+    c = 0;
+    while lt(c, cols) {
+      cx = x0 + c * step;
+      cy = y0 - r * step;
+      v = take(take(values, 0, r), 0, c);
+      scene = u:rs_scene_rect(scene, cx - step * 0.43, cy - step * 0.43, cx + step * 0.43, cy + step * 0.43, id, color)?;
+      scene = u:rs_scene_segment(scene, cx, cy - 0.1, cx + v / top * step * 0.4, cy - 0.1, id, color)?;
+      scene = u:rs_scene_segment(scene, cx, cy + 0.1, cx + v / top * step * 0.4, cy + 0.1, id, color)?;
+      c = c + 1
+    };
+    r = r + 1
+  };
+  ok(scene)
+}
+
+def u:cn_panels_geometry(scene, trace, t) {
+  "The input, kernel, products and output panels at step t.";
+  p = u:cn_palette();
+  x = reshape(trace.constants.X.values, trace.constants.X.shape);
+  w = reshape(trace.constants.W.values, trace.constants.W.shape);
+  prods = take(reshape(trace.channels.mul.values, trace.channels.mul.shape), 0, t);
+  filled = take(reshape(trace.channels.out.values, trace.channels.out.shape), 0, t);
+  row = take(trace.channels.px, 0, t) - 1;
+  col = take(trace.channels.py, 0, t) - 1;
+  step_in = 0.72;
+  ix = 9.6;
+  iy = 8.2;
+  scene = u:rs_scene_label(scene, [ix - 0.8, iy, 0], "X", "X")?;
+  scene = u:cn_grid_labels(scene, x, 6, 6, ix, iy, step_in, "X", p.input)?;
+  scene = u:rs_scene_rect(scene, ix + col * step_in - step_in / 2, iy - (row + 2) * step_in - step_in / 2, ix + (col + 2) * step_in + step_in / 2, iy - row * step_in + step_in / 2, "win", p.lit)?;
+  scene = u:rs_scene_label(scene, [ix + 2.5 * step_in, iy + 0.75, 0], "py", "y")?;
+  scene = u:rs_scene_label(scene, [ix - 0.8, iy - 2.5 * step_in, 0], "px", "x")?;
+  kx = 15.0;
+  ky = 8.2;
+  scene = u:rs_scene_label(scene, [kx - 0.8, ky, 0], "W", "W")?;
+  scene = u:cn_grid_labels(scene, w, 3, 3, kx, ky, 0.72, "W", p.kernel)?;
+  scene = u:rs_scene_label(scene, [kx + 1.44 + 0.55, ky, 0], "v", "v")?;
+  scene = u:rs_scene_label(scene, [kx, ky - 1.44 - 0.5, 0], "u", "u")?;
+  mx = 15.0;
+  my = 5.4;
+  scene = u:rs_scene_label(scene, [mx - 0.8, my, 0], "mul", "×")?;
+  scene = u:cn_grid_bars(scene, prods, 3, 3, mx, my, 0.72, reduce(:max, abs(trace.channels.mul.values)) + 0.0001, "mul", p.product)?;
+  ox = 15.0;
+  oy = 2.9;
+  scene = u:rs_scene_label(scene, [ox - 0.8, oy, 0], "out", "y")?;
+  scene = u:cn_grid_bars(scene, filled, 4, 4, ox, oy, 0.6, reduce(:max, abs(trace.channels.out.values)) + 0.0001, "out", p.output)?;
+  scene = u:rs_scene_rect(scene, ox + col * 0.6 - 0.32, oy - row * 0.6 - 0.32, ox + col * 0.6 + 0.32, oy - row * 0.6 + 0.32, "sum", p.lit)?;
+  u:rs_scene_label(scene, [ox + 1.8 + 0.6, oy - 1.8 - 0.4, 0], "r", "r")
+}
+
+def u:cn_panels(scene) {
+  "Name the panels for the page's legend and callouts.";
+  p = u:cn_palette();
+  scene = u:rs_scene_panel(scene, "dataflow", "Dataflow", "The input is windowed (⧉), every window is multiplied by the kernel W, the products are summed (+/), and the output map Y results. Click a box to focus that symbol everywhere.", [0.3, 3.8, 8.4, 6.8], p.structure)?;
+  scene = u:rs_scene_panel(scene, "input", "Input and window", "The 6×6 input X (a vertical edge, brightening down the rows) with the kernel's current 3×3 window outlined in orange; the window slides one column per step, then down a row.", [8.7, 4.2, 13.4, 9], p.input)?;
+  scene = u:rs_scene_panel(scene, "kernel", "Kernel and products", "The 3×3 kernel W, a vertical-edge detector, and below it the nine products of this window's entries with the kernel: bars pointing right are positive, left negative.", [13.9, 4.4, 17.6, 9], p.kernel)?;
+  u:rs_scene_panel(scene, "output", "Output", "The 4×4 output map y filling in one cell per step: each finished cell holds a bar for its value, the sum of the nine products; the current cell is outlined. The edge shows up as the two strongly negative columns.", [13.9, 0.5, 17.6, 4.2], p.output)
+}
+
+def u:cn_visual(trace, t) {
+  "The whole Visual face at step t of a parsed trace record.";
+  scene = u:rs_scene_new(trace.axis.name);
+  scene = u:cn_dataflow(scene)?;
+  scene = u:cn_panels_geometry(scene, trace, t)?;
+  u:cn_panels(scene)
+}
+
+def u:cn_scene(trace) {
+  "The Visual face with one frame per step of the trace.";
+  scene = u:cn_visual(trace, 0)?;
+  t = 0;
+  while lt(t, trace.axis.count) {
+    frame = u:cn_visual(trace, t)?;
+    scene = u:rs_scene_frame(scene, reshape(frame.positions, [frame.vertex_count, 3]))?;
+    t = t + 1
+  };
+  ok(scene)
+}
+
+def u:cn_read_trace(path) {
+  "The trace record from its fixture.";
+  parse_json(read_text(path)?)
+}

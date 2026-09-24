@@ -81,8 +81,16 @@ is the layout and the manifest. The tour so far:
 4. **Softmax**, σ(z)ᵢ = eᶻⁱ / ∑ⱼ eᶻʲ, the research's front-page equation:
    `P ← (*Z) ÷ +/ *Z`; time is the temperature falling from 4 to 0.2, and
    the probabilities sharpen from nearly flat to one winner.
-
-The CNN triple sum follows.
+5. **CNN triple sum**, y[r,x,y] = ∑q ∑u ∑v W[r,q,u,v] · X[q, x+u, y+v], one
+   convolutional layer as Zhao et al. (2018) write it and as sw-MLPL says
+   it: `Y ← +/[channel,kernel-y,kernel-x] W × ⧉[Mw,Nw] X`, the window glyph
+   and a reduce over named axes; time is the output position the 3×3
+   window slides over, and the output map fills in one cell per step. The
+   numbers come from `windows`, a broadcast multiply and `reduce`, checked
+   against `conv2d` and the im2col matmul. Sources: the literate derivation
+   [`cnn-convolution.org`](https://github.com/sw-ml-study/sw-mlpl/blob/main/examples/literate/cnn-convolution.org)
+   in sw-mlpl and the blog post
+   [*Teaching an Array Language to Say CNN*](https://blog.softwarewrighter.com/2026/09/10/ml-cnn-from-equations-mlpl/).
 
 ## The page
 

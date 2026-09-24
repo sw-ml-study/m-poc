@@ -1,0 +1,23 @@
+# Render the CNN stone's Math and proposed-M faces to SVG and write them, with the equation record as JSON: fixtures/cnn/faces/ by default, or the directory given as the script's argument. Both documents are also printed; the reg-rs baseline rosetta_cnn_faces pins them.
+include "../../lib/rosetta/faces.mlpl";
+include "../../lib/rosetta/emit.mlpl";
+include "equation.mlpl";
+
+cn_dir = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/cnn/faces"
+};
+
+ir = unwrap(u:cn_equation());
+unwrap(make_dir(cn_dir));
+math = unwrap(u:rs_face_svg(ir, "math"));
+m = unwrap(u:rs_face_svg(ir, "m"));
+unwrap(write_atomic(str_concat(cn_dir, "/math.svg"), math));
+unwrap(write_atomic(str_concat(cn_dir, "/m.svg"), m));
+unwrap(u:rs_write_json(str_concat(cn_dir, "/equation.json"), unwrap(u:rs_ir_export(ir))));
+print("MATH");
+print(math);
+print("M (proposed)");
+print(m);
+str_concat("wrote ", cn_dir)

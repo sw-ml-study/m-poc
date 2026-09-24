@@ -168,21 +168,35 @@ def u:rs_face_element(face, index, line, element) {
         } else {
           content
         };
-        trailing = gt(str_len(body), 0) * str_eq(str_slice(body, str_len(body) - 1, 1), " ");
+        trailing = if gt(str_len(body), 0) {
+          str_eq(str_slice(body, str_len(body) - 1, 1), " ")
+        } else {
+          0
+        };
         body = if trailing {
           str_slice(body, 0, str_len(body) - 1)
         } else {
           body
         };
-        last = u:rs_face_run_end(face, at, line);
-        expected = u:rs_face_run_text(face, at, last, t_mode, eq(t_mode, 0));
+        last = if eq(str_len(body), 0) {
+          at - 1
+        } else {
+          u:rs_face_run_end(face, at, line)
+        };
+        expected = if eq(str_len(body), 0) {
+          ""
+        } else {
+          u:rs_face_run_text(face, at, last, t_mode, eq(t_mode, 0))
+        };
         if 1 - str_eq(expected, body) {
           failure = str_concat(str_concat("a run does not spell its tokens: ", body), str_concat(" vs ", expected))
         } else {
           if leading {
             out = str_concat(out, " ")
           };
-          out = str_concat(out, u:rs_face_run_tspans(face, at, last, 0));
+          if gt(str_len(body), 0) {
+            out = str_concat(out, u:rs_face_run_tspans(face, at, last, 0))
+          };
           if trailing {
             out = str_concat(out, " ")
           };

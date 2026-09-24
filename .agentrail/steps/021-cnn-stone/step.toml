@@ -1,6 +1,6 @@
 number = 21
 slug = "cnn-stone"
-status = "pending"
+status = "in-progress"
 description = "The third stone: the CNN triple sum, one convolutional layer as the paper wri..."
 role = "production"
 context_files = []
