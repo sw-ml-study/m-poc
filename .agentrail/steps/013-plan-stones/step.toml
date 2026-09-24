@@ -1,8 +1,9 @@
 number = 13
 slug = "plan-stones"
-status = "in-progress"
+status = "completed"
 description = "Planning step: update docs/plan.md (the authority for scope) for what the use..."
 role = "meta"
 context_files = []
 created_at = "2026-09-23T17:50:27"
-commits = []
+completed_at = "2026-09-24T10:52:02"
+commits = ["f13e429134141ce08e9cfa168d6083f2d9cce108"]
