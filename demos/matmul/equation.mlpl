@@ -1,0 +1,26 @@
+# The third stone's equation: matrix multiplication, the research's first true Rosetta Stone (docs/research.txt §61). C_ij = ∑_k A_ik B_kj on the Math face, with every index its own token; C ← A +.× B on the M face, APL's inner product, where +.× says "multiply pairs, add them up" and the indices i, j, k are implicit. The glyphs are placeholders (see docs/plan.md). Multiplication is by juxtaposition on the Math face, carried by U+2062 INVISIBLE TIMES.
+include "../../lib/rosetta/ir.mlpl";
+
+def u:mm_equation() {
+  "Build the matmul record: one line per face, every symbol, line and face documented for the page.";
+  ir = u:rs_ir_new("matmul", "Matrix multiply: every cell of C is a dot product, the row of A with the column of B, summed over k.");
+  ir = u:rs_ir_titled(ir, "Matrix multiply")?;
+  ir = u:rs_ir_face_doc(ir, "math", "The product as written on paper", "One line: cell (i, j) of C is the sum over k of A's entry (i, k) times B's entry (k, j). Every cell is a dot product of a row with a column; k is the index they share.")?;
+  ir = u:rs_ir_face_doc(ir, "m", "The same product in the proposed notation", "Read right to left: A +.× B is APL's inner product, multiply pairs (×) then add them up (+.), for every row of A against every column of B at once. No i, j or k appears. Placeholder glyphs.")?;
+  ir = u:rs_ir_face_doc(ir, "visual", "The two matrices and C accumulating", "A and B as grids of cells; at step k the column of A and the row of B that meet are lit, and every cell of C grows by their product, shown as a bar inside the cell.")?;
+  ir = u:rs_ir_symbol_doc(ir, "C", "var", "product matrix", "The result: a matrix with as many rows as A and as many columns as B.")?;
+  ir = u:rs_ir_symbol_doc(ir, "i", "var", "row index", "Which row of A, and of C.")?;
+  ir = u:rs_ir_symbol_doc(ir, "j", "var", "column index", "Which column of B, and of C.")?;
+  ir = u:rs_ir_symbol_doc(ir, "eq", "op", "definition", "Definition: the left side is computed from the right side.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sum", "op", "summation", "Add the products up over k: on paper a ∑ over k, in the notation the + of the inner product +.×.")?;
+  ir = u:rs_ir_symbol_doc(ir, "k", "var", "contraction index", "The index the two matrices share: it runs along a row of A and down a column of B, and is summed away. It is the stone's time axis.")?;
+  ir = u:rs_ir_symbol_doc(ir, "A", "param", "left matrix", "The left matrix; its rows are paired with B's columns.")?;
+  ir = u:rs_ir_symbol_doc(ir, "B", "var", "right matrix", "The right matrix; its columns are paired with A's rows.")?;
+  ir = u:rs_ir_symbol_doc(ir, "mul", "op", "multiply", "Multiply the paired entries; written by juxtaposition on the Math face and as the × of +.× in the notation.")?;
+  ir = u:rs_ir_line(ir, "math", "C:C|i:_i|j:_j|eq:=|sum:!∑|k:<k|A:A|i:_i|k:_k|mul:~⁢|B:~B|k:_k|j:_j")?;
+  ir = u:rs_ir_line(ir, "m", "C:C|eq:←|A:A|sum:+.|mul:~×|B:B")?;
+  ir = u:rs_ir_line_doc(ir, "math", 0, "Cell (i, j) of C: run k along row i of A and down column j of B, multiply the pairs, add them up.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 0, "The same for every cell at once: the inner product +.× pairs rows of A with columns of B, multiplies, and sums; C receives the whole matrix.")?;
+  u:rs_ir_validate(ir)?;
+  ok(ir)
+}

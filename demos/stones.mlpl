@@ -2,12 +2,14 @@
 include "../lib/rosetta/emit.mlpl";
 include "one-neuron/equation.mlpl";
 include "dot-product/equation.mlpl";
+include "matmul/equation.mlpl";
 
 def u:stones_manifest() {
   "The manifest record: parallel lists, one entry per stone, in tour order.";
   neuron = u:on_equation()?;
   dot = u:dp_equation()?;
-  ok({schema: "sw-ml-study.rosetta.stones", version: 1, ids: [neuron.name, dot.name], titles: [neuron.title, dot.title], purposes: [neuron.description, dot.description], widths: {math: [480, 480], m: [480, 480], visual: [720, 720]}})
+  mm = u:mm_equation()?;
+  ok({schema: "sw-ml-study.rosetta.stones", version: 1, ids: [neuron.name, dot.name, mm.name], titles: [neuron.title, dot.title, mm.title], purposes: [neuron.description, dot.description, mm.description], widths: {math: [480, 480, 480], m: [480, 480, 480], visual: [720, 720, 720]}})
 }
 
 st_path = if gt(list_len(args()), 0) {

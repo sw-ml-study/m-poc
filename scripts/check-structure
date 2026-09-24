@@ -56,6 +56,18 @@ for path in \
     fixtures/dot-product/scene.json \
     fixtures/dot-product/faces/equation.json \
     tests/test_dot_product.mlpl \
+    demos/matmul/equation.mlpl \
+    demos/matmul/mm.mlpl \
+    demos/matmul/train.mlpl \
+    demos/matmul/faces.mlpl \
+    demos/matmul/visual.mlpl \
+    demos/matmul/scene.mlpl \
+    fixtures/matmul/trace.json \
+    fixtures/matmul/scene.json \
+    tests/test_matmul.mlpl \
+    tests/reg/rosetta_matmul_trace.rgt \
+    tests/reg/rosetta_matmul_faces.rgt \
+    tests/reg/rosetta_matmul_scene.rgt \
     tests/reg/rosetta_dot_product_trace.rgt \
     tests/reg/rosetta_dot_product_faces.rgt \
     tests/reg/rosetta_dot_product_scene.rgt \
@@ -79,7 +91,7 @@ do
     [ -f "$repo_root/$path" ] || { echo "missing required file: $path" >&2; exit 1; }
 done
 
-for dir in lib/rosetta demos/one-neuron demos/dot-product fixtures fixtures/one-neuron fixtures/dot-product pages tests tests/reg scripts docs; do
+for dir in lib/rosetta demos/one-neuron demos/dot-product demos/matmul fixtures fixtures/one-neuron fixtures/dot-product fixtures/matmul pages tests tests/reg scripts docs; do
     [ -d "$repo_root/$dir" ] || { echo "missing required directory: $dir" >&2; exit 1; }
 done
 

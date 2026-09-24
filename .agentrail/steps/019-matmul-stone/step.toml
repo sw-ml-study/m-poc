@@ -1,6 +1,6 @@
 number = 19
 slug = "matmul-stone"
-status = "pending"
+status = "in-progress"
 description = "optional second IR instance C ← A +.× B with time = k"
 role = "legacy"
 context_files = []

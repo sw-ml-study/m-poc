@@ -1,0 +1,76 @@
+# The matmul stone: the accumulated product equals MLPL's matmul, each step adds one outer product, the trace is keyed by the record's symbols, every symbol, line and face is documented, the Visual face's ids are symbols, and the committed fixtures are what the programs emit.
+include "lib/rosetta/faces.mlpl";
+include "demos/matmul/mm.mlpl";
+include "demos/matmul/visual.mlpl";
+
+def u:t_mm_unknown(ir, ids) {
+  "The first id in a string list that is not a symbol of the record, or the empty string.";
+  index = 0;
+  unknown = "";
+  while lt(index, list_len(ids)) {
+    id = unwrap(list_get(ids, index));
+    if eq(u:rs_ir_symbol_index(ir, id), -1) {
+      unknown = id
+    };
+    index = index + 1
+  };
+  unknown
+}
+
+@test {name: "the partial products end at matmul(A, B) and each step adds one outer product", tags: ["matmul", "trace"]}
+def u:test_mm_product() {
+  "The numbers are real: the last row is the matrix product, and the rows add one column-times-row term at a time.";
+  rows = u:mm_steps();
+  last = take(rows.C, 0, 3);
+  u:assert_eq(reduce(:max, abs(flatten(last - matmul(mm_a, mm_b)))), 0, "the matmul oracle")?;
+  u:assert_eq(reduce(:max, abs(flatten(take(rows.C, 0, 0)))), 0, "nothing before the first step")?;
+  u:assert_eq(reduce(:max, abs(flatten(take(rows.C, 0, 1) - take(rows.term, 0, 1)))), 0, "the first partial is the first term")?;
+  u:assert_eq(reduce(:max, abs(flatten(take(rows.C, 0, 2) - take(rows.C, 0, 1) - take(rows.term, 0, 2)))), 0, "the second step adds the second term")?;
+  u:assert_eq(flatten(last), [3.5, 0.5, 0, 5], "the expected product")
+}
+
+@test {name: "the trace is keyed by the record's symbols with a matrix per step", tags: ["matmul", "trace", "json"]}
+def u:test_mm_trace() {
+  "The page's readout shows a matrix row per step; the channel is rank three, shape plus values.";
+  ir = unwrap(u:mm_equation());
+  trace = u:mm_trace(u:mm_steps(), 6);
+  u:assert_eq(trace.axis.count, 4, "four steps")?;
+  u:assert_text_eq(trace.axis.name, "k", "the axis is k")?;
+  u:assert_eq(trace.channels.C.shape, [4, 2, 2], "a 2 by 2 matrix per step")?;
+  u:assert_text_eq(u:t_mm_unknown(ir, record_keys(trace.channels)), "", "channel keys are symbols")?;
+  u:assert_text_eq(u:t_mm_unknown(ir, record_keys(trace.constants)), "", "constant keys are symbols")?;
+  on_disk = read_text("fixtures/matmul/trace.json")?;
+  u:assert_eq(str_eq(on_disk, unwrap(u:rs_json(trace))), 1, "trace fixture is fresh")
+}
+
+@test {name: "every symbol, line and face of the matmul record is documented, and the faces render and are fresh", tags: ["matmul", "docs", "faces"]}
+def u:test_mm_docs() {
+  "The page explains everything from the record; i, j and k live on the Math face only.";
+  ir = unwrap(u:mm_equation());
+  u:assert_text_eq(ir.title, "Matrix multiply", "title")?;
+  u:assert_text_eq(u:rs_ir_undocumented(ir), "", "every symbol")?;
+  u:assert_text_eq(u:rs_ir_undocumented_line(ir), "", "every line")?;
+  u:assert_text_eq(u:rs_ir_undocumented_face(ir), "", "every face")?;
+  u:assert_text_eq(u:rs_ir_math_text(ir), "C_{ij} = ∑_{k} A_{ik}⁢B_{kj}", "math source")?;
+  u:assert_text_eq(u:rs_ir_m_text(ir), "C ← A +.× B", "m text")?;
+  u:assert_eq(u:rs_face_uses(ir.faces.m, "k"), 0, "k is implicit in the notation")?;
+  math = unwrap(u:rs_face_svg(ir, "math"));
+  u:assert_eq(u:rs_svg_count(math, "data-id=\""), ir.faces.math.count, "every math token tagged")?;
+  u:assert_eq(str_eq(read_text("fixtures/matmul/faces/math.svg")?, math), 1, "math.svg fresh")?;
+  u:assert_eq(str_eq(read_text("fixtures/matmul/faces/m.svg")?, unwrap(u:rs_face_svg(ir, "m"))), 1, "m.svg fresh")
+}
+
+@test {name: "the Visual face's ids are symbols, one frame per step, and scene.json is fresh", tags: ["matmul", "visual", "fixture"]}
+def u:test_mm_visual() {
+  "The geometry follows the trace.";
+  ir = unwrap(u:mm_equation());
+  trace = unwrap(u:mm_read_trace("fixtures/matmul/trace.json"));
+  out = unwrap(u:rs_scene_export(unwrap(u:mm_visual(trace, 2)), 4));
+  u:assert_text_eq(u:t_mm_unknown(ir, out.ids), "", "edge ids")?;
+  u:assert_text_eq(u:t_mm_unknown(ir, out.labels.ids), "", "label ids")?;
+  full = unwrap(u:rs_scene_export(unwrap(u:mm_scene(trace)), 4));
+  u:assert_eq(full.frames.count, 4, "one frame per step")?;
+  u:assert_eq(str_eq(read_text("fixtures/matmul/scene.json")?, unwrap(u:rs_json(full))), 1, "scene.json fresh")
+}
+
+u:run_registered_tests()

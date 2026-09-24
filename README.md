@@ -75,8 +75,11 @@ is the layout and the manifest. The tour so far:
    epoch.
 2. **Dot product**, s = ∑ᵢ wᵢxᵢ, the simplest sum: on the M face `+/ W×X`
    says it with no index at all; time is the index, one term per step.
+3. **Matrix multiply**, Cᵢⱼ = ∑ₖ AᵢₖBₖⱼ, the research's first true Rosetta
+   Stone: `C ← A +.× B` is APL's inner product; time is the contraction
+   index k, and every cell of C accumulates one product per step.
 
-Matmul, softmax and the CNN triple sum follow.
+Softmax and the CNN triple sum follow.
 
 ## The page
 

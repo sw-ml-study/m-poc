@@ -1,0 +1,12 @@
+# Accumulate the matrix product one k at a time and write the trace the page replays: fixtures/matmul/trace.json by default, or the path given as the script's argument. The JSON written is also printed; the reg-rs baseline rosetta_matmul_trace pins it.
+include "mm.mlpl";
+
+mm_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/matmul/trace.json"
+};
+
+text = unwrap(u:rs_write_json(mm_path, u:mm_trace(u:mm_steps(), 6)));
+print(text);
+str_concat("wrote ", mm_path)

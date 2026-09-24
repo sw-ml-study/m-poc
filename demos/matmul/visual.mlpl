@@ -1,0 +1,132 @@
+# The Visual face of the matrix product, as a line scene built from the trace. Left, the dataflow: A and B into ×, into +., into C. Right, the matrices: A as a grid of labelled cells, B below-right of it, C where a row of A meets a column of B; at step k the column of A and the row of B that meet are lit, and each cell of C holds a bar that grows by their product. Every edge and label carries a symbol id of the equation record. Coordinates are scene units, roughly 16 wide by 9 high.
+include "../../lib/rosetta/scene.mlpl";
+include "equation.mlpl";
+
+def u:mm_palette() {
+  "The RGBA colours of the face.";
+  {structure: [0.78, 0.8, 0.88, 1], left: [0.4, 0.85, 0.95, 1], right: [0.95, 0.85, 0.4, 1], flow: [0.55, 0.58, 0.68, 1], product: [0.72, 0.58, 0.95, 1], lit: [1, 0.6, 0.25, 1]}
+}
+
+def u:mm_dataflow(scene) {
+  "The structure panel: the two matrices flow into the multiply, the multiply into the sum, the sum into C.";
+  c = u:mm_palette();
+  scene = u:rs_scene_box(scene, 1, 6.5, 0.9, 0.6, "A", "A", c.left)?;
+  scene = u:rs_scene_box(scene, 1, 4.5, 0.9, 0.6, "B", "B", c.right)?;
+  scene = u:rs_scene_box(scene, 3, 5.5, 0.9, 0.6, "mul", "×", c.structure)?;
+  scene = u:rs_scene_box(scene, 5, 5.5, 0.9, 0.6, "sum", "+.", c.structure)?;
+  scene = u:rs_scene_box(scene, 7, 5.5, 0.9, 0.6, "C", "C", c.structure)?;
+  scene = u:rs_scene_segment(scene, 1.45, 6.5, 2.55, 5.5, "A", c.flow)?;
+  scene = u:rs_scene_segment(scene, 1.45, 4.5, 2.55, 5.5, "B", c.flow)?;
+  scene = u:rs_scene_segment(scene, 3.45, 5.5, 4.55, 5.5, "mul", c.flow)?;
+  u:rs_scene_segment(scene, 5.45, 5.5, 6.55, 5.5, "sum", c.flow)
+}
+
+def u:mm_grid(scene, values, rows, cols, x0, y0, id, color) {
+  "A grid of labelled cells for a matrix: row r, column c at (x0 + c·1.2, y0 − r·0.9).";
+  r = 0;
+  while lt(r, rows) {
+    c = 0;
+    while lt(c, cols) {
+      scene = u:rs_scene_box(scene, x0 + c * 1.2, y0 - r * 0.9, 1.0, 0.7, id, to_string(take(take(values, 0, r), 0, c)), color)?;
+      c = c + 1
+    };
+    r = r + 1
+  };
+  ok(scene)
+}
+
+def u:mm_matrices(scene, trace, t) {
+  "The matrices panel at step t: A top left, B bottom right, C bottom left where rows meet columns; the k-th column of A and row of B lit; a bar in every cell of C for its partial sum.";
+  p = u:mm_palette();
+  a = reshape(trace.constants.A.values, trace.constants.A.shape);
+  b = reshape(trace.constants.B.values, trace.constants.B.shape);
+  rows = take(shape(a), 0, 0);
+  kk = take(shape(a), 0, 1);
+  cols = take(shape(b), 0, 1);
+  ax = 8.6;
+  ay = 8.0;
+  bx = ax + kk * 1.2 + 0.4;
+  by = ay - rows * 0.9 - 0.3;
+  cx = ax;
+  cy = by;
+  scene = u:rs_scene_label(scene, [ax - 0.9, ay, 0], "A", "A")?;
+  scene = u:mm_grid(scene, a, rows, kk, ax, ay, "A", p.left)?;
+  scene = u:rs_scene_label(scene, [bx + cols * 1.2 - 0.3, by + 0.8, 0], "B", "B")?;
+  scene = u:mm_grid(scene, b, kk, cols, bx, by, "B", p.right)?;
+  scene = u:rs_scene_label(scene, [cx - 0.9, cy, 0], "C", "C")?;
+  r = 0;
+  while lt(r, rows) {
+    c = 0;
+    while lt(c, cols) {
+      scene = u:rs_scene_rect(scene, cx + c * 1.2 - 0.5, cy - r * 0.9 - 0.35, cx + c * 1.2 + 0.5, cy - r * 0.9 + 0.35, "C", p.structure)?;
+      c = c + 1
+    };
+    r = r + 1
+  };
+  k = if gt(t, 0) {
+    t - 1
+  } else {
+    0
+  };
+  half = if gt(t, 0) {
+    0.56
+  } else {
+    0
+  };
+  colx = ax + k * 1.2;
+  scene = u:rs_scene_rect(scene, colx - half, ay - (rows - 1) * 0.9 - 0.45, colx + half, ay + 0.45, "k", p.lit)?;
+  rowy = by - k * 0.9;
+  scene = u:rs_scene_rect(scene, bx - 0.55, rowy - half * 0.7, bx + (cols - 1) * 1.2 + 0.55, rowy + half * 0.7, "k", p.lit)?;
+  scene = u:rs_scene_label(scene, [ax + (kk - 1) * 1.2 + 1.0, ay + 0.6, 0], "k", "k")?;
+  scene = u:rs_scene_label(scene, [ax - 0.9, ay - (rows - 1) * 0.9 - 0.7, 0], "i", "i")?;
+  scene = u:rs_scene_label(scene, [bx + (cols - 1) * 1.2 + 0.9, by - (kk - 1) * 0.9 - 0.2, 0], "j", "j")?;
+  partial = take(reshape(trace.channels.C.values, trace.channels.C.shape), 0, t);
+  final = take(reshape(trace.channels.C.values, trace.channels.C.shape), 0, trace.axis.count - 1);
+  unit = 0.85 / (reduce(:max, abs(final)) + 0.0001);
+  r = 0;
+  while lt(r, rows) {
+    c = 0;
+    while lt(c, cols) {
+      v = take(take(partial, 0, r), 0, c);
+      x = cx + c * 1.2 - 0.45;
+      y = cy - r * 0.9;
+      scene = u:rs_scene_segment(scene, x, y - 0.12, x + v * unit, y - 0.12, "sum", p.product)?;
+      scene = u:rs_scene_segment(scene, x, y + 0.12, x + v * unit, y + 0.12, "sum", p.product)?;
+      c = c + 1
+    };
+    r = r + 1
+  };
+  ok(scene)
+}
+
+def u:mm_panels(scene) {
+  "Name the two panels for the page's legend and callouts.";
+  p = u:mm_palette();
+  scene = u:rs_scene_panel(scene, "dataflow", "Dataflow", "A and B flow into ×, every paired entry multiplied, then into +., which sums over k, then into C. Click a box to focus that symbol everywhere.", [0.3, 3.8, 7.7, 7.2], p.structure)?;
+  u:rs_scene_panel(scene, "matrices", "Matrices", "A (top) and B (right) as cells; C sits where A's rows meet B's columns. At step k the k-th column of A and the k-th row of B are lit in orange, and the bar in each cell of C is its partial sum so far; a bar pointing left is negative.", [7.5, 2.4, 16.4, 8.8], p.product)
+}
+
+def u:mm_visual(trace, t) {
+  "The whole Visual face at step t of a parsed trace record.";
+  scene = u:rs_scene_new(trace.axis.name);
+  scene = u:mm_dataflow(scene)?;
+  scene = u:mm_matrices(scene, trace, t)?;
+  u:mm_panels(scene)
+}
+
+def u:mm_scene(trace) {
+  "The Visual face with one frame per step of the trace.";
+  scene = u:mm_visual(trace, 0)?;
+  t = 0;
+  while lt(t, trace.axis.count) {
+    frame = u:mm_visual(trace, t)?;
+    scene = u:rs_scene_frame(scene, reshape(frame.positions, [frame.vertex_count, 3]))?;
+    t = t + 1
+  };
+  ok(scene)
+}
+
+def u:mm_read_trace(path) {
+  "The trace record from its fixture.";
+  parse_json(read_text(path)?)
+}

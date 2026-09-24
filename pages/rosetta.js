@@ -434,12 +434,7 @@ function makeReadout(dl, trace, equation) {
 
   return function show(t) {
     for (const id of scalars) cells.get(id).textContent = fmt(trace.channels[id][t]);
-    for (const id of tables) {
-      const ch = trace.channels[id];
-      const width = ch.shape[1];
-      const row = ch.values.slice(t * width, (t + 1) * width);
-      cells.get(id).textContent = row.map((v) => fmt(v)).join("  ");
-    }
+    for (const id of tables) cells.get(id).textContent = stepText(trace.channels[id], t);
   };
 }
 
@@ -543,17 +538,28 @@ function makeFaceCard(root, equation, scene, axisName) {
 // value at the current epoch when the trace has one.
 // The value a symbol has at an epoch, as text: a channel row, a constant,
 // or nothing for an operator.
+// One step of a shape-and-values channel: the trailing dimensions, rows
+// separated by " | " when there are two of them.
+function stepText(ch, epoch) {
+  const dims = ch.shape.slice(1);
+  const w = dims.reduce((a, b) => a * b, 1);
+  const row = ch.values.slice(epoch * w, (epoch + 1) * w).map(fmt);
+  if (dims.length < 2) return row.join("  ");
+  const cols = dims[dims.length - 1];
+  const lines = [];
+  for (let i = 0; i < row.length; i += cols) lines.push(row.slice(i, i + cols).join("  "));
+  return lines.join(" | ");
+}
+function constText(c) {
+  if (Array.isArray(c)) return c.map(fmt).join("  ");
+  if (c && c.values) return stepText({ shape: [1, ...c.shape], values: c.values }, 0);
+  return fmt(c);
+}
 function valueText(trace, id, epoch) {
   const ch = trace.channels[id];
   if (Array.isArray(ch)) return fmt(ch[epoch]);
-  if (ch && ch.values) {
-    const w = ch.shape[1];
-    return ch.values.slice(epoch * w, (epoch + 1) * w).map(fmt).join("  ");
-  }
-  if (id in trace.constants) {
-    const c = trace.constants[id];
-    return Array.isArray(c) ? c.map(fmt).join("  ") : fmt(c);
-  }
+  if (ch && ch.values) return stepText(ch, epoch);
+  if (id in trace.constants) return constText(trace.constants[id]);
   return "";
 }
 

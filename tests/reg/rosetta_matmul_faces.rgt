@@ -1,0 +1,3 @@
+command = """sh -c "./scripts/run-mlpl demos/matmul/faces.mlpl | grep -v '^viz: '""""
+exit_code = 0
+desc = "The matmul stone's Math face (C_ij = ∑_k A_ik B_kj, every index a token) and M face (C ← A +.× B), tagged."

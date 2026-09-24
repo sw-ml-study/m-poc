@@ -1,0 +1,3 @@
+command = "./scripts/run-mlpl demos/matmul/scene.mlpl"
+exit_code = 0
+desc = "The matmul Visual face: dataflow, the A and B grids with the k-th column and row lit, C's cells with growing bars; one frame per k."
