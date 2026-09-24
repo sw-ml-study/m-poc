@@ -3,7 +3,8 @@
 **Live demo: <https://sw-ml-study.github.io/m-poc/>** — the committed
 `pages/` directory, published as is on every push to `main`. Drag the stone
 to rotate it, press Play or scrub the epochs; `?yaw=DEG&epoch=T` in the URL
-fixes a view for a still.
+fixes a view for a still, and `?focus=ID` (a symbol id such as `w` or
+`grad_w`) starts with that symbol focused.
 
 A mock-up of **Rosetta M**: a 4D Rosetta Stone for a proposed array language
 for machine learning. One small computation — a single neuron trained by
@@ -80,16 +81,21 @@ framework. The script has three parts, none of which knows what a neuron is:
 - **the time axis**: a scrubber with play/pause over the trace's epochs
   that sets the projector's frame and fills a readout of every channel,
   labelled with the Math face's text for that symbol from the equation
-  record.
+  record;
+- **focus**: click any symbol on any face, or in the readout, and every
+  element carrying the same symbol id lights up on every face (token tspans
+  on the text faces, edges and labels on the Visual face, the readout row),
+  with a caption naming the symbol from the equation record and its value
+  at the current epoch. Esc or Clear ends it. Focus knows only ids.
 
 `just serve-site` serves it at <http://127.0.0.1:8765/>; the page fetches
 its data, so it needs HTTP rather than `file://`.
 
 ## Status
 
-Steps 1–5 of [the plan](docs/plan.md) are done: the gate; the equation IR
+Steps 1–6 of [the plan](docs/plan.md) are done: the gate; the equation IR
 with the one-neuron instance; the training trace; the three faces as
-fixtures; and the page.
+fixtures; the page; and focus.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -110,11 +116,13 @@ fixtures; and the page.
   fitted line and residuals, and parameter space with the path and the
   update arrow, one frame per epoch. [`docs/scene.md`](docs/scene.md) is the
   contract for both.
-- [`pages/`](pages) is the stone, described above.
+- [`pages/`](pages) is the stone, described above, with all three verbs of
+  v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next: focus (click a token on any face and its counterparts light up on
-every face, with the epoch readout of the focused value).
+Next: read mode and view scale (a face flat and enlarged in front of the
+stone, never cropped; a view-scale control with reset; a face indicator),
+then captures and the README with the stone.
 
 ## License
 

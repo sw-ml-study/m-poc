@@ -23,6 +23,7 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matc
 const params = new URLSearchParams(location.search);
 const fixedYaw = params.has("yaw") ? Number(params.get("yaw")) : null;
 const fixedEpoch = params.has("epoch") ? Number(params.get("epoch")) : null;
+const initialFocus = params.get("focus");
 
 // ---------------------------------------------------------------- the stone
 
@@ -51,9 +52,18 @@ function makeStone(stage, stone) {
   stage.addEventListener("pointermove", (e) => {
     if (!dragging) return;
     yaw = dragging.yaw + (e.clientX - dragging.x) * 0.45;
+    if (Math.abs(e.clientX - dragging.x) > 4) dragging.moved = true;
     apply();
   });
-  const release = () => { dragging = null; stage.classList.remove("dragging"); };
+  const release = () => {
+    if (dragging && dragging.moved) stage.dataset.suppressClick = "1";
+    dragging = null;
+    stage.classList.remove("dragging");
+  };
+  // a click that ends a drag is not a focus request
+  stage.addEventListener("click", (e) => {
+    if (stage.dataset.suppressClick) { delete stage.dataset.suppressClick; e.stopPropagation(); }
+  }, true);
   stage.addEventListener("pointerup", release);
   stage.addEventListener("pointercancel", release);
 
@@ -207,6 +217,71 @@ function makeReadout(dl, trace, equation) {
   };
 }
 
+// ------------------------------------------------------------------ focus
+
+// One symbol id is focused at a time. Every element carrying data-id, on any
+// face or in the readout, is both a target and a highlight; focus knows only
+// ids. The caption names the symbol from the equation record and shows its
+// value at the current epoch when the trace has one.
+function makeFocus(caption, clearButton, trace, equation) {
+  let current = null;
+  let epoch = 0;
+
+  function describe(id) {
+    const k = equation.symbols.ids.indexOf(id);
+    const name = k < 0 ? id : equation.symbols.names[k];
+    const role = k < 0 ? "" : equation.symbols.roles[k];
+    const glyph = labelFor(equation, id);
+    let value = "";
+    const ch = trace.channels[id];
+    if (Array.isArray(ch)) value = fmt(ch[epoch]);
+    else if (ch && ch.values) {
+      const w = ch.shape[1];
+      value = ch.values.slice(epoch * w, (epoch + 1) * w).map(fmt).join("  ");
+    } else if (id in trace.constants) {
+      const c = trace.constants[id];
+      value = Array.isArray(c) ? c.map(fmt).join("  ") : fmt(c);
+    }
+    caption.replaceChildren();
+    const b = document.createElement("b");
+    b.textContent = glyph;
+    caption.append(b, ` ${name}`);
+    if (role) caption.append(` (${role})`);
+    if (value) {
+      const span = document.createElement("span");
+      span.className = "val";
+      span.textContent = value;
+      caption.append(id in trace.constants ? " · constant: " : ` · at ${trace.axis.name} ${epoch}: `, span);
+    } else {
+      caption.append(" · an operator: no value of its own");
+    }
+  }
+
+  function apply(id) {
+    current = id;
+    for (const el of document.querySelectorAll("[data-id]")) {
+      el.classList.toggle("focus", el.dataset.id === id);
+    }
+    document.body.classList.toggle("has-focus", id !== null);
+    clearButton.hidden = id === null;
+    if (id === null) caption.textContent = "Click any symbol on any face, or in the readout, to focus it everywhere. Esc clears.";
+    else describe(id);
+  }
+
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-id]");
+    if (!el) return;
+    apply(el.dataset.id === current ? null : el.dataset.id);
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") apply(null); });
+  clearButton.addEventListener("click", () => apply(null));
+
+  return {
+    set: apply,
+    epoch(t) { epoch = t; if (current !== null) describe(current); },
+  };
+}
+
 // ------------------------------------------------------------------- boot
 
 async function load(url, asText) {
@@ -228,6 +303,7 @@ async function main() {
   const stone = makeStone(document.getElementById("stage"), document.getElementById("stone"));
   const projector = makeProjector(document.getElementById("face-visual"), scene);
   const show = makeReadout(document.getElementById("readout"), trace, equation);
+  const focus = makeFocus(document.getElementById("focus-caption"), document.getElementById("unfocus"), trace, equation);
 
   const range = document.getElementById("epoch");
   const out = document.getElementById("epoch-out");
@@ -243,6 +319,7 @@ async function main() {
     out.value = String(t);
     projector.frame(t);
     show(t);
+    focus.epoch(t);
   }
   range.addEventListener("input", () => setEpoch(Number(range.value)));
 
@@ -270,6 +347,7 @@ async function main() {
   }
 
   setEpoch(fixedEpoch ?? 0);
+  if (initialFocus) focus.set(initialFocus);
   if (!reducedMotion && fixedEpoch === null) setPlaying(true);
 }
 

@@ -1,6 +1,6 @@
 number = 6
 slug = "focus"
-status = "pending"
+status = "in-progress"
 description = "click a token on any face and linked ids highlight on all faces incl. the Visual face; epoch readout of the focused value"
 role = "legacy"
 context_files = []

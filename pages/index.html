@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rosetta M</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <header>
@@ -55,6 +55,11 @@
       <input type="range" id="epoch" min="0" max="0" value="0" step="1">
     </div>
     <dl class="readout" id="readout" aria-live="polite"></dl>
+    <div class="row focus-row">
+      <span class="verb">Focus</span>
+      <p class="focus-caption" id="focus-caption" aria-live="polite">Click any symbol on any face, or in the readout, to focus it everywhere. Esc clears.</p>
+      <button type="button" id="unfocus" hidden>Clear</button>
+    </div>
   </div>
 </main>
 
@@ -65,6 +70,6 @@
     Serve this page over HTTP (<code>just serve-site</code>) if you open it locally: it fetches its data.</p>
 </footer>
 
-<script src="rosetta.js"></script>
+<script src="rosetta.js?v=6"></script>
 </body>
 </html>

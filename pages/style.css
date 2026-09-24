@@ -94,7 +94,26 @@ button[aria-pressed="true"] { background: var(--accent); color: #11111b; border-
 .readout dd { margin: 0; }
 .readout .points { grid-column: 1 / -1; }
 .readout .points dd { font-size: 0.95em; }
+.focus-row { margin-bottom: 0; margin-top: 10px; }
+.focus-caption { margin: 0; flex: 1; color: var(--dim); font-size: 0.95rem; }
+.focus-caption b { color: var(--fg); font-family: "Latin Modern Math", "Cambria Math", "STIX Two Math", serif; font-weight: 600; }
+.focus-caption .val { color: var(--warm); font-variant-numeric: tabular-nums; }
 footer { color: var(--dim); font-size: 0.9rem; padding-bottom: 32px; }
+
+/* Focus: every element carrying data-id is a target. The script marks the
+   matching ones .focus and the body .has-focus; CSS does the rest, the same
+   way on every face. */
+[data-id] { cursor: pointer; }
+.rs-token { transition: fill 0.15s, opacity 0.15s; }
+.scene line, .scene text { transition: opacity 0.15s; }
+body.has-focus .text-face .rs-token:not(.focus) { opacity: 0.4; }
+body.has-focus .scene line:not(.focus), body.has-focus .scene text:not(.focus) { opacity: 0.3; }
+body.has-focus .readout div:not(.focus) { opacity: 0.55; }
+.rs-token.focus { fill: var(--warm); }
+.scene line.focus { stroke: var(--warm) !important; stroke-width: 4.5; }
+.scene text.focus { fill: var(--warm); font-weight: 700; }
+.readout div.focus { border-bottom-color: var(--warm); }
+.readout div.focus dt, .readout div.focus dd { color: var(--warm); }
 
 @media (prefers-reduced-motion: reduce) {
   .stone { transition: none; }
