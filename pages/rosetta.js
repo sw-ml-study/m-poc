@@ -742,17 +742,20 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
   function drawLeader(g, box, r) {
     const bx = parseFloat(box.style.left), by = parseFloat(box.style.top);
     const bw = box.offsetWidth, bh = box.offsetHeight;
-    const tx = r.left + r.width / 2, ty = r.top + r.height / 2;
-    // leave the box from the edge nearest the anchor
-    const cx = Math.max(bx + 10, Math.min(bx + bw - 10, tx));
-    const above = by + bh <= ty;
-    const ay = above ? by + bh : (by >= ty ? by : by + bh / 2);
-    const ax = (above || by >= ty) ? cx : (tx < bx ? bx : bx + bw);
-    const ey = above ? r.top - 2 : (by >= ty ? r.bottom + 2 : ty);
-    const ex = (above || by >= ty) ? tx : (tx < bx ? r.right + 2 : r.left - 2);
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    // start: the point of the box's edge nearest the glyph's centre
+    const sx = Math.max(bx + 8, Math.min(bx + bw - 8, cx));
+    const sy = cy < by ? by : cy > by + bh ? by + bh : Math.max(by + 8, Math.min(by + bh - 8, cy));
+    const sxx = cy >= by && cy <= by + bh ? (cx < bx ? bx : bx + bw) : sx;
+    // end: exactly on the glyph's box, on the edge facing the box
+    let ex = cx, ey = cy;
+    if (sy <= r.top) ey = r.top - 1;
+    else if (sy >= r.bottom) ey = r.bottom + 1;
+    else { ey = Math.max(r.top, Math.min(r.bottom, sy)); ex = sxx < cx ? r.left - 1 : r.right + 1; }
+    if (sy <= r.top || sy >= r.bottom) ex = Math.max(r.left, Math.min(r.right, sxx));
     const line = g.querySelector("line"), head = g.querySelector("path");
-    line.setAttribute("x1", ax); line.setAttribute("y1", ay); line.setAttribute("x2", ex); line.setAttribute("y2", ey);
-    const dx = ex - ax, dy = ey - ay, len = Math.hypot(dx, dy) || 1;
+    line.setAttribute("x1", sxx); line.setAttribute("y1", sy); line.setAttribute("x2", ex); line.setAttribute("y2", ey);
+    const dx = ex - sxx, dy = ey - sy, len = Math.hypot(dx, dy) || 1;
     const ux = dx / len, uy = dy / len;
     head.setAttribute("d", `M${ex},${ey} L${ex - 8 * ux + 4 * uy},${ey - 8 * uy - 4 * ux} L${ex - 8 * ux - 4 * uy},${ey - 8 * uy + 4 * ux} Z`);
   }
@@ -785,13 +788,13 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     placeSingle(box, r);
     drawLeader(g, box, r);
     shown = [{ el, box, g, point }];
+    startFollowing();
   }
 
   // ---- proximity: everything within reach of the pointer, fanned out
-  const RADIUS = 90, MAX = 6;
+  const RADIUS = 90, MAX = 5, GAP = 16, TIER_GAP = 24, RESELECT = 24;
   function candidates(face) {
     const out = [];
-    const seen = new Set();
     for (const el of face.querySelectorAll("tspan[data-id], text[data-line], .labels text[data-id], .edges line[data-id], .panel-hit")) {
       // one entry per symbol id on the Visual face: a label beats an edge, the nearest edge stands for the rest
       const key = el.tagName === "line" || (el.tagName === "text" && el.dataset.id) ? `id:${el.dataset.id}` : el.tagName === "rect" ? `panel:${el.dataset.panel}` : null;
@@ -804,7 +807,13 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     const dy = Math.max(r.top - p[1], 0, p[1] - r.bottom);
     return Math.hypot(dx, dy);
   };
-  function showNear(face, point) {
+
+  // ---- selection: which elements get a callout. The result is a list of
+  // ELEMENTS; their positions are recomputed from the elements themselves
+  // every time the view changes, so a callout never drifts to another glyph.
+  let setPoint = null;     // where the near set was made
+  let setRow = null;       // the row's box at that time, for hysteresis
+  function select(face, point) {
     const found = [];
     const best = new Map();
     for (const c of candidates(face)) {
@@ -823,86 +832,131 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     }
     for (const v of best.values()) found.push(v);
     found.sort((a, b) => a.d - b.d);
-    const pick = found.slice(0, MAX);
+    return found.slice(0, MAX);
+  }
+
+  function showNear(face, point) {
+    const pick = select(face, point);
     clear();
     if (!pick.length) return;
-    mode = "near"; lastPoint = point;
+    mode = "near"; lastPoint = point; setPoint = point;
     root.hidden = false;
-    // Layout: the row under the pointer (the union of the anchors) is kept
-    // clear; boxes go in tiers above and below it, alternating sides, ordered
-    // left to right by their anchor so leaders do not cross, and a tier that
-    // runs off the viewport starts another further out.
-    const vw = window.innerWidth, vh = window.innerHeight;
-    const keep = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
-    for (const c of pick) { keep.left = Math.min(keep.left, c.r.left); keep.top = Math.min(keep.top, c.r.top); keep.right = Math.max(keep.right, c.r.right); keep.bottom = Math.max(keep.bottom, c.r.bottom); }
-    keep.top = Math.min(keep.top, point[1]) - 12; keep.bottom = Math.max(keep.bottom, point[1]) + 12;
-    const items = pick.map((c, i) => {
+    pick.forEach((c, i) => {
       const cls = i === 0 ? "near" : "far";
-      const box = makeBox(c.doc, cls);
-      const g = makeLeader(cls);
-      return { c, box, g, side: i % 2 === 0 ? -1 : 1, bw: box.offsetWidth, bh: box.offsetHeight };
+      shown.push({ el: c.el, doc: c.doc, box: makeBox(c.doc, cls), g: makeLeader(cls), side: i % 2 === 0 ? -1 : 1 });
     });
-    // if one side has no room, everything goes to the other
-    const roomAbove = keep.top - 8 - 40 > 8, roomBelow = keep.bottom + 8 + 40 < vh - 8;
-    for (const it of items) { if (it.side < 0 && !roomAbove) it.side = 1; if (it.side > 0 && !roomBelow) it.side = -1; }
+    layout();
+    startFollowing();
+  }
+
+  // ---- layout, from the current anchors of the shown elements. The row
+  // (the union of the anchors and the pointer) is kept clear; boxes go in
+  // tiers above and below it, ordered left to right by anchor so leaders
+  // do not cross; a box never covers another callout's glyph.
+  function layout() {
+    if (!shown.length) return;
+    if (mode === "single") {
+      const it = shown[0];
+      const r = anchorRect(it.el, it.point);
+      placeSingle(it.box, r);
+      drawLeader(it.g, it.box, r);
+      return;
+    }
+    const vw = window.innerWidth, vh = window.innerHeight;
+    for (const it of shown) { it.r = anchorRect(it.el, null); it.bw = it.box.offsetWidth; it.bh = it.box.offsetHeight; }
+    const keep = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+    for (const it of shown) { keep.left = Math.min(keep.left, it.r.left); keep.top = Math.min(keep.top, it.r.top); keep.right = Math.max(keep.right, it.r.right); keep.bottom = Math.max(keep.bottom, it.r.bottom); }
+    if (lastPoint) { keep.top = Math.min(keep.top, lastPoint[1]); keep.bottom = Math.max(keep.bottom, lastPoint[1]); }
+    keep.top -= 10; keep.bottom += 10;
+    setRow = { ...keep };
+    const roomAbove = keep.top - TIER_GAP - 40 > 8, roomBelow = keep.bottom + TIER_GAP + 40 < vh - 8;
+    for (const it of shown) { it.useSide = it.side; if (it.useSide < 0 && !roomAbove) it.useSide = 1; if (it.useSide > 0 && !roomBelow) it.useSide = -1; }
+    // obstacles: every callout's glyph, so no box covers one
+    const obstacles = shown.map((it) => ({ left: it.r.left - 4, top: it.r.top - 4, right: it.r.right + 4, bottom: it.r.bottom + 4 }));
+    const overlaps = (a, b) => !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
     for (const side of [-1, 1]) {
-      const group = items.filter((it) => it.side === side).sort((a, b) => (a.c.r.left + a.c.r.width / 2) - (b.c.r.left + b.c.r.width / 2));
-      let edge = side < 0 ? keep.top - 16 : keep.bottom + 16;   // the tier's near edge
+      const group = shown.filter((it) => it.useSide === side).sort((a, b) => (a.r.left + a.r.width / 2) - (b.r.left + b.r.width / 2));
+      let edge = side < 0 ? keep.top - TIER_GAP : keep.bottom + TIER_GAP;
       let cursor = -Infinity, tierDepth = 0;
       for (const it of group) {
-        let left = Math.max(8, it.c.r.left + it.c.r.width / 2 - it.bw / 2);
-        if (left < cursor + 8) left = cursor + 8;
+        let left = Math.max(8, it.r.left + it.r.width / 2 - it.bw / 2);
+        if (left < cursor + GAP) left = cursor + GAP;
         if (left + it.bw > vw - 8) {
-          // next tier, further from the row
-          edge = side < 0 ? edge - tierDepth - 8 : edge + tierDepth + 8;
+          edge = side < 0 ? edge - tierDepth - GAP : edge + tierDepth + GAP;
           cursor = -Infinity; tierDepth = 0;
-          left = Math.max(8, Math.min(vw - it.bw - 8, it.c.r.left + it.c.r.width / 2 - it.bw / 2));
+          left = Math.max(8, Math.min(vw - it.bw - 8, it.r.left + it.r.width / 2 - it.bw / 2));
         }
-        const top = side < 0 ? edge - it.bh : edge;
-        it.box.style.left = `${left}px`; it.box.style.top = `${Math.max(8, Math.min(vh - it.bh - 8, top))}px`;
+        let top = side < 0 ? edge - it.bh : edge;
+        let rect = { left, top, right: left + it.bw, bottom: top + it.bh };
+        for (let tries = 0; tries < 6 && obstacles.some((o) => overlaps(o, rect)); tries++) {
+          top = side < 0 ? top - 24 : top + 24;
+          rect = { left, top, right: left + it.bw, bottom: top + it.bh };
+        }
+        top = Math.max(8, Math.min(vh - it.bh - 8, top));
+        it.box.style.left = `${left}px`; it.box.style.top = `${top}px`;
+        obstacles.push({ left, top, right: left + it.bw, bottom: top + it.bh });
         cursor = left + it.bw; tierDepth = Math.max(tierDepth, it.bh);
-        drawLeader(it.g, it.box, it.c.r);
-        shown.push({ el: it.c.el, box: it.box, g: it.g });
+        drawLeader(it.g, it.box, it.r);
       }
     }
+  }
+
+  // ---- following: while anything is shown, re-anchor every frame the view
+  // could have moved (auto-rotate, drag, modes, read mode, scale, scroll)
+  let following = false;
+  function startFollowing() {
+    if (following) return;
+    following = true;
+    const step = () => {
+      if (!shown.length) { following = false; return; }
+      layout();
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
   }
 
   const targetOf = (e) => e.target.closest && e.target.closest("[data-id], [data-line], [data-panel], [data-doc]");
   const faceOf = (e) => e.target.closest && e.target.closest(".face");
   const inFaceBody = (e) => { const f = faceOf(e); return f && !e.target.closest("h2") ? f : null; };
+  const frozen = () => !!document.body.dataset.mode || document.querySelector(".stage.dragging");
 
   let lastFace = null;
   document.addEventListener("pointermove", (e) => {
     if (!enabled || e.pointerType === "touch") return;
+    if (frozen()) return;                       // a mode or a drag: the set stays, layout() follows
     const face = inFaceBody(e);
+    const point = [e.clientX, e.clientY];
     if (face) {
-      lastFace = face;
       clearTimeout(timer);
-      const point = [e.clientX, e.clientY];
-      timer = setTimeout(() => showNear(face, point), mode === "near" ? 40 : 180);
+      if (mode === "near" && lastFace === face && setPoint) {
+        // hysteresis: keep the set unless the pointer has really moved or left the row
+        const moved = Math.hypot(point[0] - setPoint[0], point[1] - setPoint[1]);
+        const inRow = setRow && point[1] >= setRow.top && point[1] <= setRow.bottom;
+        if (moved < RESELECT || inRow && moved < RADIUS) { lastPoint = point; return; }
+      }
+      lastFace = face;
+      timer = setTimeout(() => showNear(face, point), mode === "near" ? 60 : 180);
       return;
     }
     if (mode === "near") { clear(); mode = null; }
     const el = targetOf(e);
     if (!el) { if (mode === "single") { clear(); mode = null; } return; }
-    if (shown[0] && shown[0].el === el) { const point = [e.clientX, e.clientY]; lastPoint = point; const r = anchorRect(el, point); placeSingle(shown[0].box, r); drawLeader(shown[0].g, shown[0].box, r); return; }
+    if (shown[0] && shown[0].el === el) { shown[0].point = point; lastPoint = point; layout(); return; }
     clearTimeout(timer);
-    const point = [e.clientX, e.clientY];
     timer = setTimeout(() => showSingle(el, point), 200);
   });
   document.addEventListener("pointerleave", () => { clearTimeout(timer); clear(); mode = null; });
   document.addEventListener("pointerdown", (e) => {
     if (e.pointerType !== "touch" || !enabled) return;
     const face = inFaceBody(e);
-    if (face) showNear(face, [e.clientX, e.clientY]);
+    if (face) { lastFace = face; showNear(face, [e.clientX, e.clientY]); }
     else { const el = targetOf(e); if (el) showSingle(el, null); }
   });
   document.addEventListener("focusin", (e) => { if (enabled) { const el = targetOf(e); if (el) showSingle(el, null); } });
   document.addEventListener("focusout", () => { if (mode === "single") { clear(); mode = null; } });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") { clearTimeout(timer); clear(); mode = null; } });
-  const relayout = () => { if (mode === "near" && lastFace && lastPoint) showNear(lastFace, lastPoint); else if (mode === "single" && shown[0]) showSingle(shown[0].el, shown[0].point); };
-  document.addEventListener("scroll", relayout, true);
-  window.addEventListener("resize", relayout);
+  document.addEventListener("scroll", layout, true);
+  window.addEventListener("resize", layout);
 
   hintsButton.addEventListener("click", () => {
     enabled = !enabled;
@@ -912,7 +966,8 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
   });
 
   return {
-    refresh: relayout,
+    refresh: layout,
+    reanchor: layout,
     showFor(selector) { const el = document.querySelector(selector); if (el) showSingle(el, null); },
     // for stills: proximity mode at the centre of an element, preferring the face being read
     showNearFor(id) {
@@ -920,6 +975,7 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
       const el = scope.querySelector(`[data-id="${id}"], [data-panel="${id}"]`);
       const face = el && el.closest(".face");
       if (!face) return;
+      lastFace = face;
       const r = anchorRect(el, null);
       showNear(face, [r.left + r.width / 2, r.top + r.height / 2]);
     },
@@ -1077,8 +1133,10 @@ async function main() {
   titleFaces(equation);
   const faceCard = makeFaceCard(document.getElementById("face-card"), equation, scene);
   // orientation cues follow the view: the front face's button and minimap edge light up
+  let calloutsRef = null;
   const stone = makeStone(stage, document.getElementById("stone"), geometry, (v) => {
     faceCard(v.reading || v.front);
+    if (calloutsRef) calloutsRef.reanchor();
     for (const b of turnButtons) b.setAttribute("aria-pressed", String(b.dataset.turn === v.front));
     for (const l of minimapLines) l.classList.toggle("front", l.dataset.face === v.front);
     minimapPrism.setAttribute("transform", `rotate(${-v.yaw})`);
@@ -1090,7 +1148,7 @@ async function main() {
   const show = makeReadout(document.getElementById("readout"), trace, equation);
   const focus = makeFocus(document.getElementById("focus-caption"), document.getElementById("unfocus"), trace, equation);
   let epochNow = 0;
-  const callouts = makeCallouts({
+  const callouts = calloutsRef = makeCallouts({
     root: document.getElementById("callout"), equation, trace, scene,
     valueAt: (id) => {
       const v = valueText(trace, id, epochNow);
@@ -1167,6 +1225,14 @@ async function main() {
   // for stills: after read mode and the layout have settled
   const nearParam = params.get("near");
   if (nearParam) setTimeout(() => callouts.showNearFor(nearParam), 900);
+  // for stills: a view change after the callouts are shown, e.g. ?then=yaw:40 or ?then=scale:1.4
+  const thenParam = params.get("then");
+  if (thenParam) setTimeout(() => {
+    const [what, value] = thenParam.split(":");
+    if (what === "yaw") stone.set({ yaw: Number(value) });
+    if (what === "scale") stone.set({ scale: Number(value) });
+    if (what === "pan") stone.set({ pan: value.split(",").map(Number) });
+  }, 1300);
   if (initialHover) setTimeout(() => callouts.showFor(`[data-id="${initialHover}"], [data-panel="${initialHover}"], [data-doc="${initialHover}"], ${/^line\d$/.test(initialHover) ? `.face[data-face="math"] text[data-line="${initialHover.slice(4)}"]` : "#none"}`), 700);
   if (initialRead) stone.read(initialRead);
   if (!reducedMotion && fixedEpoch === null) setPlaying(true);

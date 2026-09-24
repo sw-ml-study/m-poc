@@ -1,6 +1,6 @@
 number = 14
 slug = "callout-anchoring"
-status = "pending"
+status = "in-progress"
 description = "Callouts must stay anchored to the glyph they explain (pages/rosetta.js, styl..."
 role = "production"
 context_files = []
