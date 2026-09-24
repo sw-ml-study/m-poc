@@ -1,6 +1,6 @@
 number = 22
 slug = "callout-projection"
-status = "pending"
+status = "in-progress"
 description = "Three fixes to the page's faces and callouts (pages/rosetta.js, style.css, in..."
 role = "production"
 context_files = []

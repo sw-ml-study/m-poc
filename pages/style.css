@@ -192,6 +192,10 @@ footer .colophon { border-top: 1px solid var(--edge); padding-top: 8px; font-siz
   opacity: 0.92;
 }
 .callout-box.near { border-color: var(--warm); opacity: 1; z-index: 1; }
+.callout-box.whole { font-size: 0.98rem; max-width: 24rem; border: 2px solid var(--fg); opacity: 1; padding: 10px 14px; }
+.callout-box.whole b { font-size: 1.15rem; }
+.callout-leader .whole line { stroke: var(--fg); stroke-width: 2; }
+.callout-leader .whole path { fill: var(--fg); }
 .callout-box.far { font-size: 0.8rem; max-width: 16rem; }
 .callout-box.far span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .callout-box b { display: block; font-family: "Latin Modern Math", "Cambria Math", "STIX Two Math", serif; font-size: 1.05rem; margin-bottom: 2px; }

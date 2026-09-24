@@ -448,18 +448,17 @@ const plainMath = (text) => text.replace(/_\{([^}]*)\}/g, "_$1").replace(/\^\{([
 
 function titleFaces(equation) {
   const lead = equation.title || equation.description.split(":")[0].trim();
-  const first = (face) => plainMath((equation.faces[face].text.split("\n")[0] || "").trim());
   const parts = {
-    math: [lead, first("math")],
-    m: [lead, first("m"), "proposed notation · placeholder glyphs"],
-    visual: [lead, "structure and data at this step"],
+    math: [lead],
+    m: [lead, "proposed notation · placeholder glyphs"],
+    visual: [lead],
   };
   for (const el of document.querySelectorAll(".face > h2")) {
     const face = el.parentElement.dataset.face;
     const small = document.createElement("small");
     small.textContent = parts[face].join(" · ");
     el.replaceChildren(el.firstChild.textContent.trim(), " ", small);
-    el.dataset.title = `${lead}: ${parts[face][1]}`;
+    el.dataset.title = lead;
   }
 }
 
@@ -654,7 +653,7 @@ const CHROME_DOCS = {
   "help": ["Help", "The full list of keys."],
 };
 
-function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
+function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, frontFace }) {
   const NS = "http://www.w3.org/2000/svg";
   const leaders = root.querySelector(".callout-leader");
   let timer = null;
@@ -699,16 +698,86 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
   }
 
   // ---- anchors. Client rects of SVG children inside a 3D-rotated face come
-  // back mirrored in Chrome, so every SVG anchor is computed from the SVG
-  // root's rect (which is right) and the element's extent in viewBox units.
+  // back mirrored in Chrome, and the face's own rect is only its projected
+  // bounding box, so a glyph's place on the screen is computed exactly: its
+  // box in viewBox units is mapped to the SVG's flat layout box (measured
+  // with the stone's and the face's transforms switched off for the
+  // duration of one synchronous layout), then pushed through the matrices
+  // CSS applies: the face's transform about its origin, the stone's about
+  // its origin, and the stage's perspective about its perspective origin.
+  const stageEl = document.getElementById("stage");
+  const stoneEl = document.getElementById("stone");
+  let flatCache = null;   // per layout pass: { faces: Map(face -> rect), svgs: Map(svg -> rect), stage: rect }
+  function measureFlat() {
+    if (flatCache) return flatCache;
+    const faces = [...stoneEl.querySelectorAll(".face")];
+    const saved = [stoneEl.style.transform, ...faces.map((f) => f.style.transform)];
+    stoneEl.style.transform = "none";
+    faces.forEach((f) => { f.style.transform = "none"; });
+    const stage = stageEl.getBoundingClientRect();
+    const out = { stage, faces: new Map(), svgs: new Map() };
+    for (const f of faces) {
+      const r = f.getBoundingClientRect();
+      out.faces.set(f, { left: r.left - stage.left, top: r.top - stage.top, width: r.width, height: r.height });
+      for (const svg of f.querySelectorAll("svg")) {
+        const q = svg.getBoundingClientRect();
+        out.svgs.set(svg, { left: q.left - stage.left, top: q.top - stage.top, width: q.width, height: q.height });
+      }
+    }
+    stoneEl.style.transform = saved[0];
+    faces.forEach((f, i) => { f.style.transform = saved[i + 1]; });
+    flatCache = out;
+    return out;
+  }
+  function originMatrix(el, flatRect) {
+    // the element's CSS transform about its transform-origin (the box centre), in stage coordinates
+    const m = new DOMMatrix(getComputedStyle(el).transform);
+    const ox = flatRect.left + flatRect.width / 2, oy = flatRect.top + flatRect.height / 2;
+    return new DOMMatrix().translate(ox, oy, 0).multiply(m).multiply(new DOMMatrix().translate(-ox, -oy, 0));
+  }
+  function projectionFor(face) {
+    const flat = measureFlat();
+    const stoneRect = { left: stoneEl.offsetLeft, top: stoneEl.offsetTop, width: stoneEl.offsetWidth, height: stoneEl.offsetHeight };
+    // the stone is centred in the stage by the grid; its flat box comes from offsets within the stage
+    const stoneM = originMatrix(stoneEl, stoneRect);
+    const faceM = originMatrix(face, flat.faces.get(face));
+    const persp = new DOMMatrix();
+    persp.m34 = -1 / 1800;
+    const px = flat.stage.width * 0.5, py = flat.stage.height * 0.45;
+    const perspM = new DOMMatrix().translate(px, py, 0).multiply(persp).multiply(new DOMMatrix().translate(-px, -py, 0));
+    return perspM.multiply(stoneM).multiply(faceM);
+  }
   function svgToClient(svg, b) {
-    const sr = svg.getBoundingClientRect();
     const vb = svg.viewBox.baseVal;
-    const k = Math.min(sr.width / vb.width, sr.height / vb.height);
-    const ox = sr.left + (sr.width - vb.width * k) / 2 - vb.x * k;
-    const oy = sr.top + (sr.height - vb.height * k) / 2 - vb.y * k;
-    const left = ox + b.x * k, top = oy + b.y * k, width = b.width * k, height = b.height * k;
-    return { left, top, width, height, right: left + width, bottom: top + height };
+    const face = svg.closest(".face");
+    let flatSvg = null, M = null, stage = null;
+    try {
+      const flat = measureFlat();
+      flatSvg = flat.svgs.get(svg);
+      stage = flat.stage;
+      if (face && flatSvg) M = projectionFor(face);
+    } catch (e) { M = null; }
+    if (!M) {
+      // fallback: the linear map through the SVG's client rect (right when the face is flat)
+      const sr = svg.getBoundingClientRect();
+      const k = Math.min(sr.width / vb.width, sr.height / vb.height);
+      const ox = sr.left + (sr.width - vb.width * k) / 2 - vb.x * k;
+      const oy = sr.top + (sr.height - vb.height * k) / 2 - vb.y * k;
+      const left = ox + b.x * k, top = oy + b.y * k, width = b.width * k, height = b.height * k;
+      return { left, top, width, height, right: left + width, bottom: top + height };
+    }
+    const k = Math.min(flatSvg.width / vb.width, flatSvg.height / vb.height);
+    const ox = flatSvg.left + (flatSvg.width - vb.width * k) / 2 - vb.x * k;
+    const oy = flatSvg.top + (flatSvg.height - vb.height * k) / 2 - vb.y * k;
+    const corners = [[b.x, b.y], [b.x + b.width, b.y], [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]];
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    for (const [cx, cy] of corners) {
+      const p = M.transformPoint(new DOMPoint(ox + cx * k, oy + cy * k, 0, 1));
+      const w = p.w || 1;
+      const sx = stage.left + p.x / w, sy = stage.top + p.y / w;
+      left = Math.min(left, sx); right = Math.max(right, sx); top = Math.min(top, sy); bottom = Math.max(bottom, sy);
+    }
+    return { left, top, width: right - left, height: bottom - top, right, bottom };
   }
   // a tspan's extent: the union of its characters' extents within its text
   function tspanBox(tspan) {
@@ -881,11 +950,15 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     if (!pick.length) return;
     mode = "near"; lastPoint = point; setPoint = point;
     root.hidden = false;
-    pick.forEach((c, i) => {
-      const cls = i === 0 ? "near" : "far";
+    // the whole-line (or panel) callout is the overall one; the nearest glyph is emphasised
+    const overall = (c) => c.el.dataset.line !== undefined || c.el.dataset.panel !== undefined;
+    let glyphRank = 0;
+    pick.forEach((c) => {
+      const whole = overall(c);
+      const cls = whole ? "whole" : glyphRank++ === 0 ? "near" : "far";
       const g = makeLeader(cls);
       if (c.doc.invisible) g.dataset.ghost = "1";
-      shown.push({ el: c.el, doc: c.doc, box: makeBox(c.doc, cls), g, side: i % 2 === 0 ? -1 : 1 });
+      shown.push({ el: c.el, doc: c.doc, box: makeBox(c.doc, cls), g, whole, side: whole ? -1 : glyphRank % 2 === 1 ? -1 : 1 });
     });
     layout();
     startFollowing();
@@ -897,6 +970,7 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
   // do not cross; a box never covers another callout's glyph.
   function layout() {
     if (!shown.length) return;
+    flatCache = null;
     if (mode === "single") {
       const it = shown[0];
       const r = anchorRect(it.el, it.point);
@@ -917,10 +991,22 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     const obstacles = shown.map((it) => ({ left: it.r.left - 4, top: it.r.top - 4, right: it.r.right + 4, bottom: it.r.bottom + 4 }));
     const overlaps = (a, b) => !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
     for (const side of [-1, 1]) {
-      const group = shown.filter((it) => it.useSide === side).sort((a, b) => (a.r.left + a.r.width / 2) - (b.r.left + b.r.width / 2));
+      // the overall callouts first and leftmost, then the glyphs left to right by anchor
+      const group = shown.filter((it) => it.useSide === side).sort((a, b) => (b.whole ? 1 : 0) - (a.whole ? 1 : 0) || (a.r.left + a.r.width / 2) - (b.r.left + b.r.width / 2));
       let edge = side < 0 ? keep.top - TIER_GAP : keep.bottom + TIER_GAP;
       let cursor = -Infinity, tierDepth = 0;
       for (const it of group) {
+        if (it.whole) {
+          // leftmost: at the row's left edge, and no glyph box may come nearer than a wide gap
+          let left = Math.max(8, Math.min(vw - it.bw - 8, keep.left - 8));
+          let top = side < 0 ? edge - it.bh : edge;
+          top = Math.max(8, Math.min(vh - it.bh - 8, top));
+          it.box.style.left = `${left}px`; it.box.style.top = `${top}px`;
+          obstacles.push({ left, top, right: left + it.bw, bottom: top + it.bh });
+          cursor = left + it.bw + GAP; tierDepth = Math.max(tierDepth, it.bh);
+          drawLeader(it.g, it.box, it.r);
+          continue;
+        }
         let left = Math.max(8, it.r.left + it.r.width / 2 - it.bw / 2);
         if (left < cursor + GAP) left = cursor + GAP;
         if (left + it.bw > vw - 8) {
@@ -1037,7 +1123,9 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton }) {
     showFor(selector) { const el = document.querySelector(selector); if (el) showSingle(el, null); },
     // for stills: proximity mode at the centre of an element, preferring the face being read
     showNearFor(id) {
-      const scope = document.querySelector(".face.reading-face") || document;
+      // the face being read, else the face toward the viewer, else anywhere
+      const front = frontFace ? document.querySelector(`.face[data-face="${frontFace()}"]`) : null;
+      const scope = document.querySelector(".face.reading-face") || front || document;
       const el = scope.querySelector(`[data-id="${id}"], [data-panel="${id}"]`);
       const face = el && el.closest(".face");
       if (!face) return;
@@ -1248,6 +1336,7 @@ async function main() {
       return v ? `at ${where}: ${v}` : "an operator, no value of its own";
     },
     hintsButton: document.getElementById("hints"),
+    frontFace: () => stone.front(),
   });
 
   const range = document.getElementById("epoch");
