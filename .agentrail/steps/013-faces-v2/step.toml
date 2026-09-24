@@ -1,4 +1,4 @@
-number = 12
+number = 13
 slug = "faces-v2"
 status = "pending"
 description = "IR and faces v2, for equations with sums and indices (lib/rosetta/ir.mlpl, li..."
