@@ -1,28 +1,36 @@
 #!/bin/sh
 # The committed pages/data/ is exactly what scripts/build-site copies from
-# the fixtures, so the published stone replays the reviewed numbers.
+# the fixtures, so the published stones replay the reviewed numbers: the
+# manifest, and every file of every stone directory.
 set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_root"
 
-for pair in \
-    fixtures/one-neuron/trace.json:pages/data/trace.json \
-    fixtures/one-neuron/scene.json:pages/data/scene.json \
-    fixtures/one-neuron/faces/math.svg:pages/data/faces/math.svg \
-    fixtures/one-neuron/faces/m.svg:pages/data/faces/m.svg \
-    fixtures/one-neuron/faces/equation.json:pages/data/faces/equation.json
-do
-    src=${pair%%:*}
-    dst=${pair#*:}
-    if ! cmp -s "$src" "$dst"; then
-        echo "stale site data: $dst differs from $src (run: ./scripts/build-site)" >&2
-        exit 1
+status=0
+same() {
+    if ! cmp -s "$1" "$2"; then
+        echo "stale site data: $2 differs from $1 (run: ./scripts/build-site)" >&2
+        status=1
     fi
+}
+
+same fixtures/stones.json pages/data/stones.json
+for dir in fixtures/*/; do
+    stone=$(basename "$dir")
+    [ -f "$dir/trace.json" ] || continue
+    for file in trace.json scene.json faces/math.svg faces/m.svg faces/equation.json; do
+        same "$dir/$file" "pages/data/$stone/$file"
+    done
+done
+for dir in pages/data/*/; do
+    stone=$(basename "$dir")
+    [ -d "fixtures/$stone" ] || { echo "site has a stone with no fixtures: $stone" >&2; status=1; }
 done
 
 for page in pages/index.html pages/style.css pages/rosetta.js; do
-    [ -f "$page" ] || { echo "missing page file: $page" >&2; exit 1; }
+    [ -f "$page" ] || { echo "missing page file: $page" >&2; status=1; }
 done
 
+[ "$status" -eq 0 ] || exit 1
 echo "PASS site data matches fixtures"

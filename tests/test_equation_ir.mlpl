@@ -157,4 +157,33 @@ def u:test_one_neuron_line_docs() {
   u:assert_eq(list_len(str_split(ir.faces.math.line_docs, "|")), 4, "four math docs")
 }
 
+@test {name: "a record carries a title and a doc per face, and names the undocumented face", tags: ["ir", "docs"]}
+def u:test_face_docs() {
+  "The page's selector, face headers and face card read these from the record.";
+  ir = unwrap(u:t_tiny());
+  u:assert_text_eq(ir.title, "tiny", "the title defaults to the name")?;
+  u:assert_text_eq(u:rs_ir_undocumented_face(ir), "math", "no face documented yet")?;
+  ir = unwrap(u:rs_ir_titled(ir, "Tiny"));
+  ir = unwrap(u:rs_ir_face_doc(ir, "math", "Paper", "as written"));
+  ir = unwrap(u:rs_ir_face_doc(ir, "m", "Notation", "as proposed"));
+  u:assert_text_eq(u:rs_ir_undocumented_face(ir), "visual", "the visual face still lacks one")?;
+  ir = unwrap(u:rs_ir_face_doc(ir, "visual", "Picture", "as drawn"));
+  u:assert_text_eq(u:rs_ir_undocumented_face(ir), "", "all documented")?;
+  u:assert_eq(is_err(u:rs_ir_face_doc(ir, "math", "", "x")), 1, "empty title")?;
+  u:assert_eq(is_err(u:rs_ir_face_doc(ir, "other", "t", "p")), 1, "unknown face")?;
+  u:assert_eq(is_err(u:rs_ir_titled(ir, "a|b")), 1, "delimiter in a title")?;
+  back = unwrap(parse_json(unwrap(u:rs_ir_json(ir))));
+  u:assert_text_eq(back.title, "Tiny", "title exported")?;
+  u:assert_text_eq(back.faces.m.purpose, "as proposed", "face purpose exported")?;
+  u:assert_text_eq(back.visual.title, "Picture", "visual doc exported")
+}
+
+@test {name: "the one-neuron record has a title and every face documented", tags: ["one-neuron", "docs"]}
+def u:test_one_neuron_face_docs() {
+  "The stone's selector entry and face card come from here.";
+  ir = unwrap(u:on_equation());
+  u:assert_text_eq(ir.title, "One neuron", "title")?;
+  u:assert_text_eq(u:rs_ir_undocumented_face(ir), "", "every face documented")
+}
+
 u:run_registered_tests()

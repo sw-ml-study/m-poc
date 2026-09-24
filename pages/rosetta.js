@@ -9,12 +9,14 @@
 // recomputed here.
 "use strict";
 
-const DATA = {
-  trace: "data/trace.json",
-  scene: "data/scene.json",
-  equation: "data/faces/equation.json",
-  faces: { math: "data/faces/math.svg", m: "data/faces/m.svg" },
-};
+// One directory per stone under data/, and a manifest listing them.
+const MANIFEST = "data/stones.json";
+const dataFor = (stone) => ({
+  trace: `data/${stone}/trace.json`,
+  scene: `data/${stone}/scene.json`,
+  equation: `data/${stone}/faces/equation.json`,
+  faces: { math: `data/${stone}/faces/math.svg`, m: `data/${stone}/faces/m.svg` },
+});
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -38,7 +40,6 @@ const initialHover = params.get("hover");
 // differs only in the angle of its outward normal and in a small in-plane
 // offset (a side's midpoint is not its tangent point unless the triangle is
 // isosceles about it). All in abstract units; --unit is pixels per unit.
-const FACE_WIDTHS = { visual: 720, m: 480, math: 480 };
 const FACE_HEIGHT = 440;
 
 function makeGeometry(widths) {
@@ -448,12 +449,12 @@ function makeReadout(dl, trace, equation) {
 // lead ("One neuron") and that face's first line, so a face is never just
 // "Math". Page words (which face this is) stay in the page.
 function titleFaces(equation) {
-  const lead = equation.description.split(":")[0].trim();
+  const lead = equation.title || equation.description.split(":")[0].trim();
   const first = (face) => (equation.faces[face].text.split("\n")[0] || "").trim();
   const parts = {
     math: [lead, first("math")],
     m: [lead, first("m"), "proposed notation · placeholder glyphs"],
-    visual: [lead, "structure and data at this epoch"],
+    visual: [lead, "structure and data at this step"],
   };
   for (const el of document.querySelectorAll(".face > h2")) {
     const face = el.parentElement.dataset.face;
@@ -466,27 +467,20 @@ function titleFaces(equation) {
 
 // -------------------------------------------------------------- face card
 
-// What each face is for. Page vocabulary: the faces are the page's idea; the
-// equation's own purpose comes from the record's description.
-const FACE_DOCS = {
-  math: {
-    title: "Math: the equation as written on paper",
-    purpose: "The four lines are the whole computation: a prediction, how wrong it is, and how the two parameters move to be less wrong next epoch. This is the face the other two are translations of.",
-    legend: [],
-  },
-  m: {
-    title: "M: the same four lines in the proposed notation",
-    purpose: "Rendered from the same record as the Math face, token for token, in an APL-style array notation that reads right to left. Nothing runs it; the glyphs are placeholders until the language's semantics are settled.",
-    legend: [],
-  },
-  visual: {
-    title: "Visual: the structure of the computation and its live data",
-    purpose: "Three panels on one plane, redrawn at every epoch from the recorded trace. Click any box, line or label to focus that symbol on every face.",
-    legend: [],
-  },
-};
+// What each face is for, from the record: every stone documents its own
+// three faces (title and purpose); the Visual legend comes from the scene.
+function faceDocsOf(equation) {
+  return {
+    math: { title: `Math: ${equation.faces.math.title || "the equation as written"}`, purpose: equation.faces.math.purpose || "", legend: [] },
+    m: { title: `M: ${equation.faces.m.title || "the proposed notation"}`, purpose: equation.faces.m.purpose || "", legend: [] },
+    visual: { title: `Visual: ${(equation.visual && equation.visual.title) || "structure and data"}`, purpose: (equation.visual && equation.visual.purpose) || "", legend: [] },
+  };
+}
+
+function trace_axis_name() { return "epochs"; }
 
 function makeFaceCard(root, equation, scene) {
+  const FACE_DOCS = faceDocsOf(equation);
   // the Visual legend comes from the scene's panels, not from page text
   if (scene.panels && scene.panels.count) {
     const c = scene.panels.colors.values;
@@ -500,7 +494,7 @@ function makeFaceCard(root, equation, scene) {
   const text = root.querySelector("#face-card-purpose");
   const legend = root.querySelector("#face-card-legend");
   const lines = root.querySelector("#face-card-lines");
-  purpose.textContent = `${equation.description} This stone shows that one computation three ways; time runs along the epochs below.`;
+  purpose.textContent = `${equation.description} This stone shows that one computation three ways; time runs along the ${trace_axis_name(equation)} below.`;
   let shown = null;
   return function show(face) {
     if (face === shown) return;
@@ -626,6 +620,7 @@ function makeFocus(caption, clearButton, trace, equation) {
 // What the page's own parts are for. Page vocabulary; the symbols' and the
 // Visual panels' docs come from the records instead.
 const CHROME_DOCS = {
+  "stone-pick": ["Stone", "Which equation the stone shows. Each stone is one record with the same three faces and the same verbs; the page reloads with the chosen one."],
   "face-math": ["The Math face", "The equation as written on paper. Every symbol is a token you can click to focus or rest on to read about."],
   "face-m": ["The M face", "The same equation in the proposed array notation, rendered from the same record. Nothing runs it; the glyphs are placeholders."],
   "face-visual": ["The Visual face", "The structure of the computation and its live data, redrawn at every epoch from the recorded trace."],
@@ -1162,10 +1157,35 @@ async function load(url, asText) {
 }
 
 async function main() {
+  const manifest = await load(MANIFEST);
+  const wanted = params.get("stone");
+  const index = Math.max(0, manifest.ids.indexOf(wanted || manifest.ids[0]));
+  const stoneId = manifest.ids[index];
+  const FACE_WIDTHS = { visual: manifest.widths.visual[index], m: manifest.widths.m[index], math: manifest.widths.math[index] };
+
+  // the dropdown: choosing a stone reloads the page with ?stone=ID, keeping the other parameters
+  const select = document.getElementById("stone-select");
+  manifest.ids.forEach((id, k) => {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = manifest.titles[k];
+    option.title = manifest.purposes[k];
+    option.selected = k === index;
+    select.appendChild(option);
+  });
+  select.addEventListener("change", () => {
+    const next = new URLSearchParams(location.search);
+    next.set("stone", select.value);
+    for (const p of ["focus", "hover", "near", "read", "then"]) next.delete(p);
+    location.search = next.toString();
+  });
+
+  const DATA = dataFor(stoneId);
   const [trace, scene, equation, mathSvg, mSvg] = await Promise.all([
     load(DATA.trace), load(DATA.scene), load(DATA.equation),
     load(DATA.faces.math, true), load(DATA.faces.m, true),
   ]);
+  document.title = `Rosetta M · ${manifest.titles[index]}`;
 
   // text faces: inline the renderer's SVG so every token tspan is a DOM node
   document.getElementById("face-math").innerHTML = mathSvg;

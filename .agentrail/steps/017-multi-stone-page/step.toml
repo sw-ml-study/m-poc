@@ -1,6 +1,6 @@
 number = 17
 slug = "multi-stone-page"
-status = "pending"
+status = "in-progress"
 description = "Several stones on one page (fixtures/, scripts/, pages/). Layout: fixtures/<s..."
 role = "production"
 context_files = []

@@ -1,0 +1,2 @@
+{"ids":["one-neuron"],"purposes":["One neuron: a linear fit ŷ = wx + b trained by gradient descent on the squared error."],"schema":"sw-ml-study.rosetta.stones","titles":["One neuron"],"version":1,"widths":{"m":[480],"math":[480],"visual":[720]}}
+wrote fixtures/stones.json

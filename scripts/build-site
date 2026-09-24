@@ -1,16 +1,25 @@
 #!/bin/sh
 # Assemble the static site: pages/ holds the hand-written page and a copy of
-# the reviewed fixtures under pages/data/. Nothing is generated here; the
-# fixtures are what MLPL emitted and the page replays them. Idempotent.
+# the reviewed fixtures under pages/data/: the stones manifest and one
+# directory per stone. Nothing is generated here; the fixtures are what MLPL
+# emitted and the page replays them. Idempotent.
 set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_root"
 
 rm -rf pages/data
-mkdir -p pages/data/faces
-cp fixtures/one-neuron/trace.json fixtures/one-neuron/scene.json pages/data/
-cp fixtures/one-neuron/faces/math.svg fixtures/one-neuron/faces/m.svg fixtures/one-neuron/faces/equation.json pages/data/faces/
+mkdir -p pages/data
+cp fixtures/stones.json pages/data/stones.json
+stones=""
+for dir in fixtures/*/; do
+    stone=$(basename "$dir")
+    [ -f "$dir/trace.json" ] || continue
+    mkdir -p "pages/data/$stone/faces"
+    cp "$dir/trace.json" "$dir/scene.json" "pages/data/$stone/"
+    cp "$dir/faces/math.svg" "$dir/faces/m.svg" "$dir/faces/equation.json" "pages/data/$stone/faces/"
+    stones="$stones $stone"
+done
 
 # build facts for the footer: host, short SHA (-dirty if the tree differs), UTC time
 sha=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
@@ -20,4 +29,4 @@ fi
 printf '{"host":"%s","sha":"%s","timestamp":"%s"}\n' \
     "$(hostname 2>/dev/null || echo unknown)" "$sha" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > pages/data/build-info.json
 
-echo "built pages/ (data from fixtures/one-neuron; $sha)"
+echo "built pages/ (stones:$stones; $sha)"

@@ -64,6 +64,14 @@ just reg-rebase NAME   # accept a changed output as the new baseline (a reviewed
 just serve-site   # the committed pages/ at http://127.0.0.1:8765/
 ```
 
+## The stones
+
+The page is a tour: a dropdown in the header chooses the stone, and
+`?stone=ID` links to one. Every stone is one equation record with the
+same three faces, verbs and fixtures; [`docs/stones.md`](docs/stones.md)
+is the layout and the manifest. There is one stone so far, the neuron;
+the dot product, matmul, softmax and the CNN triple sum follow.
+
 ## The page
 
 [`pages/`](pages) is static: `index.html`, `style.css`, `rosetta.js` and,
@@ -132,14 +140,15 @@ framework. The script has three parts, none of which knows what a neuron is:
   at the current epoch. Esc or Clear ends it. Focus knows only ids.
 
 `just serve-site` serves it at <http://127.0.0.1:8765/>; the page fetches
-its data, so it needs HTTP rather than `file://`. The footer carries the
+its data (the manifest, then the chosen stone's files under
+`data/<stone>/`), so it needs HTTP rather than `file://`. The footer carries the
 copyright, the license, the repository link and the build facts that
 `scripts/build-site` writes to `pages/data/build-info.json`: host, short
 SHA (`-dirty` when the tree had uncommitted changes), UTC time.
 
 ## Status
 
-Steps 1–15 of [the plan](docs/plan.md) are done: the gate; the equation
+Steps 1–17 of [the plan](docs/plan.md) are done: the gate; the equation
 IR with the one-neuron instance; the training trace; the three faces as
 fixtures; the page; focus; read mode with view scale, orientation cues and
 the face card; the scalene prism with faces sized to their content; the
@@ -149,8 +158,10 @@ proximity callouts; the plan update that turns the page into a tour of
 five stones (one neuron, dot product, matmul, softmax, CNN) chosen from a
 dropdown; callouts that stay anchored to their glyphs; and faces v2, whose
 tokens may be subscripts, superscripts, big operators and their limits, so
-the tour's sums render and stay focusable. Every face header names the
-equation it shows, from the record.
+the tour's sums render and stay focusable; invisible tokens that announce
+themselves; and the multi-stone page: a manifest, per-stone fixtures, a
+dropdown, and every face's title and purpose in the record. Every face
+header names the equation it shows, from the record.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -175,8 +186,7 @@ equation it shows, from the record.
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next: the multi-stone page with the dropdown, and the dot-product, matmul,
-softmax and CNN stones, then captures.
+Next: the dot-product, matmul, softmax and CNN stones, then captures.
 
 ## License
 

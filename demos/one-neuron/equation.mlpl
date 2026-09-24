@@ -4,6 +4,10 @@ include "../../lib/rosetta/ir.mlpl";
 def u:on_equation() {
   "Build the one-neuron equation record: prediction, squared loss, and the gradient-descent updates of the weight and the bias, every symbol with a one-sentence doc for the page.";
   ir = u:rs_ir_new("one-neuron", "One neuron: a linear fit ŷ = wx + b trained by gradient descent on the squared error.");
+  ir = u:rs_ir_titled(ir, "One neuron")?;
+  ir = u:rs_ir_face_doc(ir, "math", "The equation as written on paper", "The four lines are the whole computation: a prediction, how wrong it is, and how the two parameters move to be less wrong next epoch. This is the face the other two are translations of.")?;
+  ir = u:rs_ir_face_doc(ir, "m", "The same four lines in the proposed notation", "Rendered from the same record as the Math face, token for token, in an APL-style array notation that reads right to left. Nothing runs it; the glyphs are placeholders until the language's semantics are settled.")?;
+  ir = u:rs_ir_face_doc(ir, "visual", "The structure of the computation and its live data", "Three panels on one plane, redrawn at every epoch from the recorded trace. Click any box, line or label to focus that symbol on every face.")?;
   ir = u:rs_ir_symbol_doc(ir, "yhat", "var", "prediction", "The prediction: what the neuron thinks y is for this x. The hat means an estimate of y.")?;
   ir = u:rs_ir_symbol_doc(ir, "w", "param", "weight", "The weight, the slope of the fitted line; trained, so it changes every epoch.")?;
   ir = u:rs_ir_symbol_doc(ir, "x", "var", "input", "The input: one of the four given x values.")?;

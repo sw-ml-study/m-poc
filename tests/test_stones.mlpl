@@ -1,0 +1,27 @@
+# The stones manifest: one entry per stone in tour order, ids that are record names, widths that make a triangle, and a committed fixture that is what the program emits.
+include "demos/stones.mlpl";
+
+@test {name: "the manifest lists the stones with titles, purposes and face widths", tags: ["stones", "manifest"]}
+def u:test_manifest() {
+  "The page's dropdown is built from this.";
+  m = unwrap(u:stones_manifest());
+  u:assert_text_eq(m.schema, "sw-ml-study.rosetta.stones", "schema")?;
+  u:assert_eq(list_len(m.ids), 1, "one stone so far")?;
+  u:assert_text_eq(unwrap(list_get(m.ids, 0)), "one-neuron", "the first stone")?;
+  u:assert_text_eq(unwrap(list_get(m.titles, 0)), "One neuron", "its title")?;
+  u:assert_gt(str_len(unwrap(list_get(m.purposes, 0))), 20, "a purpose sentence")?;
+  a = take(m.widths.visual, 0, 0);
+  b = take(m.widths.math, 0, 0);
+  c = take(m.widths.m, 0, 0);
+  u:assert_eq(lt(a, b + c) * lt(b, a + c) * lt(c, a + b), 1, "the widths make a triangle")
+}
+
+@test {name: "the committed manifest is what the program emits", tags: ["stones", "fixture"]}
+def u:test_manifest_fresh() {
+  "The page loads fixtures/stones.json; it must be current.";
+  expected = unwrap(u:rs_json(unwrap(u:stones_manifest())));
+  on_disk = read_text("fixtures/stones.json")?;
+  u:assert_eq(str_eq(on_disk, expected), 1, "manifest is fresh")
+}
+
+u:run_registered_tests()

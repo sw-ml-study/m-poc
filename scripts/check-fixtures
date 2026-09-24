@@ -30,9 +30,15 @@ check() {
     done
 }
 
-check demos/one-neuron/train.mlpl tmp/fixtures/trace.json fixtures/one-neuron/trace.json
-check demos/one-neuron/faces.mlpl tmp/fixtures/faces fixtures/one-neuron/faces/math.svg fixtures/one-neuron/faces/m.svg fixtures/one-neuron/faces/equation.json
-check demos/one-neuron/scene.mlpl tmp/fixtures/scene.json fixtures/one-neuron/scene.json
+check demos/stones.mlpl tmp/fixtures/stones.json fixtures/stones.json
+for dir in fixtures/*/; do
+    stone=$(basename "$dir")
+    [ -f "$dir/trace.json" ] || continue
+    mkdir -p "tmp/fixtures/$stone/faces"
+    check "demos/$stone/train.mlpl" "tmp/fixtures/$stone/trace.json" "$dir/trace.json"
+    check "demos/$stone/faces.mlpl" "tmp/fixtures/$stone/faces" "$dir/faces/math.svg" "$dir/faces/m.svg" "$dir/faces/equation.json"
+    check "demos/$stone/scene.mlpl" "tmp/fixtures/$stone/scene.json" "$dir/scene.json"
+done
 
 [ "$status" -eq 0 ] || exit 1
 echo "PASS fixtures are fresh"

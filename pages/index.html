@@ -4,11 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rosetta M</title>
-<link rel="stylesheet" href="style.css?v=16">
+<link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
 <header>
-  <h1>Rosetta M</h1>
+  <div class="masthead">
+    <h1>Rosetta M</h1>
+    <label class="stone-pick" data-doc="stone-pick">Stone
+      <select id="stone-select" aria-label="Choose the equation shown on the stone"></select>
+    </label>
+  </div>
   <p class="lede">One computation, three faces, and time. A single neuron
     <span class="eq">ŷ = wx + b</span> fitted to four points by gradient descent:
     its <b>Math</b>, the <b>proposed M code</b>, and its <b>Visual</b>
@@ -133,6 +138,6 @@
   <svg class="callout-leader" aria-hidden="true"></svg>
 </div>
 
-<script src="rosetta.js?v=16"></script>
+<script src="rosetta.js?v=17"></script>
 </body>
 </html>

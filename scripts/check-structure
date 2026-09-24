@@ -41,6 +41,12 @@ for path in \
     tests/reg/rosetta_one_neuron_faces.rgt \
     tests/reg/rosetta_one_neuron_scene.rgt \
     docs/scene.md \
+    docs/stones.md \
+    demos/stones.mlpl \
+    fixtures/stones.json \
+    pages/data/stones.json \
+    tests/test_stones.mlpl \
+    tests/reg/rosetta_stones.rgt \
     tests/sums_record.mlpl \
     tests/render_sums.mlpl \
     tests/reg/rosetta_sums_faces.rgt \
@@ -49,11 +55,11 @@ for path in \
     scripts/check-site \
     pages/style.css \
     pages/rosetta.js \
-    pages/data/trace.json \
-    pages/data/scene.json \
-    pages/data/faces/math.svg \
-    pages/data/faces/m.svg \
-    pages/data/faces/equation.json \
+    pages/data/one-neuron/trace.json \
+    pages/data/one-neuron/scene.json \
+    pages/data/one-neuron/faces/math.svg \
+    pages/data/one-neuron/faces/m.svg \
+    pages/data/one-neuron/faces/equation.json \
     pages/index.html \
     .github/workflows/pages.yml
 do
