@@ -1,0 +1,132 @@
+# The Visual face of Adam, as a line scene built from two traces: its own and the first stone's plain gradient descent, which starts at the same point on the same loss. Top, the dataflow of one step: L into ∇, into ↻ with the state pair (M V) looping through it, into the corrections, into the step, into Θ. Bottom left, the four moments as bars, a pair each (w, then b). Right, the parameter plane: Adam's path (w, b) so far with its current point, next to the plain path replayed from the first stone's trace. Every edge and label carries a symbol id of the equation record. Coordinates are scene units, roughly 18 wide by 9.5 high.
+include "../../lib/rosetta/scene.mlpl";
+include "equation.mlpl";
+
+def u:ad_palette() {
+  "The RGBA colours of the face.";
+  {structure: [0.78, 0.8, 0.88, 1], state: [0.95, 0.85, 0.4, 1], grad: [0.95, 0.5, 0.45, 1], path: [1, 0.6, 0.25, 1], plain: [0.55, 0.58, 0.68, 1], param: [0.4, 0.85, 0.95, 1], flow: [0.55, 0.58, 0.68, 1]}
+}
+
+def u:ad_dataflow(scene) {
+  "The structure panel: one step, with the state pair looping through ↻.";
+  c = u:ad_palette();
+  scene = u:rs_scene_box(scene, 0.9, 8.4, 0.9, 0.6, "L", "L", c.structure)?;
+  scene = u:rs_scene_box(scene, 2.6, 8.4, 0.9, 0.6, "grad", "∇", c.grad)?;
+  scene = u:rs_scene_box(scene, 4.5, 8.4, 0.9, 0.6, "step", "↻", c.structure)?;
+  scene = u:rs_scene_box(scene, 3.9, 6.8, 0.8, 0.6, "m", "M", c.state)?;
+  scene = u:rs_scene_box(scene, 5.1, 6.8, 0.8, 0.6, "v", "V", c.state)?;
+  scene = u:rs_scene_box(scene, 6.75, 8.4, 1.75, 0.6, "pow", "÷ 1−β*T", c.structure)?;
+  scene = u:rs_scene_box(scene, 8.9, 8.4, 1.1, 0.6, "assign", "− η×", c.structure)?;
+  scene = u:rs_scene_box(scene, 10.6, 8.4, 0.9, 0.6, "theta", "Θ", c.param)?;
+  scene = u:rs_scene_segment(scene, 1.35, 8.4, 2.15, 8.4, "L", c.flow)?;
+  scene = u:rs_scene_segment(scene, 3.05, 8.4, 4.05, 8.4, "g", c.flow)?;
+  scene = u:rs_scene_segment(scene, 4.2, 8.1, 3.9, 7.1, "m", c.flow)?;
+  scene = u:rs_scene_segment(scene, 4.8, 8.1, 5.1, 7.1, "v", c.flow)?;
+  scene = u:rs_scene_segment(scene, 4.95, 8.4, 5.85, 8.4, "step", c.flow)?;
+  scene = u:rs_scene_segment(scene, 7.65, 8.4, 8.35, 8.4, "mhat", c.flow)?;
+  scene = u:rs_scene_segment(scene, 9.45, 8.4, 10.15, 8.4, "assign", c.flow)?;
+  u:rs_scene_segment(scene, 10.6, 8.1, 10.6, 7.3, "theta", c.flow)
+}
+
+def u:ad_pair_bars(scene, pair, x0, base_y, height, top, id, color) {
+  "Two vertical bars from a baseline, the w part at x0 and the b part beside it, scaled so that top maps to height; negative values go down.";
+  scene = u:rs_scene_rect(scene, x0 - 0.3, base_y, x0 + 0.3, base_y + take(pair, 0, 0) / top * height, id, color)?;
+  u:rs_scene_rect(scene, x0 + 0.5, base_y, x0 + 1.1, base_y + take(pair, 0, 1) / top * height, id, color)
+}
+
+def u:ad_moments(scene, trace, t) {
+  "The moments panel at epoch t: m, v, m̂ and v̂ as pairs of bars, each quantity scaled to its largest value over the whole trace.";
+  c = u:ad_palette();
+  base = 2.8;
+  scene = u:rs_scene_segment(scene, 0.4, base, 9.2, base, "one", c.structure)?;
+  names = ["m", "v", "mhat", "vhat"];
+  k = 0;
+  while lt(k, 4) {
+    id = unwrap(list_get(names, k));
+    ch = record_get(trace.channels, id)?;
+    all = reshape(ch.values, ch.shape);
+    pair = take(all, 0, t);
+    top = reduce(:max, abs(ch.values)) + 0.0000001;
+    x0 = 1.0 + k * 2.2;
+    scene = u:ad_pair_bars(scene, pair, x0, base, 2.2, top, id, c.state)?;
+    scene = u:rs_scene_label(scene, [x0 + 0.4, 5.6, 0], id, unwrap(list_get(["m", "v", "m̂", "v̂"], k)))?;
+    scene = u:rs_scene_label(scene, [x0, base - 0.4, 0], "w", "w")?;
+    scene = u:rs_scene_label(scene, [x0 + 0.8, base - 0.4, 0], "b", "b")?;
+    k = k + 1
+  };
+  ok(scene)
+}
+
+def u:ad_plane_x(w, wmax) {
+  "Parameter w to scene x in the parameter plane.";
+  11.6 + w / wmax * 5.4
+}
+
+def u:ad_plane_y(b, bmax) {
+  "Parameter b to scene y in the parameter plane.";
+  1.0 + b / bmax * 7.0
+}
+
+def u:ad_path(scene, ws, bs, t, wmax, bmax, id, color) {
+  "A path through the plane up to step t, later points folded onto the current one so every frame has the same vertices, with a diamond at the current point.";
+  n = len(ws);
+  seen = range(n) <= t;
+  wt = take(ws, 0, t);
+  bt = take(bs, 0, t);
+  scene = u:rs_scene_polyline(scene, u:rs_points2d(u:ad_plane_x(ws * seen + wt * (1 - seen), wmax), u:ad_plane_y(bs * seen + bt * (1 - seen), bmax)), 0, id, color)?;
+  u:rs_scene_diamond(scene, u:ad_plane_x(wt, wmax), u:ad_plane_y(bt, bmax), 0.14, id, color)
+}
+
+def u:ad_plane(scene, trace, plain, t) {
+  "The parameter plane at epoch t: axes, Adam's path and the plain path from the first stone's trace, both from the same start.";
+  c = u:ad_palette();
+  wmax = reduce(:max, concat(trace.channels.w, plain.channels.w)) * 1.1 + 0.0001;
+  bmax = reduce(:max, concat(trace.channels.b, plain.channels.b)) * 1.1 + 0.0001;
+  scene = u:rs_scene_segment(scene, u:ad_plane_x(0, wmax), u:ad_plane_y(0, bmax), u:ad_plane_x(wmax, wmax), u:ad_plane_y(0, bmax), "w", c.param)?;
+  scene = u:rs_scene_segment(scene, u:ad_plane_x(0, wmax), u:ad_plane_y(0, bmax), u:ad_plane_x(0, wmax), u:ad_plane_y(bmax, bmax), "b", c.param)?;
+  scene = u:rs_scene_label(scene, [u:ad_plane_x(wmax, wmax) + 0.4, u:ad_plane_y(0, bmax), 0], "w", "w")?;
+  scene = u:rs_scene_label(scene, [u:ad_plane_x(0, wmax), u:ad_plane_y(bmax, bmax) + 0.4, 0], "b", "b")?;
+  tp = if lt(t, plain.axis.count) {
+    t
+  } else {
+    plain.axis.count - 1
+  };
+  scene = u:ad_path(scene, plain.channels.w, plain.channels.b, tp, wmax, bmax, "g", c.plain)?;
+  scene = u:ad_path(scene, trace.channels.w, trace.channels.b, t, wmax, bmax, "theta", c.path)?;
+  scene = u:rs_scene_label(scene, [16.4, 8.9, 0], "theta", "Adam")?;
+  u:rs_scene_label(scene, [16.4, 8.3, 0], "g", "plain descent")
+}
+
+def u:ad_panels(scene) {
+  "Name the three panels for the page's legend and callouts.";
+  c = u:ad_palette();
+  scene = u:rs_scene_panel(scene, "dataflow", "Dataflow", "One Adam step: the loss gives its gradient, ↻ folds it into the state pair (M V), which loops back for the next step; the corrected moments become the step that moves Θ. Click a box to focus that symbol everywhere.", [0.2, 6.3, 11.4, 9.3], c.structure)?;
+  scene = u:rs_scene_panel(scene, "moments", "Moments", "The state as bars, a pair per quantity: w's part then b's. m and v are the running means of the gradient and its square; m̂ and v̂ are the same after the bias correction, which matters most in the first steps. Each quantity is scaled to its largest value over the run; a bar pointing down is negative.", [0.2, 0.5, 9.6, 6.0], c.state)?;
+  u:rs_scene_panel(scene, "parameters", "Two paths", "Parameter space, (w, b), from the same start on the same loss: Adam in orange, plain gradient descent from the first stone in grey, replayed from its own trace. Adam moves each parameter by about η a step whatever its gradient, so b keeps pace with w; plain descent follows the gradient's size, so it moves w fast and b slowly.", [11.0, 0.5, 17.8, 9.5], c.path)
+}
+
+def u:ad_visual(trace, plain, t) {
+  "The whole Visual face at epoch t of the parsed trace records.";
+  scene = u:rs_scene_new(trace.axis.name);
+  scene = u:ad_dataflow(scene)?;
+  scene = u:ad_moments(scene, trace, t)?;
+  scene = u:ad_plane(scene, trace, plain, t)?;
+  u:ad_panels(scene)
+}
+
+def u:ad_scene(trace, plain) {
+  "The Visual face with one frame per epoch.";
+  scene = u:ad_visual(trace, plain, 0)?;
+  t = 0;
+  while lt(t, trace.axis.count) {
+    frame = u:ad_visual(trace, plain, t)?;
+    scene = u:rs_scene_frame(scene, reshape(frame.positions, [frame.vertex_count, 3]))?;
+    t = t + 1
+  };
+  ok(scene)
+}
+
+def u:ad_read_trace(path) {
+  "A trace record from its fixture.";
+  parse_json(read_text(path)?)
+}

@@ -141,9 +141,21 @@ is the layout and the manifest. The tour so far:
    two, computed with MLPL's `matmul`, `transpose` and `softmax`; time is
    the query position, and the Visual face lights one query row of Q,
    shows its score row and weight row as bars, and fills in its row of A.
+10. **Adam**, the research's case for tuples (§21): the Adam update on the
+    one-neuron loss. The Math face writes the six lines one scalar at a
+    time and repeats the step for b; the M face names the parameter pair
+    `Θ ← (W B)`, steps the state pair with the placeholder glyph,
+    `(M V) ← ↻ (M V) G`, and moves both parameters in one line,
+    `Θ ← Θ − η×M̂ ÷ √V̂ + ε`. Every gradient comes from `grad`, the rows
+    obey the update rules and land where sw-MLPL's `adam` builtin lands;
+    time is the epoch, and the Visual face shows the four moments as bars
+    and Adam's path through (w, b) next to plain gradient descent's from
+    the first stone, replayed from its own trace: the same start, loss and
+    rate, so Adam's fixed-size steps and descent's gradient-sized ones
+    can be compared.
 
 The dropdown lists the stones in this order, simplest notation to most
-complex, the headline first and the variants last; Adam is next.
+complex, the headline first and the variants last.
 
 ## The page
 
@@ -226,7 +238,7 @@ SHA (`-dirty` when the tree had uncommitted changes), UTC time.
 
 ## Status
 
-Steps 1–32 of [the plan](docs/plan.md) are done: the gate; the equation
+Steps 1–33 of [the plan](docs/plan.md) are done: the gate; the equation
 IR with the one-neuron instance; the training trace; the three faces as
 fixtures; the page; focus; read mode with view scale, orientation cues and
 the face card; the scalene prism with faces sized to their content; the
@@ -242,8 +254,8 @@ dropdown, and every face's title and purpose in the record; the five
 stones of the tour; exact callout anchors on the turned stone; and the
 captures; callouts in expression order; and, in v1.1 so far, the sigmoid
 neuron, the two applicative stones, feature normalization and image
-normalization, and attention composed from the matmul and softmax stones;
-and the hover fix: the yaw turns the faces rather than the
+normalization, attention composed from the matmul and softmax stones, and
+Adam with its state tuple; and the hover fix: the yaw turns the faces rather than the
 stone's box, which Chrome's 3D hit testing let shadow a face turned to
 the front ([`tests/hover-sweep.mjs`](tests/hover-sweep.mjs) checks every
 view of a stone by keys and drags); and the callout fan spaced out: one
@@ -273,8 +285,8 @@ side of the row rather than pile up. Every face header names the stone it shows,
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next in v1.1: Adam, the Trace face (the stone as a box), and the Zoom verb
-(one level inside).
+Next in v1.1: the Trace face (the stone as a box) and the Zoom verb (one
+level inside).
 
 ## License
 

@@ -1,0 +1,59 @@
+# The Adam stone's computation: the one-neuron loss and parameters of demos/one-neuron/neuron.mlpl (the same four points, the same start at zero), optimized by Adam written out as the update rules, with every gradient from grad. u:ad_train records one row per epoch: the parameters, the loss and the gradient pair there, and the moments, corrected moments and step count that produced them; u:ad_trace turns the rows into the trace record the page replays, keyed by the equation's symbol ids. The tests check the rows against the rules and the final parameters against sw-MLPL's adam builtin.
+include "../one-neuron/neuron.mlpl";
+
+def u:ad_hat(moment, beta, t) {
+  "The bias-corrected moment: the moment over 1 − βᵗ, or zero before the first step.";
+  if gt(t, 0) {
+    moment / (1 - pow(beta, t))
+  } else {
+    moment * 0
+  }
+}
+
+def u:ad_train(eta, beta1, beta2, eps, epochs) {
+  "Optimize from zero for a number of epochs and return the unrounded rows: for row t, the parameters after t Adam steps, the loss and the gradient pair (w, b) there, the moments m and v after t steps (zero at t = 0), their corrected values (zero at t = 0) and the step count t. Row t + 1's parameters are row t's moved by the step computed from row t's gradient.";
+  u:on_reset();
+  mw = 0;
+  mb = 0;
+  vw = 0;
+  vb = 0;
+  w = fill([0], 0);
+  b = fill([0], 0);
+  loss = fill([0], 0);
+  g = fill([0], 0);
+  m = fill([0], 0);
+  v = fill([0], 0);
+  mhat = fill([0], 0);
+  vhat = fill([0], 0);
+  steps = fill([0], 0);
+  t = 0;
+  while lt(t, epochs + 1) {
+    gw = grad(u:on_loss(), on_w);
+    gb = grad(u:on_loss(), on_b);
+    w = concat(w, on_w);
+    b = concat(b, on_b);
+    loss = concat(loss, u:on_loss());
+    g = concat(concat(g, gw), gb);
+    m = concat(concat(m, mw), mb);
+    v = concat(concat(v, vw), vb);
+    mhat = concat(concat(mhat, u:ad_hat(mw, beta1, t)), u:ad_hat(mb, beta1, t));
+    vhat = concat(concat(vhat, u:ad_hat(vw, beta2, t)), u:ad_hat(vb, beta2, t));
+    steps = concat(steps, t);
+    if lt(t, epochs) {
+      mw = beta1 * mw + (1 - beta1) * gw;
+      mb = beta1 * mb + (1 - beta1) * gb;
+      vw = beta2 * vw + (1 - beta2) * gw * gw;
+      vb = beta2 * vb + (1 - beta2) * gb * gb;
+      global_set("on_w", on_w - eta * u:ad_hat(mw, beta1, t + 1) / (sqrt(u:ad_hat(vw, beta2, t + 1)) + eps));
+      global_set("on_b", on_b - eta * u:ad_hat(mb, beta1, t + 1) / (sqrt(u:ad_hat(vb, beta2, t + 1)) + eps))
+    };
+    t = t + 1
+  };
+  n = epochs + 1;
+  {eta: eta, beta1: beta1, beta2: beta2, eps: eps, epochs: epochs, w: w, b: b, L: loss, g: reshape(g, [n, 2]), m: reshape(m, [n, 2]), v: reshape(v, [n, 2]), mhat: reshape(mhat, [n, 2]), vhat: reshape(vhat, [n, 2]), t: steps}
+}
+
+def u:ad_trace(rows, places) {
+  "The trace record the page replays, rounded to places decimals: the axis is the epoch, the constants are the hyperparameters, the channels are the step count, the parameters, the loss, and the gradient and moment pairs (w first, then b).";
+  {schema: "sw-ml-study.rosetta.trace", version: 1, equation: "adam", axis: {name: "epoch", count: rows.epochs + 1}, constants: {eta: rows.eta, beta1: rows.beta1, beta2: rows.beta2, eps: rows.eps, one: 1}, channels: {t: rows.t, w: u:rs_round(rows.w, places), b: u:rs_round(rows.b, places), L: u:rs_round(rows.L, places), g: u:rs_array_json(u:rs_round(rows.g, places)), m: u:rs_array_json(u:rs_round(rows.m, places)), v: u:rs_array_json(u:rs_round(rows.v, places)), mhat: u:rs_array_json(u:rs_round(rows.mhat, places)), vhat: u:rs_array_json(u:rs_round(rows.vhat, places))}}
+}

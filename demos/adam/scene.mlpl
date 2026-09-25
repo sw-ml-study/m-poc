@@ -1,0 +1,15 @@
+# Build the Visual face of Adam from the committed traces, its own and the first stone's plain gradient descent for the comparison path, and write it: fixtures/adam/scene.json by default, or the path given as the script's argument. The JSON written is also printed; the reg-rs baseline rosetta_adam_scene pins it.
+include "visual.mlpl";
+
+ad_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/adam/scene.json"
+};
+
+trace = unwrap(u:ad_read_trace("fixtures/adam/trace.json"));
+plain = unwrap(u:ad_read_trace("fixtures/one-neuron/trace.json"));
+scene = unwrap(u:ad_scene(trace, plain));
+text = unwrap(u:rs_write_json(ad_path, unwrap(u:rs_scene_export(scene, 4))));
+print(text);
+str_concat("wrote ", ad_path)

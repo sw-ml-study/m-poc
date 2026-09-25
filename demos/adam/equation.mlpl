@@ -1,0 +1,67 @@
+# The Adam stone's equation (docs/research.txt §21: Adam shows why tuples matter): the Adam update on the one-neuron loss. Math face, six lines the way the paper writes them, one scalar parameter at a time: g = ∂L/∂w, m ← β₁m + (1−β₁)g, v ← β₂v + (1−β₂)g², m̂ = m/(1−β₁ᵗ), v̂ = v/(1−β₂ᵗ), w ← w − η m̂/(√v̂ + ε), and the same for b. M face, six lines over tuples: Θ ← (W B) names the parameter pair, G ← ∇Θ L, (M V) ← ↻ (M V) G steps the state pair with the research's placeholder step glyph, M̂ and V̂ are the corrected moments, and Θ ← Θ − η×M̂ ÷ √V̂ + ε moves both parameters at once. Multiplication is by juxtaposition on the Math face, carried by U+2062 INVISIBLE TIMES. Placeholder glyphs (see docs/plan.md).
+include "../../lib/rosetta/ir.mlpl";
+
+def u:ad_equation() {
+  "Build the Adam record: six lines per face, every symbol, line and face documented for the page.";
+  ir = u:rs_ir_new("adam", "Adam: gradient descent with a memory, a running mean of the gradient and of its square, so every step has about the same size whatever the gradient's scale.");
+  ir = u:rs_ir_titled(ir, "Adam")?;
+  ir = u:rs_ir_face_doc(ir, "math", "The update as the paper writes it, one scalar at a time", "Six lines: the gradient; the first moment, a running mean of the gradient; the second, a running mean of its square; the two corrected for starting at zero; and the step, the corrected mean divided by the root of the corrected square. The last line repeats the step for b: on paper every parameter gets its own copy of the rules and its own m and v.")?;
+  ir = u:rs_ir_face_doc(ir, "m", "The same update over tuples: the state travels as one thing", "Θ names the parameter pair (W B); G is its gradient pair; the placeholder ↻ steps the state pair (M V) on G in one line, where the paper needs two; the corrected moments and the step are written once and hold for both parameters. This is the research's case for tuples: Adam's state is parameters, two moments and a step count, and the notation should carry it as one value. Placeholder glyphs.")?;
+  ir = u:rs_ir_face_doc(ir, "visual", "The state as bars, and two paths through parameter space", "The dataflow of one step with the state looping through ↻; the four moments as bars, a pair each for w and b; and the parameter plane with two paths from the same start on the same loss: Adam's, and plain gradient descent's from the first stone, replayed from its own trace.")?;
+  ir = u:rs_ir_symbol_doc(ir, "g", "var", "gradient", "The gradient of the one-neuron loss at the current parameters, from sw-MLPL's grad: one number for w, one for b.")?;
+  ir = u:rs_ir_symbol_doc(ir, "eq", "op", "definition", "Definition: the left side is computed from the right side.")?;
+  ir = u:rs_ir_symbol_doc(ir, "partial", "op", "partial derivative", "How much the loss changes for a small change in one parameter.")?;
+  ir = u:rs_ir_symbol_doc(ir, "L", "var", "loss", "The one-neuron loss, the mean squared error of ŷ = wx + b over the first stone's four points; the same loss and the same start as the first stone, so the two paths compare.")?;
+  ir = u:rs_ir_symbol_doc(ir, "w", "var", "weight", "The neuron's slope. Adam moves it by about η per step whatever the gradient's size.")?;
+  ir = u:rs_ir_symbol_doc(ir, "m", "var", "first moment", "A running mean of the gradient: mostly the old mean, a little of the new gradient. It smooths the direction. Starts at zero.")?;
+  ir = u:rs_ir_symbol_doc(ir, "assign", "op", "update", "Assignment: the new value replaces the old.")?;
+  ir = u:rs_ir_symbol_doc(ir, "beta1", "hyper", "first decay", "β₁, how much of the old mean is kept each step; here 0.9, so the mean remembers about ten gradients.")?;
+  ir = u:rs_ir_symbol_doc(ir, "mul", "op", "multiply", "Multiply: by juxtaposition on paper, × in the notation.")?;
+  ir = u:rs_ir_symbol_doc(ir, "add", "op", "add", "Add.")?;
+  ir = u:rs_ir_symbol_doc(ir, "lp", "punct", "open", "Open parenthesis.")?;
+  ir = u:rs_ir_symbol_doc(ir, "one", "hyper", "one", "One.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sub", "op", "subtract", "Subtract.")?;
+  ir = u:rs_ir_symbol_doc(ir, "rp", "punct", "close", "Close parenthesis.")?;
+  ir = u:rs_ir_symbol_doc(ir, "v", "var", "second moment", "A running mean of the squared gradient: how big the gradient has been lately, direction ignored. Starts at zero.")?;
+  ir = u:rs_ir_symbol_doc(ir, "beta2", "hyper", "second decay", "β₂, how much of the old squared mean is kept; here 0.999, a long memory, so the scale settles slowly.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sq", "op", "square", "Square the gradient: its size, direction ignored.")?;
+  ir = u:rs_ir_symbol_doc(ir, "mhat", "var", "corrected first moment", "m divided by 1 − β₁ᵗ: the running mean starts at zero and is too small for the first steps; the correction undoes that.")?;
+  ir = u:rs_ir_symbol_doc(ir, "div", "op", "divide", "Divide.")?;
+  ir = u:rs_ir_symbol_doc(ir, "t", "var", "step", "Which step this is, counting from one; the stone's time axis. The corrections shrink to nothing as t grows.")?;
+  ir = u:rs_ir_symbol_doc(ir, "comma", "punct", "comma", "Separates the two corrections.")?;
+  ir = u:rs_ir_symbol_doc(ir, "vhat", "var", "corrected second moment", "v divided by 1 − β₂ᵗ, the same correction for the second moment.")?;
+  ir = u:rs_ir_symbol_doc(ir, "eta", "hyper", "learning rate", "η, about how far each step goes; here 0.1, the first stone's rate, so the two paths compare.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sqrt", "op", "square root", "The root of the corrected second moment: the gradient's typical size, in the gradient's own units.")?;
+  ir = u:rs_ir_symbol_doc(ir, "eps", "hyper", "epsilon", "ε, a tiny number (10⁻⁸) that keeps the division safe when the second moment is zero.")?;
+  ir = u:rs_ir_symbol_doc(ir, "b", "var", "bias", "The neuron's intercept, updated by the same rules with its own gradient and moments.")?;
+  ir = u:rs_ir_symbol_doc(ir, "theta", "var", "parameter tuple", "Θ, the pair (W B): the notation names the parameters once and every line below moves both. Adam's whole state, the parameters, the two moments and the step count, is a tuple like this.")?;
+  ir = u:rs_ir_symbol_doc(ir, "grad", "op", "gradient", "∇Θ L, the gradient of the loss with respect to the parameter tuple, a pair.")?;
+  ir = u:rs_ir_symbol_doc(ir, "step", "op", "state step", "↻, the research's placeholder for one step of the optimizer state: the pair (M V) goes in with the gradient pair, the pair comes out with both moments updated. One glyph where the paper writes two lines.")?;
+  ir = u:rs_ir_symbol_doc(ir, "pow", "op", "power", "β raised to the step count, *T in the notation (APL's power).")?;
+  ir = u:rs_ir_line(ir, "math", "g:g|eq:=|partial:∂|L:~L|div:~/|partial:~∂|w:~w")?;
+  ir = u:rs_ir_line(ir, "math", "m:m|assign:←|beta1:β₁|mul:~⁢|m:~m|add:+|lp:(|one:~1|sub:−|beta1:β₁|rp:~)|mul:~⁢|g:~g")?;
+  ir = u:rs_ir_line(ir, "math", "v:v|assign:←|beta2:β₂|mul:~⁢|v:~v|add:+|lp:(|one:~1|sub:−|beta2:β₂|rp:~)|mul:~⁢|g:~g|sq:~²")?;
+  ir = u:rs_ir_line(ir, "math", "mhat:m̂|eq:=|m:m|div:~/|lp:~(|one:~1|sub:−|beta1:β₁|t:^t|rp:~)|comma:~,|vhat:v̂|eq:=|v:v|div:~/|lp:~(|one:~1|sub:−|beta2:β₂|t:^t|rp:~)")?;
+  ir = u:rs_ir_line(ir, "math", "w:w|assign:←|w:w|sub:−|eta:η|mul:~⁢|mhat:~m̂|div:~/|lp:~(|sqrt:~√|vhat:~v̂|add:+|eps:ε|rp:~)")?;
+  ir = u:rs_ir_line(ir, "math", "b:b|assign:←|b:b|sub:−|eta:η|mul:~⁢|mhat:~m̂|div:~/|lp:~(|sqrt:~√|vhat:~v̂|add:+|eps:ε|rp:~)")?;
+  ir = u:rs_ir_line(ir, "m", "theta:Θ|assign:←|lp:(|w:~W|b:B|rp:~)")?;
+  ir = u:rs_ir_line(ir, "m", "g:G|assign:←|grad:∇|theta:~Θ|L:L")?;
+  ir = u:rs_ir_line(ir, "m", "lp:(|m:~M|v:V|rp:~)|assign:←|step:↻|lp:(|m:~M|v:V|rp:~)|g:G")?;
+  ir = u:rs_ir_line(ir, "m", "mhat:M̂|assign:←|m:M|div:÷|one:1|sub:~−|beta1:~β₁|pow:~*|t:~T")?;
+  ir = u:rs_ir_line(ir, "m", "vhat:V̂|assign:←|v:V|div:÷|one:1|sub:~−|beta2:~β₂|pow:~*|t:~T")?;
+  ir = u:rs_ir_line(ir, "m", "theta:Θ|assign:←|theta:Θ|sub:−|eta:η|mul:~×|mhat:~M̂|div:÷|sqrt:√|vhat:~V̂|add:+|eps:ε")?;
+  ir = u:rs_ir_line_doc(ir, "math", 0, "The gradient of the loss with respect to the weight, at the current parameters; b has one of its own.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 1, "The first moment: keep β₁ of the old running mean, add 1 − β₁ of the new gradient.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 2, "The second moment: the same running mean, of the squared gradient.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 3, "The corrections: both moments start at zero, so for the first steps they are divided by 1 − βᵗ to undo the bias toward zero.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 4, "The step: move w by η times the corrected mean over the root of the corrected square, plus ε; a step of about η whatever the gradient's scale.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 5, "The same step for b, with b's own gradient, moments and corrections: on paper the rules are repeated per parameter.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 0, "Name the parameters as one tuple Θ: the pair of W and B.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 1, "The gradient of the loss with respect to the whole tuple: a pair, one entry per parameter.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 2, "One step of the optimizer state: the pair (M V) is updated on G by the placeholder glyph ↻; the paper's two moment lines, and both parameters, in one.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 3, "The corrected first moment: M divided by 1 − β₁ to the power T.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 4, "The corrected second moment: V divided by 1 − β₂ to the power T.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 5, "The step for the whole tuple at once: Θ moves by η times M̂ over √V̂ + ε, both parameters in one line.")?;
+  u:rs_ir_validate(ir)?;
+  ok(ir)
+}

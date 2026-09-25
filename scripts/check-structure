@@ -132,6 +132,18 @@ for path in \
     tests/reg/rosetta_attention_trace.rgt \
     tests/reg/rosetta_attention_faces.rgt \
     tests/reg/rosetta_attention_scene.rgt \
+    demos/adam/equation.mlpl \
+    demos/adam/compute.mlpl \
+    demos/adam/train.mlpl \
+    demos/adam/faces.mlpl \
+    demos/adam/visual.mlpl \
+    demos/adam/scene.mlpl \
+    fixtures/adam/trace.json \
+    fixtures/adam/scene.json \
+    tests/test_adam.mlpl \
+    tests/reg/rosetta_adam_trace.rgt \
+    tests/reg/rosetta_adam_faces.rgt \
+    tests/reg/rosetta_adam_scene.rgt \
     tests/reg/rosetta_sigmoid_trace.rgt \
     tests/reg/rosetta_sigmoid_faces.rgt \
     tests/reg/rosetta_sigmoid_scene.rgt \
@@ -167,7 +179,7 @@ do
     [ -f "$repo_root/$path" ] || { echo "missing required file: $path" >&2; exit 1; }
 done
 
-for dir in captures lib/rosetta demos/one-neuron demos/dot-product demos/matmul demos/softmax demos/cnn demos/sigmoid demos/feature-normalization demos/image-normalization demos/attention fixtures fixtures/sigmoid fixtures/feature-normalization fixtures/image-normalization fixtures/attention fixtures/one-neuron fixtures/dot-product fixtures/matmul fixtures/softmax fixtures/cnn pages tests tests/reg scripts docs; do
+for dir in captures lib/rosetta demos/one-neuron demos/dot-product demos/matmul demos/softmax demos/cnn demos/sigmoid demos/feature-normalization demos/image-normalization demos/attention demos/adam fixtures fixtures/adam fixtures/sigmoid fixtures/feature-normalization fixtures/image-normalization fixtures/attention fixtures/one-neuron fixtures/dot-product fixtures/matmul fixtures/softmax fixtures/cnn pages tests tests/reg scripts docs; do
     [ -d "$repo_root/$dir" ] || { echo "missing required directory: $dir" >&2; exit 1; }
 done
 

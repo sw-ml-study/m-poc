@@ -1,0 +1,18 @@
+# Optimize the one neuron with Adam and write the trace the page replays: fixtures/adam/trace.json by default, or the path given as the script's argument. The JSON written is also printed; the reg-rs baseline rosetta_adam_trace pins it. The rate and the epoch count are the first stone's, so its plain gradient-descent trace is the comparison path.
+include "compute.mlpl";
+
+ad_eta = 0.1;
+ad_beta1 = 0.9;
+ad_beta2 = 0.999;
+ad_eps = 0.00000001;
+ad_epochs = 30;
+ad_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/adam/trace.json"
+};
+
+rows = u:ad_train(ad_eta, ad_beta1, ad_beta2, ad_eps, ad_epochs);
+text = unwrap(u:rs_write_json(ad_path, u:ad_trace(rows, 6)));
+print(text);
+str_concat("wrote ", ad_path)
