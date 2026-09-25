@@ -1,0 +1,12 @@
+# Normalize the features position by position and write the trace the page replays: fixtures/feature-normalization/trace.json by default, or the path given as the script's argument. The JSON written is also printed; the reg-rs baseline rosetta_feature_normalization_trace pins it.
+include "fn.mlpl";
+
+fn_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/feature-normalization/trace.json"
+};
+
+text = unwrap(u:rs_write_json(fn_path, u:fn_trace(u:fn_steps(), 6)));
+print(text);
+str_concat("wrote ", fn_path)

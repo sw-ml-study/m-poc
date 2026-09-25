@@ -1,6 +1,6 @@
 number = 26
 slug = "feature-normalization"
-status = "pending"
+status = "in-progress"
 description = "The applicative stone, from docs/research2.txt (the section 'so how can we ad..."
 role = "production"
 context_files = []

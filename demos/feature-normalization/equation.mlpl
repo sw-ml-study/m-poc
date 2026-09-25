@@ -1,0 +1,38 @@
+# The applicative stone's equation (docs/research2.txt): feature-wise normalization over a fixed index space, z_i = (x_i − μ_i) / σ_i for i in Fin(3). Every position computes on its own; nothing is summed. The M face shows the same expression twice: Z ← (X − Μ) ÷ Σ, the array-only reading, and the tuple-typed reading X Μ Σ Z : Tuple[3], whose surface is the same and whose difference is what the language knows: arity 3, one index space, no length check at run time. Placeholder glyphs (see docs/plan.md).
+include "../../lib/rosetta/ir.mlpl";
+
+def u:fn_equation() {
+  "Build the feature-normalization record: two lines per face, every symbol, line and face documented for the page.";
+  ir = u:rs_ir_new("feature-normalization", "Feature normalization: each of three features is centred by its mean and scaled by its spread, every position on its own.");
+  ir = u:rs_ir_titled(ir, "Feature normalization")?;
+  ir = u:rs_ir_face_doc(ir, "math", "The rule at one position, and the index space", "Line one is the scalar rule for one feature i. Line two says where i lives: the finite index set Fin(3), the three positions. The whole computation is that one rule applied at every position independently; no position needs another, so there is no sum.")?;
+  ir = u:rs_ir_face_doc(ir, "m", "The same computation, with and without homogeneous tuples", "Line one: the array reading, every entry at once, no index. Line two: the tuple-typed reading, declaring X, Μ, Σ and Z as fixed 3-tuples. The expression does not change; what changes is what the language knows before running: arity three, one shared index space, a result of arity three, and no length mismatch possible at run time. Placeholder glyphs.")?;
+  ir = u:rs_ir_face_doc(ir, "visual", "Three independent lanes, and the index space they share", "One lane per position: x and μ into −, then ÷ σ, into z; the lane being computed is lit. The right panel is the applicative view: each index maps to its triple, the same rule f is applied, and a z comes out; the lanes never touch.")?;
+  ir = u:rs_ir_symbol_doc(ir, "z", "var", "normalized features", "The output: three numbers, each feature expressed in units of its own spread, zero at its mean.")?;
+  ir = u:rs_ir_symbol_doc(ir, "i", "var", "position", "Which feature: 0, 1 or 2. The stone's time axis steps through the positions.")?;
+  ir = u:rs_ir_symbol_doc(ir, "eq", "op", "definition", "Definition: the left side is computed from the right side.")?;
+  ir = u:rs_ir_symbol_doc(ir, "lp", "punct", "open", "Open parenthesis: group the difference before dividing.")?;
+  ir = u:rs_ir_symbol_doc(ir, "rp", "punct", "close", "Close parenthesis.")?;
+  ir = u:rs_ir_symbol_doc(ir, "x", "var", "features", "The input: three raw feature values, here the RGB channels of a pixel, 120, 80 and 200.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sub", "op", "subtract", "Centre: take the feature's mean away, so zero means average.")?;
+  ir = u:rs_ir_symbol_doc(ir, "mu", "param", "means", "The mean of each feature over the data it was measured on: the ImageNet channel means 123, 117, 104.")?;
+  ir = u:rs_ir_symbol_doc(ir, "div", "op", "divide", "Scale: divide by the feature's spread, so one means one standard deviation. In the notation, ÷.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sigma", "param", "spreads", "The standard deviation of each feature: 58, 57, 57.")?;
+  ir = u:rs_ir_symbol_doc(ir, "in", "op", "membership", "i ranges over the index set: it takes each of its values.")?;
+  ir = u:rs_ir_symbol_doc(ir, "Fin", "hyper", "finite index type", "Fin(n) is the set of positions 0 to n−1. A fixed 3-tuple of numbers is the same thing as a function from Fin(3) to numbers: that is the Naperian (representable) view the tuple line on the M face makes explicit.")?;
+  ir = u:rs_ir_symbol_doc(ir, "three", "hyper", "three", "How many features there are; the arity of every tuple here.")?;
+  ir = u:rs_ir_symbol_doc(ir, "colon", "punct", "has type", "Declares the type of what is on its left.")?;
+  ir = u:rs_ir_symbol_doc(ir, "tuple", "hyper", "fixed homogeneous tuple", "Tuple[3]: exactly three numbers, structurally, not a list that happens to have three. With it the language knows the arity and the shared index space before running; without it the same expression runs on arrays and checks the lengths at run time.")?;
+  ir = u:rs_ir_symbol_doc(ir, "lb", "punct", "open bracket", "Open bracket of the tuple's arity.")?;
+  ir = u:rs_ir_symbol_doc(ir, "rb", "punct", "close bracket", "Close bracket.")?;
+  ir = u:rs_ir_line(ir, "math", "z:z|i:_i|eq:=|lp:(|x:~x|i:_i|sub:−|mu:μ|i:_i|rp:~)|div:/|sigma:σ|i:_i")?;
+  ir = u:rs_ir_line(ir, "math", "i:i|in:∈|Fin:Fin|lp:~(|three:~3|rp:~)")?;
+  ir = u:rs_ir_line(ir, "m", "z:Z|eq:←|lp:(|x:~X|sub:−|mu:Μ|rp:~)|div:÷|sigma:Σ")?;
+  ir = u:rs_ir_line(ir, "m", "x:X|mu:Μ|sigma:Σ|z:Z|colon::|tuple:Tuple|lb:~[|three:~3|rb:~]")?;
+  ir = u:rs_ir_line_doc(ir, "math", 0, "The rule at position i: subtract the mean of feature i from feature i, divide by its spread.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 1, "The index space: i is one of the three positions, and the rule holds at each of them independently.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 0, "Array reading: subtract the means from the features, divide by the spreads, all positions at once; the lengths must agree at run time.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 1, "Tuple reading: the same four names declared as fixed 3-tuples, so arity and the shared index space are known before running; the expression above is unchanged.")?;
+  u:rs_ir_validate(ir)?;
+  ok(ir)
+}

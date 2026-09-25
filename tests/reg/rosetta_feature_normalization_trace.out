@@ -1,0 +1,2 @@
+{"axis":{"count":3,"name":"position"},"channels":{"div":[-0.051724,-0.649123,1.684211],"i":[0,1,2],"sub":[-3,-37,96],"z":{"shape":[3,3],"values":[-0.051724,0,0,-0.051724,-0.649123,0,-0.051724,-0.649123,1.684211]}},"constants":{"mu":[123,117,104],"sigma":[58,57,57],"three":3,"x":[120,80,200]},"equation":"feature-normalization","schema":"sw-ml-study.rosetta.trace","version":1}
+wrote fixtures/feature-normalization/trace.json

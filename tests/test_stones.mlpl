@@ -6,21 +6,16 @@ def u:test_manifest() {
   "The page's dropdown is built from this.";
   m = unwrap(u:stones_manifest());
   u:assert_text_eq(m.schema, "sw-ml-study.rosetta.stones", "schema")?;
-  u:assert_eq(list_len(m.ids), 6, "six stones")?;
-  u:assert_text_eq(unwrap(list_get(m.ids, 5)), "sigmoid", "the sixth stone")?;
-  u:assert_text_eq(unwrap(list_get(m.ids, 3)), "softmax", "the fourth stone")?;
-  u:assert_text_eq(unwrap(list_get(m.ids, 4)), "cnn", "the fifth stone")?;
+  u:assert_eq(list_len(m.ids), 7, "seven stones")?;
+  u:assert_text_eq(str_join(m.ids, ","), "one-neuron,feature-normalization,dot-product,matmul,softmax,cnn,sigmoid", "the tour order: the neuron, then pointwise, sum, matmul, softmax, CNN, then the variants")?;
   k = 0;
-  while lt(k, 6) {
+  while lt(k, 7) {
     a = take(m.widths.visual, 0, k);
     b = take(m.widths.math, 0, k);
     c = take(m.widths.m, 0, k);
     u:assert_eq(lt(a, b + c) * lt(b, a + c) * lt(c, a + b), 1, "every stone's widths make a triangle")?;
     k = k + 1
   };
-  u:assert_text_eq(unwrap(list_get(m.ids, 1)), "dot-product", "the second stone")?;
-  u:assert_text_eq(unwrap(list_get(m.ids, 2)), "matmul", "the third stone")?;
-  u:assert_text_eq(unwrap(list_get(m.ids, 0)), "one-neuron", "the first stone")?;
   u:assert_text_eq(unwrap(list_get(m.titles, 0)), "One neuron", "its title")?;
   u:assert_gt(str_len(unwrap(list_get(m.purposes, 0))), 20, "a purpose sentence")?;
   a = take(m.widths.visual, 0, 0);

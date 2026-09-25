@@ -98,6 +98,16 @@ different on each.
 | 4 | softmax      | σ(z)ᵢ = eᶻⁱ / ∑ⱼ eᶻʲ                                             | P ← (*Z) ÷ +/ *Z                         | the temperature, high to low       | bar rows: logits, exponentials, the normaliser, probabilities summing to one                  | research §18 (front page)    |
 | 5 | cnn          | y[r,x,y] = ∑q ∑u ∑v W[r,q,u,v] · X[q, x+u, y+v]                  | Y ← +/[channel,kernel_y,kernel_x] W × ⧉[Mw,Nw] X | the output position the window slides over | the input grid with the sliding receptive field, the kernel, the products, the output filling in | Zhao et al. 2018 §2.1, as sw-MLPL says it: [`cnn-convolution.org`](../../sw-mlpl/examples/literate/cnn-convolution.org) and the blog post [*Teaching an Array Language to Say CNN*](https://blog.softwarewrighter.com/2026/09/10/ml-cnn-from-equations-mlpl/) (2026-09-10) |
 
+Two applicative stones joined the tour on 2026-09-24, from
+[`research2.txt`](research2.txt) (Naperian functors, homogeneous tuples):
+**feature normalization**, zᵢ = (xᵢ − μᵢ)/σᵢ over Fin(3), the pointwise
+stone with no reduction, whose M face shows the same expression with and
+without homogeneous tuples; and **image normalization**, the same tuple
+lifted over an H×W×3 image by broadcasting as an index projection, never
+materialized. The dropdown's order is the tour's: the neuron first, then
+the notation ladder (feature normalization, dot product, matmul, softmax,
+image normalization, CNN), then the variants (sigmoid, attention, Adam).
+
 Matmul comes before the CNN because the CNN's im2col form *is* a matmul.
 The CNN's time axis is the window sweep rather than epochs; training the
 kernel by gradient descent, which sw-MLPL can do, is a later variant. The

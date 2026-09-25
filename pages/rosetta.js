@@ -901,7 +901,7 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
   }
 
   // ---- proximity: everything within reach of the pointer, fanned out
-  const RADIUS = 90, MAX_GLYPHS = 4, GAP = 16, TIER_GAP = 24, RESELECT = 24;
+  const RADIUS = 130, MAX_GLYPHS = 4, GAP = 16, TIER_GAP = 24, RESELECT = 24;
   function candidates(face) {
     const out = [];
     for (const el of face.querySelectorAll("tspan[data-id], text[data-line], .labels text[data-id], .edges line[data-id], .panel-hit")) {
@@ -925,11 +925,14 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
   let setPoint = null;     // where the near set was made
   let setRow = null;       // the row's box at that time, for hysteresis
   function select(face, point) {
+    flatCache = null;            // measure afresh: read mode, a resize or a new stone may have moved everything
     const found = [];
     const best = new Map();
+    let nearestLine = null;      // the closest line of a text face, shown even when nothing is within reach
     for (const c of candidates(face)) {
       const r = anchorRect(c.el, null);
       const d = distance(r, point);
+      if (c.el.dataset.line !== undefined && (!nearestLine || d < nearestLine.d)) nearestLine = { el: c.el, r, d, doc: docFor(c.el), key: c.key };
       if (d > RADIUS) continue;
       const doc = docFor(c.el);
       if (!doc) continue;
@@ -942,6 +945,7 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
       found.push({ el: c.el, r, d, doc });
     }
     for (const v of best.values()) found.push(v);
+    if (nearestLine && nearestLine.doc && !best.has(nearestLine.key)) found.push(nearestLine);
     found.sort((a, b) => a.d - b.d);
     // the overall callouts (a line, a panel) and at most MAX_GLYPHS glyphs, so the fan stays shallow
     const isOverall = (c) => c.el.dataset.line !== undefined || c.el.dataset.panel !== undefined;

@@ -96,6 +96,18 @@ for path in \
     fixtures/sigmoid/trace.json \
     fixtures/sigmoid/scene.json \
     tests/test_sigmoid.mlpl \
+    demos/feature-normalization/equation.mlpl \
+    demos/feature-normalization/fn.mlpl \
+    demos/feature-normalization/train.mlpl \
+    demos/feature-normalization/faces.mlpl \
+    demos/feature-normalization/visual.mlpl \
+    demos/feature-normalization/scene.mlpl \
+    fixtures/feature-normalization/trace.json \
+    fixtures/feature-normalization/scene.json \
+    tests/test_feature_normalization.mlpl \
+    tests/reg/rosetta_feature_normalization_trace.rgt \
+    tests/reg/rosetta_feature_normalization_faces.rgt \
+    tests/reg/rosetta_feature_normalization_scene.rgt \
     tests/reg/rosetta_sigmoid_trace.rgt \
     tests/reg/rosetta_sigmoid_faces.rgt \
     tests/reg/rosetta_sigmoid_scene.rgt \
@@ -131,7 +143,7 @@ do
     [ -f "$repo_root/$path" ] || { echo "missing required file: $path" >&2; exit 1; }
 done
 
-for dir in captures lib/rosetta demos/one-neuron demos/dot-product demos/matmul demos/softmax demos/cnn demos/sigmoid fixtures fixtures/sigmoid fixtures/one-neuron fixtures/dot-product fixtures/matmul fixtures/softmax fixtures/cnn pages tests tests/reg scripts docs; do
+for dir in captures lib/rosetta demos/one-neuron demos/dot-product demos/matmul demos/softmax demos/cnn demos/sigmoid demos/feature-normalization fixtures fixtures/sigmoid fixtures/feature-normalization fixtures/one-neuron fixtures/dot-product fixtures/matmul fixtures/softmax fixtures/cnn pages tests tests/reg scripts docs; do
     [ -d "$repo_root/$dir" ] || { echo "missing required directory: $dir" >&2; exit 1; }
 done
 

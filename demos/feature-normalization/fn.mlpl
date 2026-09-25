@@ -1,0 +1,36 @@
+# The applicative stone's computation: normalize three features with their means and spreads, one position at a time so the page can replay the lanes lighting up, and all at once with MLPL's elementwise ops, which the tests compare. u:fn_steps records, for t = 0..2, the position, the difference and the quotient at that position, and z filled in so far.
+include "../../lib/rosetta/emit.mlpl";
+include "equation.mlpl";
+
+fn_x = [120, 80, 200];
+fn_mu = [123, 117, 104];
+fn_sigma = [58, 57, 57];
+
+def u:fn_all() {
+  "Every position at once: the array reading.";
+  (fn_x - fn_mu) / fn_sigma
+}
+
+def u:fn_steps() {
+  "One row per position t = 0..2: the position, x_t − μ_t, z_t, and z with positions up to t filled (zero after).";
+  n = len(fn_x);
+  z = u:fn_all();
+  index = fill([0], 0);
+  diffs = fill([0], 0);
+  quots = fill([0], 0);
+  filled = fill([0], 0);
+  t = 0;
+  while lt(t, n) {
+    index = concat(index, t);
+    diffs = concat(diffs, take(fn_x, 0, t) - take(fn_mu, 0, t));
+    quots = concat(quots, take(z, 0, t));
+    filled = concat(filled, z * lt(range(n), t + 1));
+    t = t + 1
+  };
+  {n: n, x: fn_x, mu: fn_mu, sigma: fn_sigma, z: z, i: index, diff: diffs, quot: quots, filled: reshape(filled, [n, n])}
+}
+
+def u:fn_trace(rows, places) {
+  "The trace record: the axis is the position (n steps), the constants are the features, the means and the spreads, the channels are the position, the difference (sub), the quotient (div) and z so far.";
+  {schema: "sw-ml-study.rosetta.trace", version: 1, equation: "feature-normalization", axis: {name: "position", count: rows.n}, constants: {x: rows.x, mu: rows.mu, sigma: rows.sigma, three: rows.n}, channels: {i: rows.i, sub: u:rs_round(rows.diff, places), div: u:rs_round(rows.quot, places), z: u:rs_array_json(u:rs_round(rows.filled, places))}}
+}
