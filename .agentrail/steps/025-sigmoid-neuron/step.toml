@@ -1,8 +1,9 @@
 number = 25
 slug = "sigmoid-neuron"
-status = "in-progress"
+status = "completed"
 description = "The sixth stone: the sigmoid neuron, the research's own one-neuron example (s..."
 role = "production"
 context_files = []
 created_at = "2026-09-24T17:46:57"
-commits = []
+completed_at = "2026-09-24T18:15:38"
+commits = ["059c06f1575b850dcf19e194869c939034ad6147"]
