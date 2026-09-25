@@ -901,12 +901,14 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
   }
 
   // ---- proximity: everything within reach of the pointer, fanned out
-  const RADIUS = 90, MAX = 5, GAP = 16, TIER_GAP = 24, RESELECT = 24;
+  const RADIUS = 90, MAX_GLYPHS = 4, GAP = 16, TIER_GAP = 24, RESELECT = 24;
   function candidates(face) {
     const out = [];
     for (const el of face.querySelectorAll("tspan[data-id], text[data-line], .labels text[data-id], .edges line[data-id], .panel-hit")) {
       // one entry per symbol id on the Visual face: a label beats an edge, the nearest edge stands for the rest
-      const key = el.tagName === "line" || (el.tagName === "text" && el.dataset.id) ? `id:${el.dataset.id}` : el.tagName === "rect" ? `panel:${el.dataset.panel}` : null;
+      const key = el.tagName === "line" || (el.tagName === "text" && el.dataset.id) ? `id:${el.dataset.id}`
+        : el.tagName === "rect" ? `panel:${el.dataset.panel}`
+        : el.tagName === "text" && el.dataset.line !== undefined ? `line:${el.dataset.line}` : null;
       out.push({ el, key, label: el.tagName === "text" && !!el.dataset.id });
     }
     return out;
@@ -941,7 +943,9 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
     }
     for (const v of best.values()) found.push(v);
     found.sort((a, b) => a.d - b.d);
-    return found.slice(0, MAX);
+    // the overall callouts (a line, a panel) and at most MAX_GLYPHS glyphs, so the fan stays shallow
+    const isOverall = (c) => c.el.dataset.line !== undefined || c.el.dataset.panel !== undefined;
+    return found.filter(isOverall).concat(found.filter((c) => !isOverall(c)).slice(0, MAX_GLYPHS));
   }
 
   function showNear(face, point) {
@@ -953,12 +957,15 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
     // the whole-line (or panel) callout is the overall one; the nearest glyph is emphasised
     const overall = (c) => c.el.dataset.line !== undefined || c.el.dataset.panel !== undefined;
     let glyphRank = 0;
+    const hasOverall = pick.some(overall);
     pick.forEach((c) => {
       const whole = overall(c);
       const cls = whole ? "whole" : glyphRank++ === 0 ? "near" : "far";
       const g = makeLeader(cls);
       if (c.doc.invisible) g.dataset.ghost = "1";
-      shown.push({ el: c.el, doc: c.doc, box: makeBox(c.doc, cls), g, whole, side: whole ? -1 : glyphRank % 2 === 1 ? -1 : 1 });
+      // the line's doc is on the overall callout; the glyphs need not repeat it
+      const doc = !whole && hasOverall ? { ...c.doc, extra: c.doc.extra.replace(/ · line \d+: .*$/, "") } : c.doc;
+      shown.push({ el: c.el, doc, box: makeBox(doc, cls), g, whole });
     });
     layout();
     startFollowing();
@@ -985,47 +992,48 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
     if (lastPoint) { keep.top = Math.min(keep.top, lastPoint[1]); keep.bottom = Math.max(keep.bottom, lastPoint[1]); }
     keep.top -= 10; keep.bottom += 10;
     setRow = { ...keep };
-    const roomAbove = keep.top - TIER_GAP - 40 > 8, roomBelow = keep.bottom + TIER_GAP + 40 < vh - 8;
-    for (const it of shown) { it.useSide = it.side; if (it.useSide < 0 && !roomAbove) it.useSide = 1; if (it.useSide > 0 && !roomBelow) it.useSide = -1; }
-    // obstacles: every callout's glyph, so no box covers one
-    const obstacles = shown.map((it) => ({ left: it.r.left - 4, top: it.r.top - 4, right: it.r.right + 4, bottom: it.r.bottom + 4 }));
-    const overlaps = (a, b) => !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
-    for (const side of [-1, 1]) {
-      // the overall callouts first and leftmost, then the glyphs left to right by anchor
-      const group = shown.filter((it) => it.useSide === side).sort((a, b) => (b.whole ? 1 : 0) - (a.whole ? 1 : 0) || (a.r.left + a.r.width / 2) - (b.r.left + b.r.width / 2));
-      let edge = side < 0 ? keep.top - TIER_GAP : keep.bottom + TIER_GAP;
-      let cursor = -Infinity, tierDepth = 0;
-      for (const it of group) {
-        if (it.whole) {
-          // leftmost: at the row's left edge, and no glyph box may come nearer than a wide gap
-          let left = Math.max(8, Math.min(vw - it.bw - 8, keep.left - 8));
-          let top = side < 0 ? edge - it.bh : edge;
-          top = Math.max(8, Math.min(vh - it.bh - 8, top));
-          it.box.style.left = `${left}px`; it.box.style.top = `${top}px`;
-          obstacles.push({ left, top, right: left + it.bw, bottom: top + it.bh });
-          cursor = left + it.bw + GAP; tierDepth = Math.max(tierDepth, it.bh);
-          drawLeader(it.g, it.box, it.r);
-          continue;
-        }
-        let left = Math.max(8, it.r.left + it.r.width / 2 - it.bw / 2);
-        if (left < cursor + GAP) left = cursor + GAP;
-        if (left + it.bw > vw - 8) {
-          edge = side < 0 ? edge - tierDepth - GAP : edge + tierDepth + GAP;
-          cursor = -Infinity; tierDepth = 0;
-          left = Math.max(8, Math.min(vw - it.bw - 8, it.r.left + it.r.width / 2 - it.bw / 2));
-        }
-        let top = side < 0 ? edge - it.bh : edge;
-        let rect = { left, top, right: left + it.bw, bottom: top + it.bh };
-        for (let tries = 0; tries < 6 && obstacles.some((o) => overlaps(o, rect)); tries++) {
-          top = side < 0 ? top - 24 : top + 24;
-          rect = { left, top, right: left + it.bw, bottom: top + it.bh };
-        }
-        top = Math.max(8, Math.min(vh - it.bh - 8, top));
-        it.box.style.left = `${left}px`; it.box.style.top = `${top}px`;
-        obstacles.push({ left, top, right: left + it.bw, bottom: top + it.bh });
-        cursor = left + it.bw; tierDepth = Math.max(tierDepth, it.bh);
+    // one side for every box: above the row when there is room, else below
+    const roomAbove = keep.top - TIER_GAP - 60 > 8;
+    const side = roomAbove ? -1 : 1;
+    // expression order: the overall callouts first, then the glyphs in the
+    // order the face writes them (document order of the tokens, which is the
+    // record's token order, so a ∑ comes before its limits); geometry that
+    // has no such order (the Visual face) goes left to right by anchor
+    const byText = (a, b) => {
+      const ta = a.el.closest && a.el.closest(".text-face"), tb = b.el.closest && b.el.closest(".text-face");
+      if (ta && tb && ta === tb) return a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+      return (a.r.left + a.r.width / 2) - (b.r.left + b.r.width / 2);
+    };
+    const ordered = [...shown].sort((a, b) => (b.whole ? 1 : 0) - (a.whole ? 1 : 0) || byText(a, b));
+    // pass 1: assign boxes to tiers like words to lines of text, keeping the order
+    const tiers = [[]];
+    let cursor = -Infinity;
+    for (const it of ordered) {
+      let left = it.whole ? Math.max(8, Math.min(vw - it.bw - 8, keep.left - 8)) : Math.max(8, it.r.left + it.r.width / 2 - it.bw / 2);
+      if (left < cursor + GAP) left = cursor + GAP;
+      if (left + it.bw > vw - 8 && tiers[tiers.length - 1].length) {
+        tiers.push([]);
+        cursor = -Infinity;
+        left = Math.max(8, Math.min(vw - it.bw - 8, it.r.left + it.r.width / 2 - it.bw / 2));
+      }
+      left = Math.min(left, vw - it.bw - 8);
+      it.left = left;
+      tiers[tiers.length - 1].push(it);
+      cursor = left + it.bw + (it.whole ? GAP : 0);
+    }
+    // pass 2: stack the tiers so they read top to bottom in order: above the
+    // row the first tier is the highest, below the row it is the nearest
+    const depth = (tier) => Math.max(...tier.map((it) => it.bh));
+    let edge = side < 0 ? keep.top - TIER_GAP : keep.bottom + TIER_GAP;
+    const order = side < 0 ? [...tiers].reverse() : tiers;   // place nearest-to-row first
+    for (const tier of order) {
+      const d = depth(tier);
+      for (const it of tier) {
+        const top = Math.max(8, Math.min(vh - it.bh - 8, side < 0 ? edge - it.bh : edge));
+        it.box.style.left = `${it.left}px`; it.box.style.top = `${top}px`;
         drawLeader(it.g, it.box, it.r);
       }
+      edge = side < 0 ? edge - d - GAP : edge + d + GAP;
     }
   }
 

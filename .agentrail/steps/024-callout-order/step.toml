@@ -1,6 +1,6 @@
 number = 24
 slug = "callout-order"
-status = "pending"
+status = "in-progress"
 description = "Callouts in expression order (pages/rosetta.js). Reported: with the fan alter..."
 role = "production"
 context_files = []

@@ -171,7 +171,9 @@ framework. The script has three parts, none of which knows what a neuron is:
   at its place, for callouts and for focus alike. Anchors are exact on the turned
   stone too: each glyph's box is projected through the same matrices CSS
   applies (face, stone, perspective). The whole-line callout is the larger
-  one at the left of the fan. Callouts stay anchored to the glyph they were
+  one at the left of the fan, and the glyph callouts follow in expression
+  order, left to right, on one side of the row, wrapping into further rows
+  that read top to bottom. Callouts stay anchored to the glyph they were
   made for: as the stone turns, drags, scales or enters
   read mode, every box and leader follows its own glyph, and the set only
   changes when the pointer really moves. `?hover=ID` and `?near=ID` show
