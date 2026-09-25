@@ -104,8 +104,8 @@ function makeStone(stage, stone, geometry, onChange) {
     el.style.setProperty("--a", String(g.angle));
     el.style.setProperty("--o", String(g.offset));
   }
-  const DEFAULT = { yaw: FACE_ANGLE.math - 20, pitch: -4, scale: 1 };
-  const SPEED = 9; // degrees per second
+  const DEFAULT = { yaw: FACE_ANGLE.math + 20, pitch: -4, scale: 1 };   // the Math face turning toward the viewer
+  const SPEED = -9; // degrees per second; negative so the faces come round as Math, M, Visual
   const SCALES = [0.5, 0.65, 0.8, 1, 1.25, 1.6, 2, 2.5];
   let yaw = fixedYaw ?? DEFAULT.yaw;
   let pitch = DEFAULT.pitch;

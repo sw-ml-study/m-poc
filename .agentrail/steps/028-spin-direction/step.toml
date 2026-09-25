@@ -1,0 +1,8 @@
+number = 28
+slug = "spin-direction"
+status = "in-progress"
+description = "Auto-rotation shows the faces in the order 3, 2, 1 (reported). Reverse the sp..."
+role = "production"
+context_files = []
+created_at = "2026-09-24T19:53:35"
+commits = []

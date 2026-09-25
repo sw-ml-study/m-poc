@@ -1,4 +1,4 @@
-number = 29
+number = 30
 slug = "attention-stone"
 status = "pending"
 description = "The seventh stone: attention, composed from the matmul and softmax stones (re..."

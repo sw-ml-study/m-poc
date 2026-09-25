@@ -144,8 +144,8 @@ framework. The script has three parts, none of which knows what a neuron is:
   the inradius from the axis and differs only in the angle of its outward
   normal and a small in-plane offset; the script computes those from the
   widths and hands them to CSS as variables, and the minimap draws the real
-  triangle. It auto-rotates, drags with the pointer, and the Rotate buttons
-  turn it to a face;
+  triangle. It auto-rotates so the faces come round as Math, M, Visual, drags with
+  the pointer, and the Rotate buttons turn it to a face;
 - **a line projector**: draws any line-scene record (see
   [`docs/scene.md`](docs/scene.md)) into an SVG with a fixed orthographic
   camera fitted to the scene's bounding box over every frame, one `<line>`
