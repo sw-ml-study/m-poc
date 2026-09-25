@@ -1,0 +1,8 @@
+number = 28
+slug = "trace-face"
+status = "pending"
+description = "A fourth face, the Trace: the stone becomes a box for stones that declare it...."
+role = "production"
+context_files = []
+created_at = "2026-09-24T17:45:00"
+commits = []
