@@ -1,0 +1,8 @@
+number = 31
+slug = "callout-spacing"
+status = "in-progress"
+description = "Callouts obscure each other (reported). Cause: layout() in pages/rosetta.js s..."
+role = "production"
+context_files = []
+created_at = "2026-09-24T20:49:55"
+commits = []

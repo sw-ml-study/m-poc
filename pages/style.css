@@ -242,3 +242,4 @@ body.has-focus .readout div:not(.focus) { opacity: 0.55; }
 @media (prefers-reduced-motion: reduce) {
   .stone { transition: none; }
 }
+.callout-box[hidden] { display: none; }

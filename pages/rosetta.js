@@ -908,7 +908,7 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
   }
 
   // ---- proximity: everything within reach of the pointer, fanned out
-  const RADIUS = 130, MAX_GLYPHS = 4, GAP = 16, TIER_GAP = 24, RESELECT = 24;
+  const RADIUS = 130, MAX_GLYPHS = 4, GAP = 22, TIER_GAP = 30, RESELECT = 24;
   function candidates(face) {
     const out = [];
     for (const el of face.querySelectorAll("tspan[data-id], text[data-line], .labels text[data-id], .edges line[data-id], .panel-hit")) {
@@ -954,9 +954,9 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
     for (const v of best.values()) found.push(v);
     if (nearestLine && nearestLine.doc && !best.has(nearestLine.key)) found.push(nearestLine);
     found.sort((a, b) => a.d - b.d);
-    // the overall callouts (a line, a panel) and at most MAX_GLYPHS glyphs, so the fan stays shallow
+    // one overall callout (the nearest line or panel) and at most MAX_GLYPHS glyphs, so the fan stays shallow
     const isOverall = (c) => c.el.dataset.line !== undefined || c.el.dataset.panel !== undefined;
-    return found.filter(isOverall).concat(found.filter((c) => !isOverall(c)).slice(0, MAX_GLYPHS));
+    return found.filter(isOverall).slice(0, 1).concat(found.filter((c) => !isOverall(c)).slice(0, MAX_GLYPHS));
   }
 
   function showNear(face, point) {
@@ -1003,48 +1003,85 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
     if (lastPoint) { keep.top = Math.min(keep.top, lastPoint[1]); keep.bottom = Math.max(keep.bottom, lastPoint[1]); }
     keep.top -= 10; keep.bottom += 10;
     setRow = { ...keep };
-    // one side for every box: above the row when there is room, else below
-    const roomAbove = keep.top - TIER_GAP - 60 > 8;
-    const side = roomAbove ? -1 : 1;
-    // expression order: the overall callouts first, then the glyphs in the
-    // order the face writes them (document order of the tokens, which is the
-    // record's token order, so a ∑ comes before its limits); geometry that
-    // has no such order (the Visual face) goes left to right by anchor
+    // expression order: the glyphs in the order the face writes them
+    // (document order of the tokens, which is the record's token order, so
+    // a ∑ comes before its limits); geometry that has no such order (the
+    // Visual face) goes left to right by anchor
     const byText = (a, b) => {
       const ta = a.el.closest && a.el.closest(".text-face"), tb = b.el.closest && b.el.closest(".text-face");
       if (ta && tb && ta === tb) return a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
       return (a.r.left + a.r.width / 2) - (b.r.left + b.r.width / 2);
     };
-    const ordered = [...shown].sort((a, b) => (b.whole ? 1 : 0) - (a.whole ? 1 : 0) || byText(a, b));
-    // pass 1: assign boxes to tiers like words to lines of text, keeping the order
-    const tiers = [[]];
+    const wholes = shown.filter((it) => it.whole).sort(byText);
+    const glyphs = shown.filter((it) => !it.whole).sort(byText);
+    // pass 1: the overall callouts (a line, a panel) form a tier of their
+    // own, starting at the row's left edge; the glyph callouts are laid out
+    // like words on lines of text, in order, all to the right of the overall
+    // one so it reads first
+    const clampX = (left, it) => Math.max(8, Math.min(vw - it.bw - 8, left));
+    const wholeTier = [];
     let cursor = -Infinity;
-    for (const it of ordered) {
-      let left = it.whole ? Math.max(8, Math.min(vw - it.bw - 8, keep.left - 8)) : Math.max(8, it.r.left + it.r.width / 2 - it.bw / 2);
-      if (left < cursor + GAP) left = cursor + GAP;
-      if (left + it.bw > vw - 8 && tiers[tiers.length - 1].length) {
-        tiers.push([]);
-        cursor = -Infinity;
-        left = Math.max(8, Math.min(vw - it.bw - 8, it.r.left + it.r.width / 2 - it.bw / 2));
-      }
-      left = Math.min(left, vw - it.bw - 8);
-      it.left = left;
-      tiers[tiers.length - 1].push(it);
-      cursor = left + it.bw + (it.whole ? GAP : 0);
+    for (const it of wholes) {
+      it.left = clampX(Math.max(keep.left - 8, cursor + GAP), it);
+      cursor = it.left + it.bw;
+      wholeTier.push(it);
     }
-    // pass 2: stack the tiers so they read top to bottom in order: above the
-    // row the first tier is the highest, below the row it is the nearest
+    const minLeft = wholeTier.length ? wholeTier[0].left + 24 : 8;
+    const tiers = [];
+    cursor = -Infinity;
+    for (const it of glyphs) {
+      const wanted = Math.max(minLeft, it.r.left + it.r.width / 2 - it.bw / 2);
+      let left = Math.max(wanted, cursor + GAP);
+      if (left + it.bw > vw - 8 && tiers.length && tiers[tiers.length - 1].length) { tiers.push([]); left = wanted; }
+      if (!tiers.length) tiers.push([]);
+      it.left = clampX(left, it);
+      cursor = it.left + it.bw;
+      tiers[tiers.length - 1].push(it);
+    }
+    // pass 2: the side, and the stacking. The overall tier is always the
+    // highest of the fan. Everything goes above the row when it fits there,
+    // with the overall on top and the last glyph tier nearest the row; else
+    // everything goes below when it fits there, the overall nearest the row
+    // and the glyph tiers following in order; else the overall and the glyph
+    // tiers that fit go above and the rest spill below, never on top of the
+    // overall and never piled on one another.
     const depth = (tier) => Math.max(...tier.map((it) => it.bh));
-    let edge = side < 0 ? keep.top - TIER_GAP : keep.bottom + TIER_GAP;
-    const order = side < 0 ? [...tiers].reverse() : tiers;   // place nearest-to-row first
-    for (const tier of order) {
-      const d = depth(tier);
-      for (const it of tier) {
-        const top = Math.max(8, Math.min(vh - it.bh - 8, side < 0 ? edge - it.bh : edge));
-        it.box.style.left = `${it.left}px`; it.box.style.top = `${top}px`;
-        drawLeader(it.g, it.box, it.r);
+    const roomAbove = keep.top - TIER_GAP - 8, roomBelow = vh - keep.bottom - TIER_GAP - 8;
+    const wholeDepth = wholeTier.length ? depth(wholeTier) + TIER_GAP : 0;
+    const glyphDepth = tiers.reduce((h, t) => h + depth(t) + TIER_GAP, 0);
+    const upward = [], downward = [];        // nearest-to-row first
+    if (wholeDepth + glyphDepth > roomAbove && wholeDepth + glyphDepth <= roomBelow) {
+      if (wholeTier.length) downward.push(wholeTier);
+      downward.push(...tiers);
+    } else {
+      let used = wholeDepth;
+      for (const t of [...tiers].reverse()) {
+        if (used + depth(t) + TIER_GAP <= roomAbove) { upward.push(t); used += depth(t) + TIER_GAP; } else downward.unshift(t);
       }
-      edge = side < 0 ? edge - d - GAP : edge + d + GAP;
+      if (wholeTier.length) upward.push(wholeTier);
+    }
+    // a tier that would leave the viewport is hidden rather than piled on
+    // the one before it (the overall callout is always placed)
+    let edge = keep.top - TIER_GAP;
+    for (const tier of upward) {
+      const d = depth(tier);
+      const fits = edge - d >= 8 || tier === wholeTier;
+      for (const it of tier) { it.top = Math.max(8, edge - it.bh); it.hide = !fits; }
+      if (fits) edge -= d + TIER_GAP;
+    }
+    edge = keep.bottom + TIER_GAP;
+    for (const tier of downward) {
+      const d = depth(tier);
+      const fits = edge + d <= vh - 8 || tier === wholeTier;
+      for (const it of tier) { it.top = Math.min(vh - it.bh - 8, edge); it.hide = !fits; }
+      if (fits) edge += d + TIER_GAP;
+    }
+    for (const it of shown) {
+      it.box.hidden = !!it.hide;
+      it.g.style.display = it.hide ? "none" : "";
+      if (it.hide) continue;
+      it.box.style.left = `${it.left}px`; it.box.style.top = `${it.top}px`;
+      drawLeader(it.g, it.box, it.r);
     }
   }
 
