@@ -6,10 +6,10 @@ def u:test_manifest() {
   "The page's dropdown is built from this.";
   m = unwrap(u:stones_manifest());
   u:assert_text_eq(m.schema, "sw-ml-study.rosetta.stones", "schema")?;
-  u:assert_eq(list_len(m.ids), 7, "seven stones")?;
-  u:assert_text_eq(str_join(m.ids, ","), "one-neuron,feature-normalization,dot-product,matmul,softmax,cnn,sigmoid", "the tour order: the neuron, then pointwise, sum, matmul, softmax, CNN, then the variants")?;
+  u:assert_eq(list_len(m.ids), 8, "eight stones")?;
+  u:assert_text_eq(str_join(m.ids, ","), "one-neuron,feature-normalization,dot-product,matmul,softmax,image-normalization,cnn,sigmoid", "the tour order: the neuron, then pointwise, sum, matmul, softmax, the image lift, CNN, then the variants")?;
   k = 0;
-  while lt(k, 7) {
+  while lt(k, 8) {
     a = take(m.widths.visual, 0, k);
     b = take(m.widths.math, 0, k);
     c = take(m.widths.m, 0, k);

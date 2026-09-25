@@ -1,0 +1,71 @@
+# The image-normalization stone: z by trailing-axis broadcasting equals z by three explicit loops, the tuples keep their shape [3] while the result has the image's [4,4,3], each step fills one pixel and touches no other, the trace is keyed by the record's symbols, the record's docs are complete, the Visual face's ids are symbols, and the committed fixtures are what the programs emit.
+include "lib/rosetta/faces.mlpl";
+include "demos/image-normalization/compute.mlpl";
+include "demos/image-normalization/visual.mlpl";
+
+def u:t_in_unknown(ir, ids) {
+  "The first id in a string list that is not a symbol of the record, or the empty string.";
+  index = 0;
+  unknown = "";
+  while lt(index, list_len(ids)) {
+    id = unwrap(list_get(ids, index));
+    if eq(u:rs_ir_symbol_index(ir, id), -1) {
+      unknown = id
+    };
+    index = index + 1
+  };
+  unknown
+}
+
+@test {name: "broadcasting is the index map (h, w, c) ↦ c: z equals the explicit loop, the tuples stay [3], each step fills one pixel", tags: ["image-normalization", "trace"]}
+def u:test_in_broadcast() {
+  "The array reading against the loop that reads μ[c] and σ[c] at every position; shapes; the bright spot by hand; and the pointwise property on the rows.";
+  z = u:in_all();
+  u:assert_eq(shape(z), [4, 4, 3], "the result has the image's shape")?;
+  u:assert_eq(shape(in_mu), [3], "the means stay a 3-tuple")?;
+  u:assert_eq(shape(u:in_image() - in_mu), [4, 4, 3], "the difference is lifted over the image")?;
+  u:assert_lt(reduce(:max, abs(z - u:in_loop())), 0.000000001, "broadcast equals the explicit loop")?;
+  u:assert_lt(reduce(:max, abs(u:in_image())), 256, "every value is below 256")?;
+  spot = take(take(u:in_image(), 0, 1), 0, 2);
+  u:assert_eq(spot, [192, 207, 222], "the bright spot at row 1, column 2")?;
+  u:assert_lt(reduce(:max, abs(take(take(z, 0, 1), 0, 2) - [(192 - 123) / 58, (207 - 117) / 57, (222 - 104) / 57])), 0.000000001, "z at the spot by hand")?;
+  rows = u:in_steps();
+  u:assert_eq(rows.count, 16, "sixteen pixels")?;
+  u:assert_eq(take(rows.h, 0, 6) * 4 + take(rows.w, 0, 6), 6, "row-major: pixel 6 is row 1, column 2")?;
+  u:assert_eq(take(rows.pix, 0, 6), spot, "the pixel's three channel values at step 6")?;
+  u:assert_lt(reduce(:max, abs(take(rows.quot, 0, 6) - take(take(z, 0, 1), 0, 2))), 0.000000001, "the quotient at step 6 is z at the spot")?;
+  u:assert_lt(reduce(:max, abs(take(rows.filled, 0, 15) - z)), 0.000000001, "after the last step every pixel is filled")?;
+  changed = flatten(take(rows.filled, 0, 5) - take(rows.filled, 0, 4));
+  elsewhere = 1 - lt(range(48), 18) * (1 - lt(range(48), 15));
+  u:assert_eq(reduce_add(abs(changed) * elsewhere), 0, "step 5 changes only pixel 5's three values")?;
+  u:assert_gt(reduce_add(abs(changed)), 0, "and it does change them")
+}
+
+@test {name: "the trace is keyed by the record's symbols; the faces document the lift and the projection; fixtures are fresh", tags: ["image-normalization", "docs", "fixture"]}
+def u:test_in_record() {
+  "The Math face has the per-index rule and the product index space, the M face has the feature stone's line unchanged and the shapes; every symbol, line and face documented; keys are symbols; fixtures byte for byte.";
+  ir = unwrap(u:in_equation());
+  u:assert_text_eq(ir.title, "Image normalization", "title")?;
+  u:assert_text_eq(u:rs_ir_undocumented(ir), "", "every symbol")?;
+  u:assert_text_eq(u:rs_ir_undocumented_line(ir), "", "every line")?;
+  u:assert_text_eq(u:rs_ir_undocumented_face(ir), "", "every face")?;
+  u:assert_text_eq(u:rs_ir_math_text(ir), "z[h,w,c] = (x[h,w,c] − μ[c]) / σ[c]\nh ∈ Fin(4), w ∈ Fin(4), c ∈ Fin(3)", "math source")?;
+  u:assert_text_eq(u:rs_ir_m_text(ir), "Z ← (X − Μ) ÷ Σ\nX : Tuple[4,4,3] Μ Σ : Tuple[3]", "m text: the feature stone's line, then the shapes")?;
+  u:assert_eq(u:rs_face_uses(ir.faces.m, "Fin") + u:rs_face_uses(ir.faces.math, "tuple"), 0, "Fin is paper vocabulary, Tuple is the notation's")?;
+  trace = u:in_trace(u:in_steps(), 6);
+  u:assert_text_eq(u:t_in_unknown(ir, record_keys(trace.channels)), "", "channel keys are symbols")?;
+  u:assert_text_eq(u:t_in_unknown(ir, record_keys(trace.constants)), "", "constant keys are symbols")?;
+  u:assert_eq(trace.channels.z.shape, [16, 4, 4, 3], "z so far has the image's shape per step")?;
+  u:assert_eq(str_eq(read_text("fixtures/image-normalization/trace.json")?, unwrap(u:rs_json(trace))), 1, "trace fresh")?;
+  u:assert_eq(str_eq(read_text("fixtures/image-normalization/faces/math.svg")?, unwrap(u:rs_face_svg(ir, "math"))), 1, "math.svg fresh")?;
+  parsed = unwrap(u:in_read_trace("fixtures/image-normalization/trace.json"));
+  out = unwrap(u:rs_scene_export(unwrap(u:in_visual(parsed, 6)), 4));
+  u:assert_text_eq(u:t_in_unknown(ir, out.ids), "", "edge ids are symbols")?;
+  u:assert_text_eq(u:t_in_unknown(ir, out.labels.ids), "", "label ids are symbols")?;
+  u:assert_eq(out.panels.count, 4, "four panels")?;
+  full = unwrap(u:rs_scene_export(unwrap(u:in_scene(parsed)), 4));
+  u:assert_eq(full.frames.count, 16, "one frame per pixel")?;
+  u:assert_eq(str_eq(read_text("fixtures/image-normalization/scene.json")?, unwrap(u:rs_json(full))), 1, "scene.json fresh")
+}
+
+u:run_registered_tests()

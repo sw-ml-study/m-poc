@@ -1,6 +1,6 @@
 number = 29
 slug = "image-normalization"
-status = "pending"
+status = "in-progress"
 description = "The second applicative stone, from docs/research2.txt ('Then evolve the same ..."
 role = "production"
 context_files = []

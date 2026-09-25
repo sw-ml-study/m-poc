@@ -4,20 +4,22 @@ include "one-neuron/equation.mlpl";
 include "dot-product/equation.mlpl";
 include "matmul/equation.mlpl";
 include "softmax/equation.mlpl";
+include "image-normalization/equation.mlpl";
 include "cnn/equation.mlpl";
 include "sigmoid/equation.mlpl";
 include "feature-normalization/equation.mlpl";
 
 def u:stones_manifest() {
-  "The manifest record: parallel lists, one entry per stone, in tour order: the headline neuron first, then the notation ladder from pointwise to three nested sums, then the variants.";
+  "The manifest record: parallel lists, one entry per stone, in tour order: the headline neuron first, then the notation ladder from pointwise to three nested sums (the image lift between softmax and the CNN), then the variants.";
   neuron = u:on_equation()?;
   dot = u:dp_equation()?;
   mm = u:mm_equation()?;
   sm = u:sm_equation()?;
+  im = u:in_equation()?;
   cn = u:cn_equation()?;
   sg = u:sg_equation()?;
   fn = u:fn_equation()?;
-  ok({schema: "sw-ml-study.rosetta.stones", version: 1, ids: [neuron.name, fn.name, dot.name, mm.name, sm.name, cn.name, sg.name], titles: [neuron.title, fn.title, dot.title, mm.title, sm.title, cn.title, sg.title], purposes: [neuron.description, fn.description, dot.description, mm.description, sm.description, cn.description, sg.description], widths: {math: [480, 480, 480, 480, 520, 720, 500], m: [480, 480, 480, 480, 480, 600, 480], visual: [720, 760, 720, 720, 720, 780, 720]}})
+  ok({schema: "sw-ml-study.rosetta.stones", version: 1, ids: [neuron.name, fn.name, dot.name, mm.name, sm.name, im.name, cn.name, sg.name], titles: [neuron.title, fn.title, dot.title, mm.title, sm.title, im.title, cn.title, sg.title], purposes: [neuron.description, fn.description, dot.description, mm.description, sm.description, im.description, cn.description, sg.description], widths: {math: [480, 480, 480, 480, 520, 620, 720, 500], m: [480, 480, 480, 480, 480, 560, 600, 480], visual: [720, 760, 720, 720, 720, 800, 780, 720]}})
 }
 
 st_path = if gt(list_len(args()), 0) {

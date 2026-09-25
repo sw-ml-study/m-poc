@@ -1,0 +1,77 @@
+# The image stone's computation: a tiny 4×4×3 image built by MLPL (a ramp per channel plus a bright spot), the RGB means and spreads of the feature stone, and z by trailing-axis broadcasting: the [3] tuples meet the [4,4,3] image and the language lifts them along the last axis. u:in_loop computes the same thing with three explicit loops so a test can check that broadcasting is exactly the index map (h, w, c) ↦ c. u:in_steps records, for each pixel in row-major order, its row and column, its three channel values, the differences and quotients, and z filled in so far.
+include "../../lib/rosetta/emit.mlpl";
+include "equation.mlpl";
+
+in_height = 4;
+in_width = 4;
+in_channels = 3;
+in_mu = [123, 117, 104];
+in_sigma = [58, 57, 57];
+
+def u:in_image() {
+  "The image: brighter to the right (40 per column) and downward (12 per row), each channel 15 above the last, and a spot 70 brighter at row 1, column 2 in every channel. Every value stays below 255.";
+  hh = reshape(range(in_height), [in_height, 1, 1]);
+  ww = reshape(range(in_width), [1, in_width, 1]);
+  cc = reshape(range(in_channels), [1, 1, in_channels]);
+  spot = reshape(eq(range(in_height * in_width), 6), [in_height, in_width, 1]);
+  30 + 40 * ww + 12 * hh + 15 * cc + 70 * spot
+}
+
+def u:in_all() {
+  "Every position at once: the array reading, the tuples broadcast along the trailing axis.";
+  (u:in_image() - in_mu) / in_sigma
+}
+
+def u:in_loop() {
+  "The same result by three explicit loops, reading μ[c] and σ[c] for every (h, w, c): what broadcasting means, spelled out.";
+  x = u:in_image();
+  out = fill([0], 0);
+  h = 0;
+  while lt(h, in_height) {
+    w = 0;
+    while lt(w, in_width) {
+      c = 0;
+      while lt(c, in_channels) {
+        v = take(take(take(x, 0, h), 0, w), 0, c);
+        out = concat(out, (v - take(in_mu, 0, c)) / take(in_sigma, 0, c));
+        c = c + 1
+      };
+      w = w + 1
+    };
+    h = h + 1
+  };
+  reshape(out, [in_height, in_width, in_channels])
+}
+
+def u:in_steps() {
+  "One row per pixel t = 0..15 in row-major order: its row and column, its three channel values, x − μ and z at that pixel, and z with pixels up to t filled (zero after).";
+  x = u:in_image();
+  z = u:in_all();
+  count = in_height * in_width;
+  rows_i = fill([0], 0);
+  cols_i = fill([0], 0);
+  pix = fill([0], 0);
+  diffs = fill([0], 0);
+  quots = fill([0], 0);
+  filled = fill([0], 0);
+  t = 0;
+  while lt(t, count) {
+    h = floor(t / in_width);
+    w = t - h * in_width;
+    rows_i = concat(rows_i, h);
+    cols_i = concat(cols_i, w);
+    p = take(take(x, 0, h), 0, w);
+    pix = concat(pix, p);
+    diffs = concat(diffs, p - in_mu);
+    quots = concat(quots, take(take(z, 0, h), 0, w));
+    mask = reshape(lt(range(count), t + 1), [in_height, in_width, 1]);
+    filled = concat(filled, flatten(z * mask));
+    t = t + 1
+  };
+  {count: count, x: x, mu: in_mu, sigma: in_sigma, z: z, h: rows_i, w: cols_i, pix: reshape(pix, [count, in_channels]), diff: reshape(diffs, [count, in_channels]), quot: reshape(quots, [count, in_channels]), filled: reshape(filled, [count, in_height, in_width, in_channels])}
+}
+
+def u:in_trace(rows, places) {
+  "The trace record: the axis is the pixel (16 steps), the constants are the means, the spreads and the sizes, the channels are the row, the column, the pixel's values (x), the differences (sub), the quotients (div) and z so far.";
+  {schema: "sw-ml-study.rosetta.trace", version: 1, equation: "image-normalization", axis: {name: "pixel", count: rows.count}, constants: {mu: rows.mu, sigma: rows.sigma, four: in_height, three: in_channels}, channels: {h: rows.h, w: rows.w, x: u:rs_array_json(rows.pix), sub: u:rs_array_json(rows.diff), div: u:rs_array_json(u:rs_round(rows.quot, places)), z: u:rs_array_json(u:rs_round(rows.filled, places))}}
+}

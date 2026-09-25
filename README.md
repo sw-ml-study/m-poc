@@ -109,7 +109,18 @@ is the layout and the manifest. The tour so far:
 5. **Softmax**, σ(z)ᵢ = eᶻⁱ / ∑ⱼ eᶻʲ, the research's front-page equation:
    `P ← (*Z) ÷ +/ *Z`; time is the temperature falling from 4 to 0.2, and
    the probabilities sharpen from nearly flat to one winner.
-6. **CNN triple sum**, y[r,x,y] = ∑q ∑u ∑v W[r,q,u,v] · X[q, x+u, y+v], one
+6. **Image normalization**, z[h,w,c] = (x[h,w,c] − μ[c]) / σ[c] over
+   Fin(4) × Fin(4) × Fin(3), the second applicative stone from
+   [`docs/research2.txt`](docs/research2.txt): the feature stone's M line
+   `Z ← (X − Μ) ÷ Σ` unchanged, with the shapes `X : Tuple[4,4,3]` and
+   `Μ Σ : Tuple[3]` on the second line. Subtracting a 3-tuple from a
+   4×4×3 one is broadcasting as an index projection, (h, w, c) ↦ c, and
+   the tuples are never copied to the image's shape; the Visual face draws
+   μ and σ once, three cells each, with a leader from the current pixel.
+   The image is computed by MLPL (a ramp per channel plus a bright spot),
+   z by trailing-axis broadcasting, checked against three explicit loops;
+   time is the pixel, row by row, and three output grids fill in.
+7. **CNN triple sum**, y[r,x,y] = ∑q ∑u ∑v W[r,q,u,v] · X[q, x+u, y+v], one
    convolutional layer as Zhao et al. (2018) write it and as sw-MLPL says
    it: `Y ← +/[channel,kernel-y,kernel-x] W × ⧉[Mw,Nw] X`, the window glyph
    and a reduce over named axes; time is the output position the 3×3
@@ -119,14 +130,14 @@ is the layout and the manifest. The tour so far:
    [`cnn-convolution.org`](https://github.com/sw-ml-study/sw-mlpl/blob/main/examples/literate/cnn-convolution.org)
    in sw-mlpl and the blog post
    [*Teaching an Array Language to Say CNN*](https://blog.softwarewrighter.com/2026/09/10/ml-cnn-from-equations-mlpl/).
-7. **Sigmoid neuron**, ŷ = σ(wx + b), the research's own one-neuron example:
+8. **Sigmoid neuron**, ŷ = σ(wx + b), the research's own one-neuron example:
    the same four lines with one function glyph added, trained through
    sigmoid on targets 0, 0, 1, 1; time is the epoch, and the S-shaped fit
    steepens between the two groups of points.
 
 The dropdown lists the stones in this order, simplest notation to most
-complex, the headline first and the variants last; image normalization
-(the tuple lifted over an image), attention and Adam are next.
+complex, the headline first and the variants last; attention and Adam are
+next.
 
 ## The page
 
@@ -209,7 +220,7 @@ SHA (`-dirty` when the tree had uncommitted changes), UTC time.
 
 ## Status
 
-Steps 1–26 of [the plan](docs/plan.md) are done: the gate; the equation
+Steps 1–29 of [the plan](docs/plan.md) are done: the gate; the equation
 IR with the one-neuron instance; the training trace; the three faces as
 fixtures; the page; focus; read mode with view scale, orientation cues and
 the face card; the scalene prism with faces sized to their content; the
@@ -224,7 +235,8 @@ themselves; the multi-stone page: a manifest, per-stone fixtures, a
 dropdown, and every face's title and purpose in the record; the five
 stones of the tour; exact callout anchors on the turned stone; and the
 captures; callouts in expression order; and, in v1.1 so far, the sigmoid
-neuron and the applicative feature-normalization stone. Every face header names the stone it shows, from the record.
+neuron and the two applicative stones, feature normalization and image
+normalization. Every face header names the stone it shows, from the record.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -249,8 +261,7 @@ neuron and the applicative feature-normalization stone. Every face header names 
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next in v1.1: image normalization (the tuple lifted over an image by
-broadcasting), attention (composed from matmul and softmax), Adam, the
+Next in v1.1: attention (composed from matmul and softmax), Adam, the
 Trace face (the stone as a box), and the Zoom verb (one level inside).
 
 ## License

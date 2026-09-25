@@ -1,0 +1,42 @@
+# The second applicative stone's equation (docs/research2.txt, 'Then evolve the same demo to rank 2'): image normalization, the feature stone's rule lifted over a 4×4×3 image. Math face: z[h,w,c] = (x[h,w,c] − μ[c]) / σ[c], every index its own token, and the index space h ∈ Fin(4), w ∈ Fin(4), c ∈ Fin(3) as a product. M face: Z ← (X − Μ) ÷ Σ, character for character the feature stone's line, and the shapes X : Tuple[4,4,3] Μ Σ : Tuple[3]. The docs say what the shapes mean: μ and σ are never materialized to the image's shape; broadcasting is the index map (h, w, c) ↦ c. Placeholder glyphs (see docs/plan.md).
+include "../../lib/rosetta/ir.mlpl";
+
+def u:in_equation() {
+  "Build the image-normalization record: two lines per face, every symbol, line and face documented for the page.";
+  ir = u:rs_ir_new("image-normalization", "Image normalization: the feature stone's rule lifted over a 4×4×3 image, the per-channel means and spreads broadcast by an index projection, never copied.");
+  ir = u:rs_ir_titled(ir, "Image normalization")?;
+  ir = u:rs_ir_face_doc(ir, "math", "The rule at one pixel and channel, and the index space", "Line one is the scalar rule at position (h, w, c): the pixel's channel value, less that channel's mean, over that channel's spread; μ and σ take only c. Line two says where the indices live: three finite sets whose product is the image's 48 positions, each computed on its own.")?;
+  ir = u:rs_ir_face_doc(ir, "m", "The feature stone's expression, unchanged, over an image", "Line one is the feature-normalization line character for character: the shapes moved from Tuple[3] to Tuple[4,4,3] and the expression did not move at all. Line two declares the shapes; subtracting a Tuple[3] from a Tuple[4,4,3] is broadcasting, an index projection (h, w, c) ↦ c, not a copy. Placeholder glyphs.")?;
+  ir = u:rs_ir_face_doc(ir, "visual", "Three channel grids in, three out, and the tuples drawn once", "The image as three 4×4 channel grids with the current pixel outlined; μ and σ as three cells each, drawn once, with a leader from the current pixel through its channel's μ and σ to its output cell; the three output grids fill in one pixel per step. The right panel is the index projection that makes the tuples reach every pixel without being copied.")?;
+  ir = u:rs_ir_symbol_doc(ir, "z", "var", "normalized image", "The output: the same 4×4×3 shape as the input, every channel of every pixel expressed in units of that channel's spread, zero at its mean.")?;
+  ir = u:rs_ir_symbol_doc(ir, "lb", "punct", "open bracket", "Open bracket: the indices of an array entry, or the arity of a tuple type.")?;
+  ir = u:rs_ir_symbol_doc(ir, "rb", "punct", "close bracket", "Close bracket.")?;
+  ir = u:rs_ir_symbol_doc(ir, "comma", "punct", "comma", "Separates indices, and the axes of a shape.")?;
+  ir = u:rs_ir_symbol_doc(ir, "h", "var", "row", "Which row of the image, 0 to 3. The stone's time axis walks the pixels row by row.")?;
+  ir = u:rs_ir_symbol_doc(ir, "w", "var", "column", "Which column of the image, 0 to 3.")?;
+  ir = u:rs_ir_symbol_doc(ir, "c", "var", "channel", "Which colour channel: 0 red, 1 green, 2 blue. The only index μ and σ depend on: broadcasting is the map (h, w, c) ↦ c.")?;
+  ir = u:rs_ir_symbol_doc(ir, "eq", "op", "definition", "Definition: the left side is computed from the right side.")?;
+  ir = u:rs_ir_symbol_doc(ir, "lp", "punct", "open", "Open parenthesis: group the difference before dividing, or the argument of Fin.")?;
+  ir = u:rs_ir_symbol_doc(ir, "rp", "punct", "close", "Close parenthesis.")?;
+  ir = u:rs_ir_symbol_doc(ir, "x", "var", "image", "The input: a 4×4 image with three channels, a ramp in each channel plus one bright spot at row 1, column 2, computed by MLPL.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sub", "op", "subtract", "Centre: take the channel's mean away from every pixel of that channel.")?;
+  ir = u:rs_ir_symbol_doc(ir, "mu", "param", "channel means", "The ImageNet channel means 123, 117, 104: three numbers, one per channel, never copied out to the image's 48 positions.")?;
+  ir = u:rs_ir_symbol_doc(ir, "div", "op", "divide", "Scale: divide by the channel's spread, so one means one standard deviation. In the notation, ÷.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sigma", "param", "channel spreads", "The standard deviation of each channel: 58, 57, 57. Three numbers, like μ.")?;
+  ir = u:rs_ir_symbol_doc(ir, "in", "op", "membership", "The index ranges over the set: it takes each of its values.")?;
+  ir = u:rs_ir_symbol_doc(ir, "Fin", "hyper", "finite index type", "Fin(n) is the set of positions 0 to n−1. The image's index space is the product Fin(4) × Fin(4) × Fin(3), 48 positions; the parameters' is Fin(3) alone.")?;
+  ir = u:rs_ir_symbol_doc(ir, "four", "hyper", "four", "The image's height and its width.")?;
+  ir = u:rs_ir_symbol_doc(ir, "three", "hyper", "three", "How many channels there are; the arity of μ and σ.")?;
+  ir = u:rs_ir_symbol_doc(ir, "colon", "punct", "has type", "Declares the type of what is on its left.")?;
+  ir = u:rs_ir_symbol_doc(ir, "tuple", "hyper", "fixed homogeneous tuple", "Tuple[4,4,3] is the image's shape, Tuple[3] the parameters'. X − Μ takes a 3-tuple from a 4×4×3 one: the trailing axes agree, so the language lifts Μ over the image by the index projection (h, w, c) ↦ c and never builds a Tuple[4,4,3] copy of it.")?;
+  ir = u:rs_ir_line(ir, "math", "z:z|lb:~[|h:~h|comma:~,|w:~w|comma:~,|c:~c|rb:~]|eq:=|lp:(|x:~x|lb:~[|h:~h|comma:~,|w:~w|comma:~,|c:~c|rb:~]|sub:−|mu:μ|lb:~[|c:~c|rb:~]|rp:~)|div:/|sigma:σ|lb:~[|c:~c|rb:~]")?;
+  ir = u:rs_ir_line(ir, "math", "h:h|in:∈|Fin:Fin|lp:~(|four:~4|rp:~)|comma:~,|w:w|in:∈|Fin:Fin|lp:~(|four:~4|rp:~)|comma:~,|c:c|in:∈|Fin:Fin|lp:~(|three:~3|rp:~)")?;
+  ir = u:rs_ir_line(ir, "m", "z:Z|eq:←|lp:(|x:~X|sub:−|mu:Μ|rp:~)|div:÷|sigma:Σ")?;
+  ir = u:rs_ir_line(ir, "m", "x:X|colon::|tuple:Tuple|lb:~[|four:~4|comma:~,|four:~4|comma:~,|three:~3|rb:~]|mu:Μ|sigma:Σ|colon::|tuple:Tuple|lb:~[|three:~3|rb:~]")?;
+  ir = u:rs_ir_line_doc(ir, "math", 0, "The rule at pixel (h, w), channel c: subtract the mean of channel c, divide by its spread. h and w select the pixel; only c selects the parameters.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 1, "The index space: a product of three finite sets, 4 × 4 × 3 = 48 positions, and the rule holds at each of them independently.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 0, "The array reading, unchanged from the feature stone: subtract the means, divide by the spreads. At rank 3 it is 48 independent scalar rules.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 1, "The shapes: the image is a 4×4×3 tuple, the means and spreads are 3-tuples. Their trailing axes agree, so Μ and Σ lift over the image by the index map (h, w, c) ↦ c; the language never materializes a 4×4×3 copy of them.")?;
+  u:rs_ir_validate(ir)?;
+  ok(ir)
+}

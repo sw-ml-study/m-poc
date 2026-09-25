@@ -1,0 +1,156 @@
+# The Visual face of image normalization, as a line scene built from the trace. Left, the image as three 4×4 channel grids of labelled cells (red, green, blue), the pixel being normalized outlined. Middle, μ and σ as three cells each, drawn once, with a leader from the current pixel through its channel's μ and σ cells to its output cell: the index projection (h, w, c) ↦ c made visible. Right of that, three output grids filling in one pixel per step, each finished cell holding a bar. Far right, the index-projection panel: (h, w, c) sent to c alone, μ[c] and σ[c] read from 3-tuples that are never copied to the image's shape. Every edge and label carries a symbol id of the equation record. Coordinates are scene units, roughly 18 wide by 10 high.
+include "../../lib/rosetta/scene.mlpl";
+include "equation.mlpl";
+
+in_step = 0.7;
+in_grid_x = 1.5;
+in_out_x = 9.0;
+in_mu_x = 5.5;
+in_sigma_x = 7.1;
+
+def u:in_palette() {
+  "The RGBA colours of the face.";
+  {structure: [0.78, 0.8, 0.88, 1], input: [0.4, 0.85, 0.95, 1], param: [0.95, 0.85, 0.4, 1], output: [0.72, 0.58, 0.95, 1], flow: [0.55, 0.58, 0.68, 1], lit: [1, 0.6, 0.25, 1]}
+}
+
+def u:in_group_y(c) {
+  "Scene y of the centre of channel c's row of grids.";
+  7.6 - c * 3.2
+}
+
+def u:in_grid_top(c) {
+  "Scene y of the first row of channel c's grids.";
+  u:in_group_y(c) + 1.05
+}
+
+def u:in_grid_labels(scene, values, rows, cols, x0, y0, step, id, color) {
+  "A grid of labelled cells for a matrix: row r, column c at (x0 + c·step, y0 − r·step).";
+  r = 0;
+  while lt(r, rows) {
+    c = 0;
+    while lt(c, cols) {
+      scene = u:rs_scene_box(scene, x0 + c * step, y0 - r * step, step * 0.86, step * 0.86, id, to_string(take(take(values, 0, r), 0, c)), color)?;
+      c = c + 1
+    };
+    r = r + 1
+  };
+  ok(scene)
+}
+
+def u:in_grid_bars(scene, values, rows, cols, x0, y0, step, top, id, color) {
+  "A grid of plain cells each holding a horizontal bar for its value, scaled so that top fills a cell; negative bars point left from the cell's centre.";
+  r = 0;
+  while lt(r, rows) {
+    c = 0;
+    while lt(c, cols) {
+      cx = x0 + c * step;
+      cy = y0 - r * step;
+      v = take(take(values, 0, r), 0, c);
+      scene = u:rs_scene_rect(scene, cx - step * 0.43, cy - step * 0.43, cx + step * 0.43, cy + step * 0.43, id, color)?;
+      scene = u:rs_scene_segment(scene, cx, cy - step * 0.14, cx + v / top * step * 0.4, cy - step * 0.14, id, color)?;
+      scene = u:rs_scene_segment(scene, cx, cy + step * 0.14, cx + v / top * step * 0.4, cy + 0.14 * step, id, color)?;
+      c = c + 1
+    };
+    r = r + 1
+  };
+  ok(scene)
+}
+
+def u:in_channel_name(c) {
+  "The colour name of channel c, for the grid labels.";
+  if eq(c, 0) {
+    "R"
+  } else {
+    if eq(c, 1) {
+      "G"
+    } else {
+      "B"
+    }
+  }
+}
+
+def u:in_channel(scene, trace, image, filled, top, c, t) {
+  "One channel's row: the input grid, the μ and σ cells, the output grid, and the leader from the current pixel through μ[c] and σ[c] to its output cell, drawn only when the current pixel is in this channel's grids (every pixel is: the leader visits all three rows each step).";
+  p = u:in_palette();
+  yc = u:in_group_y(c);
+  y0 = u:in_grid_top(c);
+  h = take(trace.channels.h, 0, t);
+  w = take(trace.channels.w, 0, t);
+  px = in_grid_x + w * in_step;
+  py = y0 - h * in_step;
+  ox = in_out_x + w * in_step;
+  scene = u:rs_scene_label(scene, [0.5, yc, 0], "c", u:in_channel_name(c))?;
+  scene = u:in_grid_labels(scene, take(image, 2, c), 4, 4, in_grid_x, y0, in_step, "x", p.input)?;
+  scene = u:rs_scene_rect(scene, px - in_step * 0.5, py - in_step * 0.5, px + in_step * 0.5, py + in_step * 0.5, "h", p.lit)?;
+  scene = u:rs_scene_box(scene, in_mu_x, yc, 1.0, 0.6, "mu", to_string(take(trace.constants.mu, 0, c)), p.param)?;
+  scene = u:rs_scene_box(scene, in_sigma_x, yc, 1.0, 0.6, "sigma", to_string(take(trace.constants.sigma, 0, c)), p.param)?;
+  scene = u:rs_scene_segment(scene, px + in_step * 0.5, py, in_mu_x - 0.5, yc, "sub", p.flow)?;
+  scene = u:rs_scene_segment(scene, in_mu_x + 0.5, yc, in_sigma_x - 0.5, yc, "div", p.flow)?;
+  scene = u:rs_scene_segment(scene, in_sigma_x + 0.5, yc, ox - in_step * 0.5, py, "z", p.output)?;
+  scene = u:in_grid_bars(scene, take(filled, 2, c), 4, 4, in_out_x, y0, in_step, top, "z", p.output)?;
+  u:rs_scene_rect(scene, ox - in_step * 0.5, py - in_step * 0.5, ox + in_step * 0.5, py + in_step * 0.5, "w", p.lit)
+}
+
+def u:in_index_panel(scene) {
+  "The index projection: (h, w, c) is sent to c alone; μ[c] and σ[c] are read from 3-tuples. A faint frame bounds the panel.";
+  p = u:in_palette();
+  scene = u:rs_scene_rect(scene, 12.3, 3.6, 18.4, 9.9, "Fin", p.flow)?;
+  scene = u:rs_scene_label(scene, [15.35, 9.4, 0], "Fin", "Fin(4) × Fin(4) × Fin(3)")?;
+  scene = u:rs_scene_box(scene, 13.8, 8.5, 0.8, 0.6, "h", "h", p.flow)?;
+  scene = u:rs_scene_box(scene, 15.0, 8.5, 0.8, 0.6, "w", "w", p.flow)?;
+  scene = u:rs_scene_box(scene, 16.2, 8.5, 0.8, 0.6, "c", "c", p.input)?;
+  scene = u:rs_scene_segment(scene, 13.8, 8.2, 13.8, 7.8, "h", p.flow)?;
+  scene = u:rs_scene_segment(scene, 15.0, 8.2, 15.0, 7.8, "w", p.flow)?;
+  scene = u:rs_scene_segment(scene, 16.2, 8.2, 16.2, 7.2, "c", p.flow)?;
+  scene = u:rs_scene_label(scene, [17.1, 7.7, 0], "c", "↦ c")?;
+  scene = u:rs_scene_box(scene, 16.2, 6.9, 1.2, 0.6, "mu", "μ[c]", p.param)?;
+  scene = u:rs_scene_segment(scene, 16.2, 6.6, 16.2, 6.3, "sigma", p.flow)?;
+  scene = u:rs_scene_box(scene, 16.2, 6.0, 1.2, 0.6, "sigma", "σ[c]", p.param)?;
+  u:rs_scene_label(scene, [15.35, 4.9, 0], "tuple", "Tuple[3], not Tuple[4,4,3]")
+}
+
+def u:in_panels(scene) {
+  "Name the four panels for the page's legend and callouts.";
+  p = u:in_palette();
+  scene = u:rs_scene_panel(scene, "image", "Image", "The input as three 4×4 channel grids, red, green and blue, one number per cell, with the pixel being normalized outlined. Time walks the pixels row by row; every pixel's three channels are done in one step.", [0.2, -0.3, 4.3, 9.9], p.input)?;
+  scene = u:rs_scene_panel(scene, "broadcast", "Broadcast", "μ and σ drawn once: three cells each, one per channel, not 48. The leader from the current pixel reaches its channel's cells by the index projection (h, w, c) ↦ c; nothing is ever copied out to the image's shape.", [4.5, -0.3, 8.1, 9.9], p.param)?;
+  scene = u:rs_scene_panel(scene, "output", "Output", "z as three channel grids filling in one pixel per step, each finished cell a bar for its value: right of centre positive, left negative, in units of the channel's spread.", [8.3, -0.3, 11.9, 9.9], p.output)?;
+  u:rs_scene_panel(scene, "index", "Index projection", "Broadcasting as an index map: the image's index (h, w, c) is sent to c alone, and μ[c], σ[c] are read from 3-tuples. The runtime evaluates (x[h,w,c] − μ[c]) / σ[c] at every position with no 4×4×3 copy of μ or σ ever allocated: semantic broadcasting, index mapping, no materialization.", [12.2, 3.5, 18.5, 10.0], p.structure)
+}
+
+def u:in_visual(trace, t) {
+  "The whole Visual face at step t of a parsed trace record.";
+  scene = u:rs_scene_new(trace.axis.name);
+  p = u:in_palette();
+  image = reshape(trace.channels.x.values, [4, 4, 3]);
+  filled = take(reshape(trace.channels.z.values, trace.channels.z.shape), 0, t);
+  top = reduce(:max, abs(trace.channels.div.values)) + 0.0001;
+  scene = u:rs_scene_label(scene, [in_grid_x + 1.05, 9.4, 0], "x", "x")?;
+  scene = u:rs_scene_label(scene, [in_mu_x, 9.4, 0], "mu", "μ")?;
+  scene = u:rs_scene_label(scene, [in_sigma_x, 9.4, 0], "sigma", "σ")?;
+  scene = u:rs_scene_label(scene, [in_out_x + 1.05, 9.4, 0], "z", "z")?;
+  c = 0;
+  while lt(c, 3) {
+    scene = u:in_channel(scene, trace, image, filled, top, c, t)?;
+    c = c + 1
+  };
+  scene = u:in_index_panel(scene)?;
+  u:in_panels(scene)
+}
+
+def u:in_scene(trace) {
+  "The Visual face with one frame per pixel.";
+  scene = u:in_visual(trace, 0)?;
+  t = 0;
+  while lt(t, trace.axis.count) {
+    frame = u:in_visual(trace, t)?;
+    scene = u:rs_scene_frame(scene, reshape(frame.positions, [frame.vertex_count, 3]))?;
+    t = t + 1
+  };
+  ok(scene)
+}
+
+def u:in_read_trace(path) {
+  "The trace record from its fixture.";
+  parse_json(read_text(path)?)
+}
