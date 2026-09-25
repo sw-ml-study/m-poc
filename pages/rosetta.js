@@ -712,6 +712,10 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
     if (flatCache) return flatCache;
     const faces = [...stoneEl.querySelectorAll(".face")];
     const saved = [stoneEl.style.transform, ...faces.map((f) => f.style.transform)];
+    // no transition may animate the switch back, or the next frames' anchors are mid-animation
+    const savedT = [stoneEl.style.transition, ...faces.map((f) => f.style.transition)];
+    stoneEl.style.transition = "none";
+    faces.forEach((f) => { f.style.transition = "none"; });
     stoneEl.style.transform = "none";
     faces.forEach((f) => { f.style.transform = "none"; });
     const stage = stageEl.getBoundingClientRect();
@@ -726,6 +730,9 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
     }
     stoneEl.style.transform = saved[0];
     faces.forEach((f, i) => { f.style.transform = saved[i + 1]; });
+    void stoneEl.offsetWidth;   // apply the restored transform before transitions come back
+    stoneEl.style.transition = savedT[0];
+    faces.forEach((f, i) => { f.style.transition = savedT[i + 1]; });
     flatCache = out;
     return out;
   }
@@ -1405,6 +1412,7 @@ async function main() {
 
   const help = document.getElementById("help");
   document.getElementById("help-button").addEventListener("click", () => { help.hidden = false; });
+  document.getElementById("help-button-top").addEventListener("click", () => { help.hidden = false; });
   document.getElementById("help-close").addEventListener("click", () => { help.hidden = true; });
   help.addEventListener("click", (e) => { if (e.target === help) help.hidden = true; });
   makeModes({ stone, time, focus, legend: document.getElementById("key-legend"), help });

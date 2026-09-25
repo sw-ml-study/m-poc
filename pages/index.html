@@ -4,22 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rosetta M</title>
-<link rel="stylesheet" href="style.css?v=26">
+<link rel="stylesheet" href="style.css?v=28">
 </head>
 <body>
 <header>
   <div class="masthead">
     <h1>Rosetta M</h1>
-    <label class="stone-pick" data-doc="stone-pick">Stone
-      <select id="stone-select" aria-label="Choose the equation shown on the stone"></select>
-    </label>
+    <span class="masthead-controls">
+      <label class="stone-pick" data-doc="stone-pick">Stone
+        <select id="stone-select" aria-label="Choose the equation shown on the stone"></select>
+      </label>
+      <button type="button" id="help-button-top" data-doc="help" aria-label="Keyboard help">Keys <kbd>?</kbd></button>
+    </span>
   </div>
   <p class="lede">One computation, three faces, and time. Each stone is one
     small machine-learning computation shown as its <b>Math</b>, the
     <b>proposed M code</b>, and its <b>Visual</b> (structure and live data),
     with time as the fourth dimension. Choose a stone above; drag it to
     rotate; scrub the steps and the numbers move while the equation, the code
-    and the dataflow stay put.</p>
+    and the dataflow stay put. Rest the pointer on anything for an explanation;
+    press <kbd>?</kbd> for the keys.</p>
   <p class="note"><b>M is proposed, not run.</b> The M face is notation rendered
     from the same record as the Math face; nothing here parses or evaluates it,
     and its glyphs are placeholders. Every number on the page comes from a real
@@ -138,6 +142,6 @@
   <svg class="callout-leader" aria-hidden="true"></svg>
 </div>
 
-<script src="rosetta.js?v=26"></script>
+<script src="rosetta.js?v=28"></script>
 </body>
 </html>

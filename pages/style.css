@@ -28,6 +28,11 @@ header, main, footer { max-width: 62rem; margin: 0 auto; padding: 0 16px; }
 header { padding-top: 24px; }
 h1 { margin: 0 0 8px; font-size: 2rem; letter-spacing: 0.01em; }
 .masthead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.masthead-controls { display: inline-flex; align-items: center; gap: 12px; }
+.masthead-controls kbd, .lede kbd {
+  font: 0.85em ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--edge); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px;
+}
 .stone-pick { color: var(--dim); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.06em; display: inline-flex; align-items: center; gap: 8px; }
 .stone-pick select {
   font: inherit; font-size: 1rem; text-transform: none; letter-spacing: 0; color: var(--fg);
@@ -64,10 +69,8 @@ body[data-mode="scale"] { cursor: ns-resize; }
 body[data-mode="travel"] { cursor: col-resize; }
 body[data-mode="focus"] { cursor: crosshair; }
 body[data-mode] .stage { cursor: inherit; }
-.stone.settling { transition: transform 0.35s ease-out; }
 body.reading .stage { height: auto; padding: 56px 0 12px; cursor: default; }
 body.reading .minimap { width: 44px; height: 44px; }
-body.reading .stone { transition: transform 0.35s ease-out; }
 body.reading .face:not(.reading-face) { visibility: hidden; }
 
 /* orientation cues: a top-down minimap of the prism with the viewer below it */
