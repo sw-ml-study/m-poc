@@ -230,14 +230,14 @@ Each step ends with `just check` green, a commit to `main`, a push and an
 | 10 | hover-callouts       | done: symbol docs in the IR, Visual panels in the scene, callouts with leader lines, the footer with build facts                                                  |
 | 11 | line-docs            | done: per-line docs on the text faces, `data-line` tagging, line callouts, lines listed in the face card                                                          |
 | 12 | proximity-callouts   | done: everything near the pointer at once, fanned around the row; per-token anchors; generous hit areas                                                          |
-| 13 | plan-stones          | this update                                                                                                                                                       |
-| 14 | faces-v2             | IR tokens with sub/superscripts, stacked ∑ limits and per-index tokens; the face wrapper follows the renderer's several runs per line; tests and baselines        |
-| 15 | multi-stone-page     | `fixtures/stones.json` manifest, per-stone fixtures and face docs, `build-site`/checks per stone, the dropdown stone selector (`?stone=ID`)                        |
-| 16 | dot-product-stone    | s = ∑ᵢ wᵢ xᵢ; time = i; cells, products, running-sum bar; named face labels and symbol docs for callouts                                                          |
-| 17 | matmul-stone         | C ← A +.× B; time = k; the research's first true Rosetta Stone                                                                                                    |
-| 18 | softmax-stone        | σ(z)ᵢ; time = temperature; bar rows summing to one                                                                                                                |
-| 19 | cnn-stone            | the triple sum as the paper writes it and as sw-MLPL says it; time = the window sweep; input grid, kernel, products, output filling in                            |
-| 20 | capture-and-publish  | `captures/` stills + animated WebP of every stone, README with the stone, the provisional-glyph note and the run-it-yourself link, Pages deploy verified          |
+| 13 | plan-stones          | done: this update; later inserted: callout anchoring (14 in the saga), invisible tokens, callout projection and face titles                                                                                                                                                       |
+| 14 | faces-v2             | done: IR tokens with sub/superscripts, stacked ∑ limits and per-index tokens; the face wrapper follows the renderer's several runs per line; tests and baselines        |
+| 15 | multi-stone-page     | done: `fixtures/stones.json` manifest, per-stone fixtures and face docs, `build-site`/checks per stone, the dropdown stone selector (`?stone=ID`)                        |
+| 16 | dot-product-stone    | done: s = ∑ᵢ wᵢ xᵢ; time = i; cells, products, running-sum bar; named face labels and symbol docs for callouts                                                          |
+| 17 | matmul-stone         | done: C ← A +.× B; time = k; the research's first true Rosetta Stone                                                                                                    |
+| 18 | softmax-stone        | done: σ(z)ᵢ; time = temperature; bar rows summing to one                                                                                                                |
+| 19 | cnn-stone            | done: the triple sum as the paper writes it and as sw-MLPL says it; time = the window sweep; input grid, kernel, products, output filling in                            |
+| 20 | capture-and-publish  | done: `captures/` stills + animated WebP of every stone, README with the stone, the provisional-glyph note and the run-it-yourself link, Pages deploy verified    |
 
 Steps 7–12 were inserted after the first stone was looked at (2026-09-23);
 their prompts are in `.agentrail/steps/`.

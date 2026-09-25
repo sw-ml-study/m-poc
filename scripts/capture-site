@@ -1,0 +1,46 @@
+#!/bin/sh
+# Capture the stones from the served page with headless Chrome: one still of
+# every stone at an angle, mid-way through its time axis, and one animated
+# WebP of every Visual face across its time axis. Needs the page served at
+# http://127.0.0.1:8765/ (just serve-site), Google Chrome, ImageMagick and
+# img2webp/cwebp. Writes captures/. usage: scripts/capture-site
+set -eu
+
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_root"
+chrome=${CHROME:-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}
+base=${SITE:-http://127.0.0.1:8765/}
+mkdir -p captures tmp/cap
+
+shot() {
+    "$chrome" --headless=new --disable-gpu --hide-scrollbars --window-size=1280,1100 \
+        --virtual-time-budget=6000 --screenshot="$1" "$base?$2" >/dev/null 2>&1
+}
+
+# stone  still-step  step-count
+while read -r stone mid count; do
+    [ -n "$stone" ] || continue
+    shot "tmp/cap/$stone.png" "stone=$stone&yaw=-32&epoch=$mid"
+    magick "tmp/cap/$stone.png" -crop 1000x620+140+230 +repage -resize 900x "captures/$stone-stone.png"
+    rm -f tmp/cap/f_*.png
+    step=$(( (count + 11) / 12 ))
+    t=0; i=0; frames=""
+    while [ "$t" -lt "$count" ]; do
+        name=$(printf 'tmp/cap/f_%02d.png' "$i")
+        shot "$name" "stone=$stone&read=visual&epoch=$t"
+        magick "$name" -crop 960x560+160+170 +repage -resize 720x "$name"
+        frames="$frames -d 500 $name"
+        t=$((t + step)); i=$((i + 1))
+    done
+    # shellcheck disable=SC2086
+    img2webp -loop 0 -lossy -q 70 $frames -o "captures/$stone-visual.webp" >/dev/null 2>&1
+    echo "captured $stone ($i frames)"
+done <<STONES
+one-neuron 12 31
+dot-product 3 6
+matmul 2 4
+softmax 12 21
+cnn 6 16
+STONES
+cwebp -q 82 captures/one-neuron-stone.png -o captures/one-neuron-stone.webp >/dev/null 2>&1
+echo "captures written to captures/"

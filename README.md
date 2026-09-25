@@ -43,6 +43,28 @@ geometry that the static page replays.
 visualization slice of [`docs/research.txt`](docs/research.txt) and nothing
 of the language.
 
+## Captures
+
+Stills of every stone and an animated capture of every Visual face across
+its time axis live under [`captures/`](captures), made from the served page
+by [`scripts/capture-site`](scripts/capture-site) with headless Chrome
+(`?stone=ID&yaw=DEG&epoch=T` and `?read=visual&epoch=T`), so what is shown
+is exactly what the page replays. The animated captures
+are WebP: [dot product](captures/dot-product-visual.webp),
+[matmul](captures/matmul-visual.webp), [softmax](captures/softmax-visual.webp),
+[CNN](captures/cnn-visual.webp); the stills are the `*-stone.png` files.
+
+## Run it yourself
+
+Every number on the page came from sw-MLPL. To run the neuron's training
+loop yourself, paste [`demos/one-neuron/neuron.mlpl`](demos/one-neuron/neuron.mlpl)
+(the model and `u:on_train`) into the sw-MLPL playground at
+<https://mlpl.softwarewrighter.com/> and call `u:on_train(0.1, 30)`, or run
+`just mlpl demos/one-neuron/train.mlpl` against the adjacent checkout. The
+other stones' programs are under `demos/<stone>/`. The M face is never run
+anywhere: it is notation rendered from the record, and its glyphs are
+placeholders.
+
 ## Build and test
 
 There is nothing to build. The scripts select existing tools and never
@@ -171,7 +193,7 @@ SHA (`-dirty` when the tree had uncommitted changes), UTC time.
 
 ## Status
 
-Steps 1–17 of [the plan](docs/plan.md) are done: the gate; the equation
+Steps 1–23 of [the plan](docs/plan.md) are done: the gate; the equation
 IR with the one-neuron instance; the training trace; the three faces as
 fixtures; the page; focus; read mode with view scale, orientation cues and
 the face card; the scalene prism with faces sized to their content; the
@@ -182,9 +204,11 @@ five stones (one neuron, dot product, matmul, softmax, CNN) chosen from a
 dropdown; callouts that stay anchored to their glyphs; and faces v2, whose
 tokens may be subscripts, superscripts, big operators and their limits, so
 the tour's sums render and stay focusable; invisible tokens that announce
-themselves; and the multi-stone page: a manifest, per-stone fixtures, a
-dropdown, and every face's title and purpose in the record. Every face
-header names the equation it shows, from the record.
+themselves; the multi-stone page: a manifest, per-stone fixtures, a
+dropdown, and every face's title and purpose in the record; the five
+stones of the tour; exact callout anchors on the turned stone; and the
+captures. Every face header names the stone it shows, from the record.
+v1 of the plan is complete.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -209,7 +233,9 @@ header names the equation it shows, from the record.
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next: the dot-product, matmul, softmax and CNN stones, then captures.
+Next, beyond v1 (see the plan's open decisions): a sigmoid or logistic
+variant of the neuron, Adam, attention; the Zoom verb (abstraction
+levels); a Trace face if the stone ever becomes a box.
 
 ## License
 

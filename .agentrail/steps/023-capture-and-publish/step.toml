@@ -1,6 +1,6 @@
 number = 23
 slug = "capture-and-publish"
-status = "pending"
+status = "in-progress"
 description = "captures/ still + animated WebP, README with the stone, provisional-glyph note, run-it-yourself link, Pages deploy verified"
 role = "legacy"
 context_files = []

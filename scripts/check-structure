@@ -42,6 +42,10 @@ for path in \
     tests/reg/rosetta_one_neuron_scene.rgt \
     docs/scene.md \
     docs/stones.md \
+    scripts/capture-site \
+    captures/one-neuron-stone.webp \
+    captures/one-neuron-visual.webp \
+    captures/cnn-visual.webp \
     demos/stones.mlpl \
     fixtures/stones.json \
     pages/data/stones.json \
@@ -115,7 +119,7 @@ do
     [ -f "$repo_root/$path" ] || { echo "missing required file: $path" >&2; exit 1; }
 done
 
-for dir in lib/rosetta demos/one-neuron demos/dot-product demos/matmul demos/softmax demos/cnn fixtures fixtures/one-neuron fixtures/dot-product fixtures/matmul fixtures/softmax fixtures/cnn pages tests tests/reg scripts docs; do
+for dir in captures lib/rosetta demos/one-neuron demos/dot-product demos/matmul demos/softmax demos/cnn fixtures fixtures/one-neuron fixtures/dot-product fixtures/matmul fixtures/softmax fixtures/cnn pages tests tests/reg scripts docs; do
     [ -d "$repo_root/$dir" ] || { echo "missing required directory: $dir" >&2; exit 1; }
 done
 
