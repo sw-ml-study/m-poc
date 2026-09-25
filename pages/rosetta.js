@@ -1473,8 +1473,15 @@ function makeModes({ stone, time, focus, legend, help }) {
 
 // ------------------------------------------------------------------- boot
 
+// Data is fetched with the same ?v= as this script, so a deploy that bumps
+// the version in index.html refreshes the fixtures too: GitHub Pages lets a
+// browser keep them for ten minutes, and a new script with an old manifest
+// would drop faces the manifest does not list.
+const VERSION = (() => { try { return new URL(document.currentScript.src).searchParams.get("v") || ""; } catch (e) { return ""; } })();
+const versioned = (url) => (VERSION ? `${url}${url.includes("?") ? "&" : "?"}v=${VERSION}` : url);
+
 async function load(url, asText) {
-  const res = await fetch(url);
+  const res = await fetch(versioned(url));
   if (!res.ok) throw new Error(`${url}: ${res.status}`);
   return asText ? res.text() : res.json();
 }
@@ -1649,7 +1656,7 @@ async function main() {
   makeModes({ stone, time, focus, legend: document.getElementById("key-legend"), help });
   if (showHelp) help.hidden = false;
 
-  fetch("data/build-info.json").then((r) => (r.ok ? r.json() : null)).then((b) => {
+  fetch(versioned("data/build-info.json")).then((r) => (r.ok ? r.json() : null)).then((b) => {
     if (!b) return;
     document.getElementById("build-info").textContent = `built on ${b.host} at ${b.sha}, ${b.timestamp}`;
   }).catch(() => {});

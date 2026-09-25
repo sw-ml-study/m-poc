@@ -185,7 +185,11 @@ together, and the walk works on the turning stone too.
 
 [`pages/`](pages) is static: `index.html`, `style.css`, `rosetta.js` and,
 under `pages/data/`, a copy of the fixtures made by `just build-site`
-(`scripts/check-site` fails the gate if the copy is stale). No bundler, no
+(`scripts/check-site` fails the gate if the copy is stale). The script and
+stylesheet links carry a `?v=` that every change to `pages/` bumps, and the
+script fetches its data with the same tag, so a deploy takes effect on the
+first reload even though GitHub Pages lets browsers keep files for ten
+minutes. No bundler, no
 framework. The script has three parts, none of which knows what a neuron is:
 
 - **the stone**: a CSS 3D triangular prism (`preserve-3d`) whose three
