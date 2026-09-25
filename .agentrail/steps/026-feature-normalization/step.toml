@@ -1,8 +1,9 @@
 number = 26
 slug = "feature-normalization"
-status = "in-progress"
+status = "completed"
 description = "The applicative stone, from docs/research2.txt (the section 'so how can we ad..."
 role = "production"
 context_files = []
 created_at = "2026-09-24T18:16:58"
-commits = []
+completed_at = "2026-09-24T19:40:51"
+commits = ["73061de2844ed4d59f2190c24f0c86613b6e03ea"]
