@@ -1,0 +1,2 @@
+command = "./scripts/run-mlpl demos/adam/trace-scene.mlpl"
+exit_code = 0

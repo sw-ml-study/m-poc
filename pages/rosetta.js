@@ -1,6 +1,7 @@
 // Rosetta M: the stone page. Three responsibilities, none of which know what
 // a neuron is:
-//   1. the stone: a CSS 3D prism that auto-rotates and can be dragged;
+//   1. the stone: a CSS 3D prism (three faces, or four when the stone has a
+//      Trace face) that auto-rotates and can be dragged;
 //   2. a generic line projector that draws a line-scene record (positions,
 //      edges, colors, ids, labels, frames) into an SVG element;
 //   3. the time axis: a scrubber over the trace's frames, with a readout of
@@ -16,6 +17,7 @@ const dataFor = (stone) => ({
   scene: `data/${stone}/scene.json`,
   equation: `data/${stone}/faces/equation.json`,
   faces: { math: `data/${stone}/faces/math.svg`, m: `data/${stone}/faces/m.svg` },
+  traceScene: `data/${stone}/trace-scene.json`,
 });
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -34,48 +36,74 @@ const initialHover = params.get("hover");
 // ------------------------------------------------------------- the geometry
 
 // Face widths come from the content: the Visual face is wide, the text faces
-// are not. The stone is the triangular prism whose cross-section has those
-// three widths as its sides. Every side of a triangle is tangent to its
-// inscribed circle, so every face sits at the inradius r from the axis and
-// differs only in the angle of its outward normal and in a small in-plane
-// offset (a side's midpoint is not its tangent point unless the triangle is
-// isosceles about it). All in abstract units; --unit is pixels per unit.
+// are not. The stone is the prism whose cross-section is the tangential
+// polygon with those widths as its sides, in order: every side is tangent to
+// one inscribed circle, so every face sits at the inradius r from the axis
+// and differs only in the angle of its outward normal and in a small
+// in-plane offset (a side's midpoint is not its tangent point unless its two
+// tangent lengths agree). Three widths make a triangle (always tangential);
+// four make a kite-like quadrilateral when a + c = b + d, else the widths are
+// replaced by equal ones with a console error. All in abstract units; --unit
+// is pixels per unit.
 const FACE_HEIGHT = 440;
 
 function makeGeometry(widths) {
   const faces = Object.keys(widths);
-  let [a, b, c] = faces.map((f) => widths[f]);
-  if (a >= b + c || b >= a + c || c >= a + b) {
-    console.error("face widths violate the triangle inequality; using equal widths", widths);
-    a = b = c = Math.max(a, b, c);
+  const n = faces.length;
+  let sides = faces.map((f) => widths[f]);
+  const tangential = n === 3 ? sides.every((w, i) => w < sides[(i + 1) % 3] + sides[(i + 2) % 3])
+    : n === 4 ? sides.every((w) => w > 0) && Math.abs(sides[0] + sides[2] - sides[1] - sides[3]) < 1e-6
+    : false;
+  if (!tangential) {
+    console.error(n === 4 ? "four face widths must satisfy a + c = b + d; using equal widths" : "face widths violate the triangle inequality; using equal widths", widths);
+    sides = sides.map(() => Math.max(...sides));
   }
-  // vertices (x, z): P0-P1 is the first face's side, counterclockwise seen from above
-  const P0 = [0, 0], P1 = [a, 0];
-  const x2 = (a * a + c * c - b * b) / (2 * a);
-  const P2 = [x2, Math.sqrt(Math.max(0, c * c - x2 * x2))];
-  const sides = [[P0, P1, a], [P1, P2, b], [P2, P0, c]];
-  const s = (a + b + c) / 2;
-  const area = Math.sqrt(s * (s - a) * (s - b) * (s - c));
-  const r = area / s;
-  // incenter: vertices weighted by the opposite side lengths
-  const I = [(b * P0[0] + c * P1[0] + a * P2[0]) / (2 * s), (b * P0[1] + c * P1[1] + a * P2[1]) / (2 * s)];
+  // tangent lengths: vertex i sits between side i-1 and side i, at distance
+  // t[i] along both from their tangent points, so side i = t[i] + t[i+1]
+  let t;
+  if (n === 3) {
+    const s = (sides[0] + sides[1] + sides[2]) / 2;
+    t = [s - sides[1], s - sides[2], s - sides[0]];
+  } else {
+    // a quadrilateral leaves one free length; take the one that keeps the
+    // smallest tangent length largest, the roundest of the family
+    const [a, b, c] = sides;
+    let best = null;
+    for (let k = 1; k < 400; k++) {
+      const x = a * k / 400;
+      const tt = [x, a - x, b - a + x, c - b + a - x];
+      const m = Math.min(...tt);
+      if (!best || m > best.m) best = { m, tt };
+    }
+    t = best.tt;
+  }
+  // the inradius: the angles the tangent lengths subtend at the centre add
+  // up to one full turn
+  const turn = (r) => t.reduce((sum, ti) => sum + 2 * Math.atan(ti / r), 0);
+  let lo = 1e-6, hi = 1e6;
+  for (let k = 0; k < 200; k++) { const mid = (lo + hi) / 2; if (turn(mid) > 2 * Math.PI) lo = mid; else hi = mid; }
+  const r = (lo + hi) / 2;
+  // walk the polygon in (x, z): side i's outward normal is at angle phi from
+  // +z toward +x (rotateY(phi) sends +z there), its tangent point r along it,
+  // and its ends at phi -/+ the angles its two tangent lengths subtend
+  const dir = (ang) => [Math.sin(ang), Math.cos(ang)];
   const out = {};
-  faces.forEach((face, k) => {
-    const [Pi, Pj, w] = sides[k];
-    const M = [(Pi[0] + Pj[0]) / 2, (Pi[1] + Pj[1]) / 2];
-    const len = Math.hypot(Pj[0] - Pi[0], Pj[1] - Pi[1]);
-    const u = [(Pj[0] - Pi[0]) / len, (Pj[1] - Pi[1]) / len];
-    let n = [u[1], -u[0]];                               // a perpendicular
-    if ((M[0] - I[0]) * n[0] + (M[1] - I[1]) * n[1] < 0) n = [-n[0], -n[1]]; // outward
-    const angle = Math.atan2(n[0], n[1]) * 180 / Math.PI; // rotateY(angle) sends +z to (sin, cos)
-    const T = [I[0] + r * n[0], I[1] + r * n[1]];        // tangent point
-    const t = [Math.cos(angle * Math.PI / 180), -Math.sin(angle * Math.PI / 180)]; // the face's local x
-    const offset = (M[0] - T[0]) * t[0] + (M[1] - T[1]) * t[1];
-    out[face] = { width: w, angle, offset, from: [Pi[0] - I[0], Pi[1] - I[1]], to: [Pj[0] - I[0], Pj[1] - I[1]] };
+  let phi = 0;
+  faces.forEach((face, i) => {
+    const ti = t[i], tj = t[(i + 1) % n];
+    const ai = Math.atan(ti / r), aj = Math.atan(tj / r);
+    const from = dir(phi - ai).map((v) => v * Math.hypot(r, ti));
+    const to = dir(phi + aj).map((v) => v * Math.hypot(r, tj));
+    const T = [r * Math.sin(phi), r * Math.cos(phi)];
+    const M = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+    const tx = [Math.cos(phi), -Math.sin(phi)];                 // the face's local x
+    const offset = (M[0] - T[0]) * tx[0] + (M[1] - T[1]) * tx[1];
+    out[face] = { width: sides[i], angle: phi * 180 / Math.PI, offset, from, to };
+    phi += 2 * aj;
   });
-  // turn the whole cross-section so the first face listed after the widest
-  // (the Math face) has its normal at 0: yaw 0 then means "Math toward you",
-  // and no face sits at exactly 180, which Chrome's 3D hit boxes mishandle
+  // turn the whole cross-section so the Math face has its normal at 0: yaw 0
+  // then means "Math toward you", and no face sits at exactly 180, which
+  // Chrome's 3D hit boxes mishandle
   const zero = out.math ? out.math.angle : 0;
   for (const g of Object.values(out)) {
     g.angle = ((g.angle - zero) % 360 + 540) % 360 - 180;
@@ -83,7 +111,7 @@ function makeGeometry(widths) {
     g.from = [g.from[0] * c - g.from[1] * sn, g.from[0] * sn + g.from[1] * c];
     g.to = [g.to[0] * c - g.to[1] * sn, g.to[0] * sn + g.to[1] * c];
   }
-  return { faces: out, r, height: FACE_HEIGHT, stoneWidth: Math.max(a, b, c) };
+  return { faces: out, r, height: FACE_HEIGHT, stoneWidth: Math.max(...sides) };
 }
 
 // ---------------------------------------------------------------- the stone
@@ -105,7 +133,7 @@ function makeStone(stage, stone, geometry, onChange) {
     el.style.setProperty("--o", String(g.offset));
   }
   const DEFAULT = { yaw: FACE_ANGLE.math + 20, pitch: -4, scale: 1 };   // the Math face turning toward the viewer
-  const SPEED = -9; // degrees per second; negative so the faces come round as Math, M, Visual
+  const SPEED = -9; // degrees per second; negative so the faces come round as Math, M, Visual (and Trace)
   const SCALES = [0.5, 0.65, 0.8, 1, 1.25, 1.6, 2, 2.5];
   let yaw = fixedYaw ?? DEFAULT.yaw;
   let pitch = DEFAULT.pitch;
@@ -207,6 +235,7 @@ function makeStone(stage, stone, geometry, onChange) {
       apply();
     },
     turnTo(face) {
+      if (!(face in FACE_ANGLE)) return;
       spinning = false;
       settle(() => turnTo(face));
     },
@@ -452,6 +481,7 @@ function titleFaces(equation) {
     math: [lead],
     m: [lead, "proposed notation · placeholder glyphs"],
     visual: [lead],
+    trace: [lead, "the time axis"],
   };
   for (const el of document.querySelectorAll(".face > h2")) {
     const face = el.parentElement.dataset.face;
@@ -465,7 +495,8 @@ function titleFaces(equation) {
 // -------------------------------------------------------------- face card
 
 // What each face is for, from the record: every stone documents its own
-// three faces (title and purpose); the Visual legend comes from the scene.
+// three faces (title and purpose); the Visual legend comes from the scene,
+// and a Trace face's title and purpose from its own scene's panel.
 function faceDocsOf(equation) {
   return {
     math: { title: `Math: ${equation.faces.math.title || "the equation as written"}`, purpose: equation.faces.math.purpose || "", legend: [] },
@@ -475,8 +506,11 @@ function faceDocsOf(equation) {
 }
 
 
-function makeFaceCard(root, equation, scene, axisName) {
+function makeFaceCard(root, equation, scene, axisName, traceScene) {
   const FACE_DOCS = faceDocsOf(equation);
+  if (traceScene && traceScene.panels && traceScene.panels.count) {
+    FACE_DOCS.trace = { title: `Trace: ${traceScene.panels.titles[0]}`, purpose: traceScene.panels.docs[0], legend: [] };
+  }
   // the Visual legend comes from the scene's panels, not from page text
   if (scene.panels && scene.panels.count) {
     const c = scene.panels.colors.values;
@@ -631,12 +665,14 @@ const CHROME_DOCS = {
   "face-math": ["The Math face", "The equation as written on paper. Every symbol is a token you can click to focus or rest on to read about."],
   "face-m": ["The M face", "The same equation in the proposed array notation, rendered from the same record. Nothing runs it; the glyphs are placeholders."],
   "face-visual": ["The Visual face", "The structure of the computation and its live data, redrawn at every epoch from the recorded trace."],
+  "face-trace": ["The Trace face", "The time axis itself: the stone's headline number over every step, with a marker at the step shown on the other faces. Only stones with a headline number have it."],
   "minimap": ["Where you are", "The stone seen from above, with you below it. The lit edge is the face toward you."],
   "back": ["Back", "Leave read mode and return to the stone at the view you had."],
   "rotate": ["Rotate", "Show me this differently: the stone turns and each face is one representation. Drag the stone, press a button, or use the r key."],
   "turn-math": ["Turn to Math", "Bring the Math face toward you (key 1)."],
   "turn-m": ["Turn to M", "Bring the M face toward you (key 2)."],
   "turn-visual": ["Turn to Visual", "Bring the Visual face toward you (key 3)."],
+  "turn-trace": ["Turn to Trace", "Bring the Trace face toward you (key 4)."],
   "spin": ["Auto-rotate", "Let the stone turn on its own; dragging or turning to a face stops it (key a)."],
   "view": ["View", "Magnify without changing meaning: read a face flat, scale the stone, or reset."],
   "read": ["Read this face", "The face toward you comes flat and enlarged, never cropped, still live (Enter, or double-click a face). Esc returns."],
@@ -653,7 +689,7 @@ const CHROME_DOCS = {
   "help": ["Help", "The full list of keys."],
 };
 
-function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, frontFace }) {
+function makeCallouts({ root, equation, trace, scene, traceScene, valueAt, hintsButton, frontFace }) {
   const NS = "http://www.w3.org/2000/svg";
   const leaders = root.querySelector(".callout-leader");
   let timer = null;
@@ -684,9 +720,11 @@ function makeCallouts({ root, equation, trace, scene, valueAt, hintsButton, fron
     return { title: plainMath(line.text), body: line.doc || "", extra: `line ${Number(el.dataset.line) + 1}` };
   };
   const panelDoc = (id) => {
-    const k = scene.panels ? scene.panels.ids.indexOf(id) : -1;
-    if (k < 0) return null;
-    return { title: scene.panels.titles[k], body: scene.panels.docs[k], extra: "" };
+    for (const s of [scene, traceScene]) {
+      const k = s && s.panels ? s.panels.ids.indexOf(id) : -1;
+      if (k >= 0) return { title: s.panels.titles[k], body: s.panels.docs[k], extra: "" };
+    }
+    return null;
   };
   const chromeDoc = (key) => (CHROME_DOCS[key] ? { title: CHROME_DOCS[key][0], body: CHROME_DOCS[key][1], extra: "" } : null);
   function docFor(el) {
@@ -1205,7 +1243,7 @@ function makeModes({ stone, time, focus, legend, help }) {
     travel: "Travel: left and right scrubs the epoch, ← → step one",
     focus: "Focus: click a symbol on any face; f again or Esc clears",
   };
-  const IDLE = [["g", "grab"], ["r", "rotate"], ["s", "scale"], ["t", "travel"], ["f", "focus"], ["1 2 3", "faces"], ["Enter", "read"], ["Space", "play"], ["a", "spin"], ["Home", "reset"], ["?", "help"]];
+  const IDLE = [["g", "grab"], ["r", "rotate"], ["s", "scale"], ["t", "travel"], ["f", "focus"], ["1 2 3 4", "faces"], ["Enter", "read"], ["Space", "play"], ["a", "spin"], ["Home", "reset"], ["?", "help"]];
   let mode = null;
   let origin = null;   // mouse position when the mode was armed
   let before = null;   // what to restore on cancel
@@ -1289,8 +1327,9 @@ function makeModes({ stone, time, focus, legend, help }) {
       e.preventDefault(); return;
     }
     if (lower === "a") { stone.setSpinning(!stone.spinning); return; }
-    if (k === "1" || k === "2" || k === "3") {
-      const face = ["math", "m", "visual"][Number(k) - 1];
+    if (k === "1" || k === "2" || k === "3" || k === "4") {
+      const face = ["math", "m", "visual", "trace"][Number(k) - 1];
+      if (!document.querySelector(`.face[data-face="${face}"]`)) return;
       stone.endRead(); stone.turnTo(face); return;
     }
     if (k === "Home" || k === "0") { cancel(); stone.reset(); e.preventDefault(); return; }
@@ -1313,7 +1352,14 @@ async function main() {
   const wanted = params.get("stone");
   const index = Math.max(0, manifest.ids.indexOf(wanted || manifest.ids[0]));
   const stoneId = manifest.ids[index];
+  // the faces this stone has: three, or four with a Trace face; the polygon
+  // order is visual, m, math, trace, so the turn order math, m, visual, trace
+  // walks it one way round
+  const stoneFaces = (manifest.faces ? manifest.faces[index] : "math,m,visual").split(",");
+  const hasTrace = stoneFaces.includes("trace");
   const FACE_WIDTHS = { visual: manifest.widths.visual[index], m: manifest.widths.m[index], math: manifest.widths.math[index] };
+  if (hasTrace) FACE_WIDTHS.trace = manifest.widths.trace[index];
+  else for (const el of document.querySelectorAll('.face[data-face="trace"], [data-turn="trace"], #minimap line[data-face="trace"]')) el.remove();
 
   // the dropdown: choosing a stone reloads the page with ?stone=ID, keeping the other parameters
   const select = document.getElementById("stone-select");
@@ -1333,9 +1379,10 @@ async function main() {
   });
 
   const DATA = dataFor(stoneId);
-  const [trace, scene, equation, mathSvg, mSvg] = await Promise.all([
+  const [trace, scene, equation, mathSvg, mSvg, traceScene] = await Promise.all([
     load(DATA.trace), load(DATA.scene), load(DATA.equation),
     load(DATA.faces.math, true), load(DATA.faces.m, true),
+    hasTrace ? load(DATA.traceScene) : Promise.resolve(null),
   ]);
   document.title = `Rosetta M · ${manifest.titles[index]}`;
 
@@ -1366,7 +1413,7 @@ async function main() {
     minimapPrism.querySelector("polygon").setAttribute("points", pts.join(" "));
   }
   titleFaces(equation);
-  const faceCard = makeFaceCard(document.getElementById("face-card"), equation, scene, trace.axis.name);
+  const faceCard = makeFaceCard(document.getElementById("face-card"), equation, scene, trace.axis.name, traceScene);
   document.getElementById("axis-name").textContent = trace.axis.name;
   // orientation cues follow the view: the front face's button and minimap edge light up
   let calloutsRef = null;
@@ -1381,11 +1428,12 @@ async function main() {
     back.hidden = !v.reading;
   });
   const projector = makeProjector(document.getElementById("face-visual"), scene);
+  const traceProjector = hasTrace ? makeProjector(document.getElementById("face-trace"), traceScene) : null;
   const show = makeReadout(document.getElementById("readout"), trace, equation);
   const focus = makeFocus(document.getElementById("focus-caption"), document.getElementById("unfocus"), trace, equation);
   let epochNow = 0;
   const callouts = calloutsRef = makeCallouts({
-    root: document.getElementById("callout"), equation, trace, scene,
+    root: document.getElementById("callout"), equation, trace, scene, traceScene,
     valueAt: (id) => {
       const v = valueText(trace, id, epochNow);
       const where = trace.axis.values ? `${trace.axis.name} ${fmt(trace.axis.values[epochNow])}` : `${trace.axis.name} ${epochNow}`;
@@ -1398,7 +1446,7 @@ async function main() {
   const range = document.getElementById("epoch");
   const out = document.getElementById("epoch-out");
   const play = document.getElementById("play");
-  const T = Math.min(trace.axis.count, projector.count);
+  const T = Math.min(trace.axis.count, projector.count, traceProjector ? traceProjector.count : Infinity);
   range.max = String(T - 1);
 
   let t = 0;
@@ -1408,6 +1456,7 @@ async function main() {
     // an axis may list a value per step (a temperature); otherwise the step number
     out.value = trace.axis.values ? `${t} · ${fmt(trace.axis.values[t])}` : String(t);
     projector.frame(t);
+    if (traceProjector) traceProjector.frame(t);
     show(t);
     focus.epoch(t);
     epochNow = t;

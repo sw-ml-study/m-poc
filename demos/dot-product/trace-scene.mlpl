@@ -1,0 +1,14 @@
+# The Trace face of the dot-product stone: the running sum over the index, read from the committed trace and drawn by lib/rosetta/timeline.mlpl with a marker at the current step. Written to fixtures/dot-product/trace-scene.json by default, or the path given as the script's argument; printed too, for the reg-rs baseline rosetta_dot_product_trace_scene.
+include "../../lib/rosetta/timeline.mlpl";
+
+ts_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/dot-product/trace-scene.json"
+};
+
+trace = unwrap(parse_json(unwrap(read_text("fixtures/dot-product/trace.json"))));
+scene = unwrap(u:rs_timeline_scene(trace.axis.name, trace.channels.s, "s", "s", "the running sum over the index", "The time axis itself: the sum after each term is added, one step per index; the marker is the step shown on the other faces.", [0.72, 0.58, 0.95, 1]));
+text = unwrap(u:rs_write_json(ts_path, unwrap(u:rs_scene_export(scene, 4))));
+print(text);
+str_concat("wrote ", ts_path)

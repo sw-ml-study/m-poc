@@ -10,10 +10,12 @@ the page header chooses one, and `?stone=ID` links straight to it.
 fixtures/stones.json                 the manifest (emitted by demos/stones.mlpl)
 fixtures/<stone>/trace.json          the time axis (docs/trace.md)
 fixtures/<stone>/scene.json          the Visual face (docs/scene.md)
+fixtures/<stone>/trace-scene.json    the Trace face, when the stone has one (docs/scene.md)
 fixtures/<stone>/faces/math.svg      the Math face
 fixtures/<stone>/faces/m.svg         the M face
 fixtures/<stone>/faces/equation.json the record: symbols, docs, faces, titles
 demos/<stone>/{equation,train,faces,scene}.mlpl   the programs that emit them
+demos/<stone>/trace-scene.mlpl       the Trace face's program, when the stone has one
 pages/data/...                       the same, copied by scripts/build-site
 ```
 
@@ -29,14 +31,22 @@ the stone directories; `scripts/check-structure` lists the manifest.
   "ids":      ["one-neuron", ...],        the record names, in tour order
   "titles":   ["One neuron", ...],        from each record's title
   "purposes": ["One neuron: a linear fit ...", ...],   each record's description
-  "widths":   {"math": [480, ...], "m": [480, ...], "visual": [720, ...]}
+  "faces":    ["math,m,visual,trace", "math,m,visual", ...],   the faces each stone has
+  "widths":   {"math": [480, ...], "m": [480, ...], "visual": [720, ...], "trace": [720, 0, ...]}
 }
 ```
 
 Parallel lists, one entry per stone (MLPL records cannot hold a list of
-records). `widths` are the face widths in the stone's units; the page's
-geometry builds the scalene prism from them (see the README), so a stone
-with a wide Visual face can say so. The three widths must make a triangle.
+records). `faces` names a stone's faces, comma-joined: every stone has
+`math`, `m` and `visual`; a stone whose trace has a headline scalar (a
+loss, a running sum, the cell being computed) also has `trace`, the time
+axis itself. `widths` are the face widths in the stone's units; the page's
+geometry builds the prism from them (see the README), so a stone with a
+wide Visual face can say so. The cross-section is the tangential polygon
+with those sides in the order visual, m, math, trace: three widths must
+make a triangle; four must make a tangential quadrilateral, `math + visual
+= m + trace`, which the page draws as a kite with the Math and M faces
+adjacent. A stone without a Trace face has trace width 0.
 
 ## What a record carries for the page
 
@@ -49,4 +59,9 @@ holds no text about any stone.
 
 Adding a stone: a `demos/<stone>/` directory with the four programs, an
 entry in `demos/stones.mlpl`, and regenerated fixtures (`just build-site`
-copies them). The page needs no change.
+copies them). The page needs no change. Giving a stone a Trace face: a
+`demos/<stone>/trace-scene.mlpl` that hands the headline channel to
+`u:rs_timeline_scene` in [`lib/rosetta/timeline.mlpl`](../lib/rosetta/timeline.mlpl),
+`trace` in the stone's `faces` entry, and a trace width that keeps the
+kite tangential; `build-site`, `check-site` and `check-fixtures` pick the
+extra file up when it exists.

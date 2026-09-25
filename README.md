@@ -157,6 +157,17 @@ is the layout and the manifest. The tour so far:
 The dropdown lists the stones in this order, simplest notation to most
 complex, the headline first and the variants last.
 
+Five of the stones have a fourth face, the **Trace**: the time axis
+itself, the stone's headline number over every step (the loss for the
+neuron, sigmoid and Adam stones, the running sum for the dot product, the
+cell being computed for the CNN) with a marker at the current step.
+Those stones are four-faced prisms, a kite in cross-section (the faces
+are tangent to one incircle, so their widths satisfy math + visual = m +
+trace), with a fourth Rotate button and key 4; read mode, focus and the
+callouts work on it like any face, and it is drawn by a second instance of
+the same projector from
+[`lib/rosetta/timeline.mlpl`](lib/rosetta/timeline.mlpl)'s line scene.
+
 ## The page
 
 [`pages/`](pages) is static: `index.html`, `style.css`, `rosetta.js` and,
@@ -238,7 +249,7 @@ SHA (`-dirty` when the tree had uncommitted changes), UTC time.
 
 ## Status
 
-Steps 1–33 of [the plan](docs/plan.md) are done: the gate; the equation
+Steps 1–34 of [the plan](docs/plan.md) are done: the gate; the equation
 IR with the one-neuron instance; the training trace; the three faces as
 fixtures; the page; focus; read mode with view scale, orientation cues and
 the face card; the scalene prism with faces sized to their content; the
@@ -255,7 +266,8 @@ stones of the tour; exact callout anchors on the turned stone; and the
 captures; callouts in expression order; and, in v1.1 so far, the sigmoid
 neuron, the two applicative stones, feature normalization and image
 normalization, attention composed from the matmul and softmax stones, and
-Adam with its state tuple; and the hover fix: the yaw turns the faces rather than the
+Adam with its state tuple; the Trace face on five stones and the four-faced
+kite that carries it; and the hover fix: the yaw turns the faces rather than the
 stone's box, which Chrome's 3D hit testing let shadow a face turned to
 the front ([`tests/hover-sweep.mjs`](tests/hover-sweep.mjs) checks every
 view of a stone by keys and drags); and the callout fan spaced out: one
@@ -285,8 +297,8 @@ side of the row rather than pile up. Every face header names the stone it shows,
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next in v1.1: the Trace face (the stone as a box) and the Zoom verb (one
-level inside).
+Next in v1.1: the side-by-side view with a step-through, and the Zoom verb
+(one level inside).
 
 ## License
 

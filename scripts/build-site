@@ -18,6 +18,7 @@ for dir in fixtures/*/; do
     mkdir -p "pages/data/$stone/faces"
     cp "$dir/trace.json" "$dir/scene.json" "pages/data/$stone/"
     cp "$dir/faces/math.svg" "$dir/faces/m.svg" "$dir/faces/equation.json" "pages/data/$stone/faces/"
+    [ -f "$dir/trace-scene.json" ] && cp "$dir/trace-scene.json" "pages/data/$stone/"
     stones="$stones $stone"
 done
 

@@ -144,6 +144,24 @@ for path in \
     tests/reg/rosetta_adam_trace.rgt \
     tests/reg/rosetta_adam_faces.rgt \
     tests/reg/rosetta_adam_scene.rgt \
+    lib/rosetta/timeline.mlpl \
+    demos/one-neuron/trace-scene.mlpl \
+    demos/sigmoid/trace-scene.mlpl \
+    demos/adam/trace-scene.mlpl \
+    demos/dot-product/trace-scene.mlpl \
+    demos/cnn/trace-scene.mlpl \
+    fixtures/one-neuron/trace-scene.json \
+    fixtures/sigmoid/trace-scene.json \
+    fixtures/adam/trace-scene.json \
+    fixtures/dot-product/trace-scene.json \
+    fixtures/cnn/trace-scene.json \
+    pages/data/one-neuron/trace-scene.json \
+    tests/test_trace_face.mlpl \
+    tests/reg/rosetta_one_neuron_trace_scene.rgt \
+    tests/reg/rosetta_sigmoid_trace_scene.rgt \
+    tests/reg/rosetta_adam_trace_scene.rgt \
+    tests/reg/rosetta_dot_product_trace_scene.rgt \
+    tests/reg/rosetta_cnn_trace_scene.rgt \
     tests/reg/rosetta_sigmoid_trace.rgt \
     tests/reg/rosetta_sigmoid_faces.rgt \
     tests/reg/rosetta_sigmoid_scene.rgt \

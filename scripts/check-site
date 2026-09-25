@@ -22,6 +22,7 @@ for dir in fixtures/*/; do
     for file in trace.json scene.json faces/math.svg faces/m.svg faces/equation.json; do
         same "$dir/$file" "pages/data/$stone/$file"
     done
+    [ -f "$dir/trace-scene.json" ] && same "$dir/trace-scene.json" "pages/data/$stone/trace-scene.json"
 done
 for dir in pages/data/*/; do
     stone=$(basename "$dir")

@@ -1,0 +1,14 @@
+# The Trace face of the adam stone: the loss over the epochs, read from the committed trace and drawn by lib/rosetta/timeline.mlpl with a marker at the current step. Written to fixtures/adam/trace-scene.json by default, or the path given as the script's argument; printed too, for the reg-rs baseline rosetta_adam_trace_scene.
+include "../../lib/rosetta/timeline.mlpl";
+
+ts_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/adam/trace-scene.json"
+};
+
+trace = unwrap(parse_json(unwrap(read_text("fixtures/adam/trace.json"))));
+scene = unwrap(u:rs_timeline_scene(trace.axis.name, trace.channels.L, "L", "L", "the loss over the epochs", "The time axis itself: the one-neuron loss at every epoch of Adam. Steps of about η per parameter take it down fast at first and then hunt around the minimum; the marker is the epoch shown on the other faces.", [0.72, 0.58, 0.95, 1]));
+text = unwrap(u:rs_write_json(ts_path, unwrap(u:rs_scene_export(scene, 4))));
+print(text);
+str_concat("wrote ", ts_path)

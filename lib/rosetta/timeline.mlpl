@@ -1,0 +1,53 @@
+# The Trace face: a line scene of a stone's time axis itself. One scalar series (a stone's headline number: a loss, a running sum, the cell being computed) is drawn over the steps of the axis, with a marker at the current step that moves frame by frame while the curve stays put. Built with the line-scene builder, so the page's projector draws it like any other face; every edge and label carries the series' symbol id, and one panel names the face for the page's card and callouts. Coordinates are scene units, 16 wide by 9 high.
+include "scene.mlpl";
+include "emit.mlpl";
+
+def u:rs_timeline_xs(n) {
+  "Scene x of every step of an axis of n steps, from 1 to 15; a single step sits at the left.";
+  1.0 + range(n) * (14.0 / reduce(:max, [n - 1, 1]))
+}
+
+def u:rs_timeline_ys(values) {
+  "Scene y of every value, from 1 (the smallest) to 8 (the largest); a flat series sits on the baseline.";
+  lo = reduce(:min, values);
+  hi = reduce(:max, values);
+  1.0 + (values - lo) / (hi - lo + 0.000001) * 7.0
+}
+
+def u:rs_timeline_frame(axis_name, values, t, id, label, title, doc, color) {
+  "The face at step t: axes, the whole series as a polyline, the marker at step t (a drop line from the baseline and a diamond on the curve), the series' label at the top of the value axis, the axis name at the end of the step axis, the smallest and largest values beside the value axis, and one panel named for the page.";
+  axis_color = [0.78, 0.8, 0.88, 1];
+  lit = [1, 0.6, 0.25, 1];
+  n = len(values);
+  xs = u:rs_timeline_xs(n);
+  ys = u:rs_timeline_ys(values);
+  xt = take(xs, 0, t);
+  yt = take(ys, 0, t);
+  scene = u:rs_scene_new(axis_name);
+  scene = u:rs_scene_segment(scene, 1.0, 1.0, 15.0, 1.0, id, axis_color)?;
+  scene = u:rs_scene_segment(scene, 1.0, 1.0, 1.0, 8.0, id, axis_color)?;
+  scene = u:rs_scene_polyline(scene, u:rs_points2d(xs, ys), 0, id, color)?;
+  scene = u:rs_scene_segment(scene, xt, 1.0, xt, yt, id, lit)?;
+  scene = u:rs_scene_diamond(scene, xt, yt, 0.16, id, lit)?;
+  scene = u:rs_scene_label(scene, [0.5, 8.0, 0], id, label)?;
+  scene = u:rs_scene_label(scene, [15.0, 0.5, 0], id, axis_name)?;
+  scene = u:rs_scene_label(scene, [0.5, 1.0, 0], id, to_string(u:rs_round(reduce(:min, values), 3)))?;
+  scene = u:rs_scene_label(scene, [0.5, 7.4, 0], id, to_string(u:rs_round(reduce(:max, values), 3)))?;
+  u:rs_scene_panel(scene, "timeline", title, doc, [0.2, 0.2, 15.8, 8.8], color)
+}
+
+def u:rs_timeline_scene(axis_name, values, id, label, title, doc, color) {
+  "The Trace face with one frame per step of the axis: the curve is the same in every frame, only the marker moves. Fails closed on an empty series.";
+  n = len(values);
+  if eq(n, 0) {
+    err({kind: "rosetta_scene", message: "a timeline needs at least one value"})?
+  };
+  scene = u:rs_timeline_frame(axis_name, values, 0, id, label, title, doc, color)?;
+  t = 0;
+  while lt(t, n) {
+    frame = u:rs_timeline_frame(axis_name, values, t, id, label, title, doc, color)?;
+    scene = u:rs_scene_frame(scene, reshape(frame.positions, [frame.vertex_count, 3]))?;
+    t = t + 1
+  };
+  ok(scene)
+}

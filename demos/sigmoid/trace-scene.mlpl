@@ -1,0 +1,14 @@
+# The Trace face of the sigmoid stone: the loss over the epochs, read from the committed trace and drawn by lib/rosetta/timeline.mlpl with a marker at the current step. Written to fixtures/sigmoid/trace-scene.json by default, or the path given as the script's argument; printed too, for the reg-rs baseline rosetta_sigmoid_trace_scene.
+include "../../lib/rosetta/timeline.mlpl";
+
+ts_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/sigmoid/trace-scene.json"
+};
+
+trace = unwrap(parse_json(unwrap(read_text("fixtures/sigmoid/trace.json"))));
+scene = unwrap(u:rs_timeline_scene(trace.axis.name, trace.channels.L, "L", "L", "the loss over the epochs", "The time axis itself: the squared error through the sigmoid at every epoch; it falls as the S-curve steepens between the two groups of points; the marker is the epoch shown on the other faces.", [0.72, 0.58, 0.95, 1]));
+text = unwrap(u:rs_write_json(ts_path, unwrap(u:rs_scene_export(scene, 4))));
+print(text);
+str_concat("wrote ", ts_path)

@@ -16,6 +16,15 @@ def u:test_manifest() {
     u:assert_eq(lt(a, b + c) * lt(b, a + c) * lt(c, a + b), 1, "every stone's widths make a triangle")?;
     k = k + 1
   };
+  u:assert_text_eq(str_join(m.faces, ";"), "math,m,visual,trace;math,m,visual;math,m,visual,trace;math,m,visual;math,m,visual;math,m,visual;math,m,visual,trace;math,m,visual,trace;math,m,visual;math,m,visual,trace", "the neuron, dot product, CNN, sigmoid and Adam stones have a Trace face")?;
+  k = 0;
+  while lt(k, 10) {
+    tr = take(m.widths.trace, 0, k);
+    if gt(tr, 0) {
+      u:assert_eq(take(m.widths.math, 0, k) + take(m.widths.visual, 0, k), take(m.widths.m, 0, k) + tr, "a four-faced stone's widths make a tangential kite: math + visual = m + trace")?
+    };
+    k = k + 1
+  };
   u:assert_text_eq(unwrap(list_get(m.titles, 0)), "One neuron", "its title")?;
   u:assert_gt(str_len(unwrap(list_get(m.purposes, 0))), 20, "a purpose sentence")?;
   a = take(m.widths.visual, 0, 0);

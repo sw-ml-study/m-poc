@@ -38,6 +38,7 @@ for dir in fixtures/*/; do
     check "demos/$stone/train.mlpl" "tmp/fixtures/$stone/trace.json" "$dir/trace.json"
     check "demos/$stone/faces.mlpl" "tmp/fixtures/$stone/faces" "$dir/faces/math.svg" "$dir/faces/m.svg" "$dir/faces/equation.json"
     check "demos/$stone/scene.mlpl" "tmp/fixtures/$stone/scene.json" "$dir/scene.json"
+    [ -f "demos/$stone/trace-scene.mlpl" ] && check "demos/$stone/trace-scene.mlpl" "tmp/fixtures/$stone/trace-scene.json" "$dir/trace-scene.json"
 done
 
 [ "$status" -eq 0 ] || exit 1

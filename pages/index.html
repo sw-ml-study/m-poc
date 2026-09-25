@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rosetta M</title>
-<link rel="stylesheet" href="style.css?v=31">
+<link rel="stylesheet" href="style.css?v=32">
 </head>
 <body>
 <header>
@@ -20,7 +20,8 @@
   <p class="lede">One computation, three faces, and time. Each stone is one
     small machine-learning computation shown as its <b>Math</b>, the
     <b>proposed M code</b>, and its <b>Visual</b> (structure and live data),
-    with time as the fourth dimension. Choose a stone above; drag it to
+    with time as the fourth dimension; some stones add a <b>Trace</b> face,
+    the time axis itself. Choose a stone above; drag it to
     rotate; scrub the steps and the numbers move while the equation, the code
     and the dataflow stay put. Rest the pointer on anything for an explanation;
     press <kbd>?</kbd> for the keys.</p>
@@ -39,6 +40,7 @@
         <line data-face="math"/>
         <line data-face="m"/>
         <line data-face="visual"/>
+        <line data-face="trace"/>
       </g>
       <path class="eye" d="M-6,38 L0,32 L6,38"/>
     </svg>
@@ -55,6 +57,10 @@
       <section class="face" data-face="visual" aria-label="Visual face">
         <h2 data-doc="face-visual">Visual <small>structure and data at this epoch</small></h2>
         <svg class="scene" id="face-visual" role="img" aria-label="Dataflow, data fit and parameter space"></svg>
+      </section>
+      <section class="face" data-face="trace" aria-label="Trace face">
+        <h2 data-doc="face-trace">Trace <small>the time axis</small></h2>
+        <svg class="scene" id="face-trace" role="img" aria-label="The stone's headline number over every step"></svg>
       </section>
     </div>
   </div>
@@ -73,6 +79,7 @@
       <button type="button" data-turn="math" data-doc="turn-math">Math</button>
       <button type="button" data-turn="m" data-doc="turn-m">M</button>
       <button type="button" data-turn="visual" data-doc="turn-visual">Visual</button>
+      <button type="button" data-turn="trace" data-doc="turn-trace">Trace</button>
       <button type="button" id="spin" data-doc="spin" aria-pressed="true">Auto-rotate</button>
     </div>
     <div class="row view" role="group" aria-label="View">
@@ -116,7 +123,7 @@
         <tr><td><kbd>s</kbd></td><td>scale: mouse up grows the view, down shrinks it</td></tr>
         <tr><td><kbd>t</kbd></td><td>travel: mouse left and right scrubs the epoch; <kbd>←</kbd> <kbd>→</kbd> step one</td></tr>
         <tr><td><kbd>f</kbd></td><td>focus: the next click picks a symbol; <kbd>f</kbd> again or <kbd>Esc</kbd> clears</td></tr>
-        <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>turn to the Math, M and Visual faces</td></tr>
+        <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></td><td>turn to the Math, M, Visual and Trace faces (4 only on a stone with a Trace face)</td></tr>
         <tr><td><kbd>Enter</kbd></td><td>read the face toward you (and confirm a mode)</td></tr>
         <tr><td><kbd>Space</kbd></td><td>play / pause the epochs</td></tr>
         <tr><td><kbd>a</kbd></td><td>auto-rotate on / off</td></tr>
@@ -142,6 +149,6 @@
   <svg class="callout-leader" aria-hidden="true"></svg>
 </div>
 
-<script src="rosetta.js?v=31"></script>
+<script src="rosetta.js?v=32"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-# The manifest of stones for the page: every equation record's id, title and one-line purpose, and a hint of face widths (scene units) so the stone's cross-section suits each stone's content. Written to fixtures/stones.json by default, or to the path given as the script's argument; printed too, for the reg-rs baseline rosetta_stones. Add a stone by including its equation and appending it below.
+# The manifest of stones for the page: every equation record's id, title and one-line purpose, the faces it has (math, m, visual, and trace for the stones with a Trace face), and a hint of face widths (scene units) so the stone's cross-section suits each stone's content; a four-faced stone is a tangential kite, so its widths satisfy math + visual = m + trace, and a stone without a Trace face has trace width 0. Written to fixtures/stones.json by default, or to the path given as the script's argument; printed too, for the reg-rs baseline rosetta_stones. Add a stone by including its equation and appending it below.
 include "../lib/rosetta/emit.mlpl";
 include "one-neuron/equation.mlpl";
 include "dot-product/equation.mlpl";
@@ -23,7 +23,7 @@ def u:stones_manifest() {
   fn = u:fn_equation()?;
   at = u:at_equation()?;
   ad = u:ad_equation()?;
-  ok({schema: "sw-ml-study.rosetta.stones", version: 1, ids: [neuron.name, fn.name, dot.name, mm.name, sm.name, im.name, cn.name, sg.name, at.name, ad.name], titles: [neuron.title, fn.title, dot.title, mm.title, sm.title, im.title, cn.title, sg.title, at.title, ad.title], purposes: [neuron.description, fn.description, dot.description, mm.description, sm.description, im.description, cn.description, sg.description, at.description, ad.description], widths: {math: [480, 480, 480, 480, 520, 620, 720, 500, 540, 560], m: [480, 480, 480, 480, 480, 560, 600, 480, 480, 520], visual: [720, 760, 720, 720, 720, 800, 780, 720, 780, 800]}})
+  ok({schema: "sw-ml-study.rosetta.stones", version: 1, ids: [neuron.name, fn.name, dot.name, mm.name, sm.name, im.name, cn.name, sg.name, at.name, ad.name], titles: [neuron.title, fn.title, dot.title, mm.title, sm.title, im.title, cn.title, sg.title, at.title, ad.title], purposes: [neuron.description, fn.description, dot.description, mm.description, sm.description, im.description, cn.description, sg.description, at.description, ad.description], faces: ["math,m,visual,trace", "math,m,visual", "math,m,visual,trace", "math,m,visual", "math,m,visual", "math,m,visual", "math,m,visual,trace", "math,m,visual,trace", "math,m,visual", "math,m,visual,trace"], widths: {math: [480, 480, 480, 480, 520, 620, 720, 500, 540, 560], m: [480, 480, 480, 480, 480, 560, 600, 480, 480, 520], visual: [720, 760, 720, 720, 720, 800, 780, 720, 780, 800], trace: [720, 0, 720, 0, 0, 0, 900, 740, 0, 840]}})
 }
 
 st_path = if gt(list_len(args()), 0) {

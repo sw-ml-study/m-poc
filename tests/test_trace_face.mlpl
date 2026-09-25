@@ -1,0 +1,55 @@
+# The Trace face: lib/rosetta/timeline.mlpl draws one scalar series over the steps of an axis with a marker that moves frame by frame while the curve stays put, fails closed on an empty series, and every committed trace-scene fixture has the shape the page's projector needs, one frame per step of its stone's trace, every edge and label carrying the stone's headline symbol.
+include "lib/rosetta/timeline.mlpl";
+
+def u:t_tf_others(ids, id) {
+  "How many ids in a string list differ from the given one.";
+  index = 0;
+  others = 0;
+  while lt(index, list_len(ids)) {
+    others = others + (1 - str_eq(unwrap(list_get(ids, index)), id));
+    index = index + 1
+  };
+  others
+}
+
+@test {name: "a timeline scene has one frame per step, a fixed curve and a marker that moves along it", tags: ["trace-face", "lib"]}
+def u:test_timeline_scene() {
+  "Five values: five frames; the axes and curve vertices are the same in every frame; the marker's vertices differ between frames; every id is the series' id; the panel is named.";
+  scene = unwrap(u:rs_timeline_scene("step", [3, 1, 4, 1, 5], "L", "L", "a title", "a doc", [0.5, 0.5, 0.5, 1]));
+  out = unwrap(u:rs_scene_export(scene, 4));
+  u:assert_eq(out.frames.count, 5, "one frame per value")?;
+  u:assert_eq(u:t_tf_others(out.ids, "L"), 0, "every edge carries the series id")?;
+  frames = reshape(out.frames.positions.values, out.frames.positions.shape);
+  first = take(frames, 0, 0);
+  last = take(frames, 0, 4);
+  curve = take(first, 0, 5) - take(last, 0, 5);
+  u:assert_eq(reduce_add(abs(curve)), 0, "a curve vertex stays put between frames")?;
+  u:assert_gt(reduce_add(abs(take(first, 0, 9) - take(last, 0, 9))), 1, "the marker moves")?;
+  u:assert_eq(out.panels.count, 1, "one panel")?;
+  u:assert_text_eq(unwrap(list_get(out.panels.titles, 0)), "a title", "the panel title")?;
+  u:assert_eq(u:rs_timeline_xs(1), [1], "a single step sits at the left")?;
+  u:assert_eq(is_err(u:rs_timeline_scene("step", fill([0], 0), "L", "L", "t", "d", [0.5, 0.5, 0.5, 1])), 1, "an empty series fails closed")
+}
+
+def u:t_tf_check(stone, id) {
+  "The committed trace-scene fixture of one stone: one frame per step of its trace, every edge and label carrying the headline id.";
+  trace = unwrap(parse_json(unwrap(read_text(str_concat(str_concat("fixtures/", stone), "/trace.json")))));
+  scene = unwrap(parse_json(unwrap(read_text(str_concat(str_concat("fixtures/", stone), "/trace-scene.json")))));
+  u:assert_eq(scene.frames.count, trace.axis.count, "one frame per step")?;
+  u:assert_text_eq(scene.frames.axis, trace.axis.name, "the same axis")?;
+  u:assert_eq(u:t_tf_others(scene.ids, id), 0, "every edge carries the headline id")?;
+  u:assert_eq(u:t_tf_others(scene.labels.ids, id), 0, "every label carries the headline id")?;
+  u:assert_eq(scene.panels.count, 1, "one panel")
+}
+
+@test {name: "every committed Trace face is one frame per step of its stone's trace, keyed by the stone's headline symbol", tags: ["trace-face", "fixture"]}
+def u:test_trace_fixtures() {
+  "The neuron, sigmoid and Adam stones trace L, the dot product s, the CNN the cell sum; freshness is scripts/check-fixtures' job.";
+  u:t_tf_check("one-neuron", "L")?;
+  u:t_tf_check("sigmoid", "L")?;
+  u:t_tf_check("adam", "L")?;
+  u:t_tf_check("dot-product", "s")?;
+  u:t_tf_check("cnn", "sum")
+}
+
+u:run_registered_tests()

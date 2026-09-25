@@ -1,14 +1,16 @@
 # The face fixtures: SVG text faces and the Visual scene
 
-Three files under `fixtures/one-neuron/` are the faces of the stone. All are
-emitted by MLPL, all are committed, and `scripts/check-fixtures` fails the
-gate if any differs from a fresh run.
+Three files under `fixtures/one-neuron/` are the faces of the stone, and a
+fourth, `trace-scene.json`, is its Trace face (below). All are emitted by
+MLPL, all are committed, and `scripts/check-fixtures` fails the gate if any
+differs from a fresh run.
 
 | File              | Emitted by                                                        | Baseline                     |
 |-------------------|-------------------------------------------------------------------|------------------------------|
 | `faces/math.svg`  | [`demos/one-neuron/faces.mlpl`](../demos/one-neuron/faces.mlpl)   | `rosetta_one_neuron_faces`   |
 | `faces/m.svg`     | the same script                                                   | the same baseline            |
 | `scene.json`      | [`demos/one-neuron/scene.mlpl`](../demos/one-neuron/scene.mlpl)   | `rosetta_one_neuron_scene`   |
+| `trace-scene.json` | [`demos/one-neuron/trace-scene.mlpl`](../demos/one-neuron/trace-scene.mlpl) | `rosetta_one_neuron_trace_scene` |
 
 ## The text faces
 
@@ -78,6 +80,24 @@ names a vertex outside the scene, a fractional index, a color outside the
 unit interval, a non-finite position, a frame with the wrong vertex count,
 or an id with a delimiter, so what reaches the file is already what the
 Rust parser would accept.
+
+## The Trace face: the same schema, one series over the axis
+
+A stone whose trace has a headline scalar (the loss for the neuron, sigmoid
+and Adam stones; the running sum for the dot product; the cell being
+computed for the CNN) has a fourth face, `trace-scene.json`, emitted by
+`demos/<stone>/trace-scene.mlpl` through
+[`lib/rosetta/timeline.mlpl`](../lib/rosetta/timeline.mlpl). It is a line
+scene like the Visual face, 16 units by 9: the step axis and the value
+axis, the whole series as a polyline, and a marker at the current step (a
+drop line from the baseline and a diamond on the curve), with the series'
+symbol as the label at the top of the value axis, the axis name at the end
+of the step axis, and the smallest and largest values beside the value
+axis. Every edge and label carries the series' symbol id, so focus on `L`
+lights the curve; one panel names the face for the page's card and
+callouts. It has one frame per step of the axis, and only the marker's
+vertices change between frames. The page draws it with a second instance
+of the same projector.
 
 ## What the one-neuron scene draws
 

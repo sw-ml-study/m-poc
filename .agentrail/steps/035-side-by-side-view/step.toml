@@ -1,0 +1,8 @@
+number = 35
+slug = "side-by-side-view"
+status = "pending"
+description = "An alternate flat view of the stone (requested): the faces side by side in la..."
+role = "production"
+context_files = []
+created_at = "2026-09-25T10:37:20"
+commits = []
