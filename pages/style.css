@@ -60,7 +60,14 @@ code { font-size: 0.95em; }
   --face-h: calc(var(--face-hu) * var(--unit));
   position: relative; width: calc(var(--stone-w) * var(--unit)); height: var(--face-h);
   transform-style: preserve-3d;
-  transform: translate(var(--pan-x, 0px), var(--pan-y, 0px)) scale(var(--view-scale, 1)) rotateX(var(--pitch, -4deg)) rotateY(var(--yaw, 0deg));
+  /* The yaw is applied on the faces, not here: the stone's own box is the
+     z = 0 plane of the 3D context, and Blink's hit testing loses the faces
+     whenever that plane is between the viewer and a face or nearly edge-on,
+     which is exactly where a turn to the M face lands. Kept flat toward the
+     viewer (pitch only), and transparent to the pointer, the box never
+     shadows a face. */
+  transform: translate(var(--pan-x, 0px), var(--pan-y, 0px)) scale(var(--view-scale, 1)) rotateX(var(--pitch, -4deg));
+  pointer-events: none;
 }
 /* modal keys: the cursor says which mode is armed */
 body[data-mode="grab"] { cursor: move; }
@@ -94,7 +101,7 @@ body.reading .face:not(.reading-face) { visibility: hidden; }
   backface-visibility: hidden;
   display: flex; flex-direction: column; overflow: hidden;
 }
-.face { transform: rotateY(calc(var(--a) * 1deg)) translateZ(calc(var(--r) * var(--unit))) translateX(calc(var(--o) * var(--unit))); }
+.face { transform: rotateY(calc(var(--yaw, 0deg) + var(--a) * 1deg)) translateZ(calc(var(--r) * var(--unit))) translateX(calc(var(--o) * var(--unit))); pointer-events: auto; }
 .face h2 {
   margin: 0; padding: 8px 14px; font-size: 0.95rem; font-weight: 600;
   color: var(--dim); border-bottom: 1px solid var(--edge); letter-spacing: 0.04em;

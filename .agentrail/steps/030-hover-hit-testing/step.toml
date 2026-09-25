@@ -1,0 +1,8 @@
+number = 30
+slug = "hover-hit-testing"
+status = "in-progress"
+description = "Hover callouts act dead on a face turned to the front with keys 1/2/3 (report..."
+role = "production"
+context_files = []
+created_at = "2026-09-24T20:40:22"
+commits = []

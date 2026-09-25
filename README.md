@@ -236,7 +236,10 @@ dropdown, and every face's title and purpose in the record; the five
 stones of the tour; exact callout anchors on the turned stone; and the
 captures; callouts in expression order; and, in v1.1 so far, the sigmoid
 neuron and the two applicative stones, feature normalization and image
-normalization. Every face header names the stone it shows, from the record.
+normalization; and the hover fix: the yaw turns the faces rather than the
+stone's box, which Chrome's 3D hit testing let shadow a face turned to
+the front ([`tests/hover-sweep.mjs`](tests/hover-sweep.mjs) checks every
+view of a stone by keys and drags). Every face header names the stone it shows, from the record.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
