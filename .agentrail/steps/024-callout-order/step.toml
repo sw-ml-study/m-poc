@@ -5,5 +5,8 @@ description = "Callouts in expression order (pages/rosetta.js). Reported: with t
 role = "production"
 context_files = []
 created_at = "2026-09-24T17:18:07"
-completed_at = "2026-09-24T17:40:48"
-commits = ["77a1edf4457866ed5dba88d9b2c666f9d577c8ee"]
+completed_at = "2026-09-24T17:47:41"
+commits = [
+    "77a1edf4457866ed5dba88d9b2c666f9d577c8ee",
+    "551b482401e1285b4f1cec2628baa24902ac2dfc",
+]

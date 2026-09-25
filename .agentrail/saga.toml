@@ -1,6 +1,6 @@
 name = "rosetta-m"
 status = "active"
-current_step = 24
+current_step = 25
 created_at = "2026-09-23T15:12:12"
 plan_file = ".agentrail/plan.md"
 retroactive = false
