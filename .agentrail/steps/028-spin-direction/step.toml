@@ -1,8 +1,9 @@
 number = 28
 slug = "spin-direction"
-status = "in-progress"
+status = "completed"
 description = "Auto-rotation shows the faces in the order 3, 2, 1 (reported). Reverse the sp..."
 role = "production"
 context_files = []
 created_at = "2026-09-24T19:53:35"
-commits = []
+completed_at = "2026-09-24T19:54:56"
+commits = ["8c0bc659a8a26f359e9c67dab733202a536fb95d"]

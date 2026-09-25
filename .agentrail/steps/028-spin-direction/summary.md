@@ -1,0 +1,1 @@
+Step 28 done: SPEED -9 and DEFAULT yaw = math + 20, so auto-rotation shows Math → M → Visual; verified by the face card at yaw 20, -100, -220. Note: rAF-driven motion does not advance under headless virtual-time budgets, so spin direction is verified by fixed yaws.
