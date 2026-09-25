@@ -87,6 +87,18 @@ for path in \
     fixtures/cnn/trace.json \
     fixtures/cnn/scene.json \
     tests/test_cnn.mlpl \
+    demos/sigmoid/equation.mlpl \
+    demos/sigmoid/neuron.mlpl \
+    demos/sigmoid/train.mlpl \
+    demos/sigmoid/faces.mlpl \
+    demos/sigmoid/visual.mlpl \
+    demos/sigmoid/scene.mlpl \
+    fixtures/sigmoid/trace.json \
+    fixtures/sigmoid/scene.json \
+    tests/test_sigmoid.mlpl \
+    tests/reg/rosetta_sigmoid_trace.rgt \
+    tests/reg/rosetta_sigmoid_faces.rgt \
+    tests/reg/rosetta_sigmoid_scene.rgt \
     tests/reg/rosetta_cnn_trace.rgt \
     tests/reg/rosetta_cnn_faces.rgt \
     tests/reg/rosetta_cnn_scene.rgt \
@@ -119,7 +131,7 @@ do
     [ -f "$repo_root/$path" ] || { echo "missing required file: $path" >&2; exit 1; }
 done
 
-for dir in captures lib/rosetta demos/one-neuron demos/dot-product demos/matmul demos/softmax demos/cnn fixtures fixtures/one-neuron fixtures/dot-product fixtures/matmul fixtures/softmax fixtures/cnn pages tests tests/reg scripts docs; do
+for dir in captures lib/rosetta demos/one-neuron demos/dot-product demos/matmul demos/softmax demos/cnn demos/sigmoid fixtures fixtures/sigmoid fixtures/one-neuron fixtures/dot-product fixtures/matmul fixtures/softmax fixtures/cnn pages tests tests/reg scripts docs; do
     [ -d "$repo_root/$dir" ] || { echo "missing required directory: $dir" >&2; exit 1; }
 done
 

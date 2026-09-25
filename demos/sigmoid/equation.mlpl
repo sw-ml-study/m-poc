@@ -1,0 +1,47 @@
+# The sixth stone's equation: the sigmoid neuron, the research's own one-neuron example (section 37): the linear fit squashed by σ, trained by gradient descent, as one IR record. σ is a placeholder function glyph on the M face. The Math face is paper notation; the M face is proposed notation whose glyphs are placeholders (see docs/plan.md). Both are rendered from the symbols declared here. Paper notation multiplies by juxtaposition, so on the Math face the multiply symbol is carried by U+2062 INVISIBLE TIMES (the character MathML uses for it): it renders as nothing and still gives focus something to find.
+include "../../lib/rosetta/ir.mlpl";
+
+def u:sg_equation() {
+  "Build the one-neuron equation record: prediction, squared loss, and the gradient-descent updates of the weight and the bias, every symbol with a one-sentence doc for the page.";
+  ir = u:rs_ir_new("sigmoid", "Sigmoid neuron: ŷ = σ(wx + b), a logistic fit trained by gradient descent on the squared error, through the squashing function.");
+  ir = u:rs_ir_titled(ir, "Sigmoid neuron")?;
+  ir = u:rs_ir_face_doc(ir, "math", "The equation as written on paper", "The four lines are the whole computation: a prediction squashed into (0, 1) by σ, how wrong it is, and how the two parameters move to be less wrong next epoch. This is the face the other two are translations of.")?;
+  ir = u:rs_ir_face_doc(ir, "m", "The same four lines in the proposed notation", "Rendered from the same record as the Math face, token for token, in an APL-style array notation that reads right to left. Nothing runs it; the glyphs are placeholders until the language's semantics are settled.")?;
+  ir = u:rs_ir_face_doc(ir, "visual", "The structure of the computation and its live data", "Three panels on one plane, redrawn at every epoch from the recorded trace. Click any box, line or label to focus that symbol on every face.")?;
+  ir = u:rs_ir_symbol_doc(ir, "yhat", "var", "prediction", "The prediction: the neuron's guess for y, squashed by σ to lie between 0 and 1. The hat means an estimate of y.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sigma", "op", "sigmoid", "The squashing function σ(t) = 1 / (1 + e^−t): any number becomes a value between 0 and 1, so the output reads as a probability. A placeholder function glyph on the M face.")?;
+  ir = u:rs_ir_symbol_doc(ir, "w", "param", "weight", "The weight, the slope of the fitted line; trained, so it changes every epoch.")?;
+  ir = u:rs_ir_symbol_doc(ir, "x", "var", "input", "The input: one of the four given x values.")?;
+  ir = u:rs_ir_symbol_doc(ir, "b", "param", "bias", "The bias, the intercept of the fitted line at x = 0; trained, so it changes every epoch.")?;
+  ir = u:rs_ir_symbol_doc(ir, "L", "var", "loss", "The loss: how wrong the prediction is, the squared error, averaged over the four points for training.")?;
+  ir = u:rs_ir_symbol_doc(ir, "y", "var", "target", "The target: the y value the data says goes with this x.")?;
+  ir = u:rs_ir_symbol_doc(ir, "eta", "hyper", "learning rate", "The learning rate η (eta): how big a step gradient descent takes each epoch; here 0.1.")?;
+  ir = u:rs_ir_symbol_doc(ir, "grad_w", "op", "gradient of the loss with respect to the weight", "How much the loss changes for a small change in w; the update steps w against it.")?;
+  ir = u:rs_ir_symbol_doc(ir, "grad_b", "op", "gradient of the loss with respect to the bias", "How much the loss changes for a small change in b; the update steps b against it.")?;
+  ir = u:rs_ir_symbol_doc(ir, "eq", "op", "definition", "Definition: the left side is computed from the right side.")?;
+  ir = u:rs_ir_symbol_doc(ir, "assign", "op", "update", "Update: the parameter takes a new value for the next epoch; assignment across time.")?;
+  ir = u:rs_ir_symbol_doc(ir, "add", "op", "add", "Addition.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sub", "op", "subtract", "Subtraction; in the loss, the residual y − ŷ.")?;
+  ir = u:rs_ir_symbol_doc(ir, "mul", "op", "multiply", "Multiplication; written by juxtaposition on the Math face, as wx.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sq", "op", "square", "Square: the residual squared, so under- and over-shooting count the same and big misses count more.")?;
+  ir = u:rs_ir_symbol_doc(ir, "lp", "punct", "open", "Open parenthesis: group the residual before squaring.")?;
+  ir = u:rs_ir_symbol_doc(ir, "rp", "punct", "close", "Close parenthesis.")?;
+  ir = u:rs_ir_line(ir, "math", "yhat:ŷ|eq:=|sigma:σ|lp:~(|w:~w|mul:~⁢|x:~x|add:+|b:b|rp:~)")?;
+  ir = u:rs_ir_line(ir, "math", "L:L|eq:=|lp:(|y:~y|sub:−|yhat:ŷ|rp:~)|sq:~²")?;
+  ir = u:rs_ir_line(ir, "math", "w:w|assign:←|w:w|sub:−|eta:η|mul:~⁢|grad_w:∂L/∂w")?;
+  ir = u:rs_ir_line(ir, "math", "b:b|assign:←|b:b|sub:−|eta:η|mul:~⁢|grad_b:∂L/∂b")?;
+  ir = u:rs_ir_line(ir, "m", "yhat:Ŷ|eq:←|sigma:σ|b:B|add:+|w:W|mul:~×|x:~X")?;
+  ir = u:rs_ir_line(ir, "m", "L:L|eq:←|lp:(|y:~Y|sub:~−|yhat:~Ŷ|rp:~)|sq:~*2")?;
+  ir = u:rs_ir_line(ir, "m", "w:W|assign:←|w:W|sub:−|eta:η|mul:~×|grad_w:~∇W L")?;
+  ir = u:rs_ir_line(ir, "m", "b:B|assign:←|b:B|sub:−|eta:η|mul:~×|grad_b:~∇B L")?;
+  ir = u:rs_ir_line_doc(ir, "math", 0, "The prediction: the line wx + b squashed by σ into (0, 1), an S-shaped curve through x.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 1, "The loss: how far the guess is from the target, squared so misses in either direction count and big misses count more.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 2, "The weight update: move w a small step (η) against its gradient, so the loss is lower next epoch.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 3, "The bias update: the same step for b.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 0, "The prediction in the proposed notation: read right to left, W×X first, then + B, then σ of that, assigned to Ŷ.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 1, "The loss: Y−Ŷ raised to the power 2 (*2 is APL's power), assigned to L.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 2, "The weight update: ∇W L is the gradient of L with respect to W; scaled by η and subtracted, the result becomes the new W.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 3, "The bias update: the same step for B.")?;
+  u:rs_ir_validate(ir)?;
+  ok(ir)
+}

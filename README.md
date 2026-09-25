@@ -113,6 +113,10 @@ is the layout and the manifest. The tour so far:
    [`cnn-convolution.org`](https://github.com/sw-ml-study/sw-mlpl/blob/main/examples/literate/cnn-convolution.org)
    in sw-mlpl and the blog post
    [*Teaching an Array Language to Say CNN*](https://blog.softwarewrighter.com/2026/09/10/ml-cnn-from-equations-mlpl/).
+6. **Sigmoid neuron**, ŷ = σ(wx + b), the research's own one-neuron example:
+   the same four lines with one function glyph added, trained through
+   sigmoid on targets 0, 0, 1, 1; time is the epoch, and the S-shaped fit
+   steepens between the two groups of points.
 
 ## The page
 
@@ -195,7 +199,7 @@ SHA (`-dirty` when the tree had uncommitted changes), UTC time.
 
 ## Status
 
-Steps 1–23 of [the plan](docs/plan.md) are done: the gate; the equation
+Steps 1–25 of [the plan](docs/plan.md) are done: the gate; the equation
 IR with the one-neuron instance; the training trace; the three faces as
 fixtures; the page; focus; read mode with view scale, orientation cues and
 the face card; the scalene prism with faces sized to their content; the
@@ -209,8 +213,8 @@ the tour's sums render and stay focusable; invisible tokens that announce
 themselves; the multi-stone page: a manifest, per-stone fixtures, a
 dropdown, and every face's title and purpose in the record; the five
 stones of the tour; exact callout anchors on the turned stone; and the
-captures. Every face header names the stone it shows, from the record.
-v1 of the plan is complete.
+captures; callouts in expression order; and, starting v1.1, the sigmoid
+neuron. Every face header names the stone it shows, from the record.
 
 - [`demos/one-neuron/train.mlpl`](demos/one-neuron/train.mlpl) trains the
   neuron for real (sw-MLPL `param` leaves, gradients from `grad`, thirty
@@ -235,9 +239,8 @@ v1 of the plan is complete.
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next, beyond v1 (see the plan's open decisions): a sigmoid or logistic
-variant of the neuron, Adam, attention; the Zoom verb (abstraction
-levels); a Trace face if the stone ever becomes a box.
+Next in v1.1: attention (composed from matmul and softmax), Adam, the
+Trace face (the stone as a box), and the Zoom verb (one level inside).
 
 ## License
 

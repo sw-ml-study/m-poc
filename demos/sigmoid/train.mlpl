@@ -1,0 +1,16 @@
+# Train the sigmoid neuron and write the trace the page replays: fixtures/sigmoid/trace.json by default, or the path given as the script's argument (scripts/check-fixtures uses that to compare a fresh emission against the committed fixture). The JSON written is also printed; the reg-rs baseline rosetta_sigmoid_trace pins it.
+include "neuron.mlpl";
+
+sg_eta = 2.0;
+sg_epochs = 40;
+sg_places = 6;
+sg_path = if gt(list_len(args()), 0) {
+  unwrap(list_get(args(), 0))
+} else {
+  "fixtures/sigmoid/trace.json"
+};
+
+rows = u:sg_train(sg_eta, sg_epochs);
+text = unwrap(u:rs_write_json(sg_path, u:sg_trace(rows, sg_places)));
+print(text);
+str_concat("wrote ", sg_path)

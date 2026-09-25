@@ -1,0 +1,61 @@
+# The sixth stone's computation: the sigmoid neuron, ŷ = σ(wx + b), fitted to four points with targets 0, 0, 1, 1 by full-batch gradient descent on the mean squared error, the gradient flowing through sigmoid on the tape. The parameters are sw-MLPL param leaves and every gradient comes from grad; nothing here is typed in. u:sg_train records one row per epoch (the state before that epoch's update, its loss and its gradients) and u:sg_trace turns the rows into the trace record the page replays, keyed by the equation's symbol ids so focus can find a value for a token.
+include "../../lib/rosetta/emit.mlpl";
+include "equation.mlpl";
+
+sg_x = [-1.5, -0.5, 0.5, 1.5];
+sg_y = [0.0, 0.0, 1.0, 1.0];
+sg_w = param[1];
+sg_w = [0.0];
+sg_b = param[1];
+sg_b = [0.0];
+
+def u:sg_predict() {
+  "The prediction for every input at the current parameters: ŷ = σ(wx + b).";
+  sigmoid(sg_w * sg_x + sg_b)
+}
+
+def u:sg_loss() {
+  "The loss trained: the mean over the four points of (y − ŷ)².";
+  d = sg_y - u:sg_predict();
+  reduce_add(d * d) / len(sg_x)
+}
+
+def u:sg_reset() {
+  "Put both parameters back at zero, so training is repeatable within one process.";
+  global_set("sg_w", [0.0]);
+  global_set("sg_b", [0.0]);
+  1
+}
+
+def u:sg_train(eta, epochs) {
+  "Train from zero for a number of epochs at learning rate eta and return the unrounded rows: for epoch t, the parameters before the update, the prediction and loss at them, and the gradients grad computed there. Row epochs is the final state, whose gradients are recorded but not applied.";
+  u:sg_reset();
+  w = fill([0], 0);
+  b = fill([0], 0);
+  loss = fill([0], 0);
+  grad_w = fill([0], 0);
+  grad_b = fill([0], 0);
+  yhat = fill([0], 0);
+  t = 0;
+  while lt(t, epochs + 1) {
+    gw = grad(u:sg_loss(), sg_w);
+    gb = grad(u:sg_loss(), sg_b);
+    w = concat(w, sg_w);
+    b = concat(b, sg_b);
+    loss = concat(loss, u:sg_loss());
+    grad_w = concat(grad_w, gw);
+    grad_b = concat(grad_b, gb);
+    yhat = concat(yhat, u:sg_predict());
+    if lt(t, epochs) {
+      global_set("sg_w", sg_w - eta * gw);
+      global_set("sg_b", sg_b - eta * gb)
+    };
+    t = t + 1
+  };
+  {eta: eta, epochs: epochs, x: sg_x, y: sg_y, w: w, b: b, L: loss, grad_w: grad_w, grad_b: grad_b, yhat: reshape(yhat, [epochs + 1, len(sg_x)])}
+}
+
+def u:sg_trace(rows, places) {
+  "The trace record the page replays, rounded to places decimals: an axis (epochs), the constants and the per-epoch channels, every key an id from the one-neuron equation record; the per-point prediction is a shape-and-values record like the line-scene arrays.";
+  {schema: "sw-ml-study.rosetta.trace", version: 1, equation: "sigmoid", axis: {name: "epoch", count: rows.epochs + 1}, constants: {eta: rows.eta, x: rows.x, y: rows.y}, channels: {w: u:rs_round(rows.w, places), b: u:rs_round(rows.b, places), L: u:rs_round(rows.L, places), grad_w: u:rs_round(rows.grad_w, places), grad_b: u:rs_round(rows.grad_b, places), yhat: u:rs_array_json(u:rs_round(rows.yhat, places))}}
+}

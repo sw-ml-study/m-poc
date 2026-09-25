@@ -6,11 +6,12 @@ def u:test_manifest() {
   "The page's dropdown is built from this.";
   m = unwrap(u:stones_manifest());
   u:assert_text_eq(m.schema, "sw-ml-study.rosetta.stones", "schema")?;
-  u:assert_eq(list_len(m.ids), 5, "five stones")?;
+  u:assert_eq(list_len(m.ids), 6, "six stones")?;
+  u:assert_text_eq(unwrap(list_get(m.ids, 5)), "sigmoid", "the sixth stone")?;
   u:assert_text_eq(unwrap(list_get(m.ids, 3)), "softmax", "the fourth stone")?;
   u:assert_text_eq(unwrap(list_get(m.ids, 4)), "cnn", "the fifth stone")?;
   k = 0;
-  while lt(k, 5) {
+  while lt(k, 6) {
     a = take(m.widths.visual, 0, k);
     b = take(m.widths.math, 0, k);
     c = take(m.widths.m, 0, k);

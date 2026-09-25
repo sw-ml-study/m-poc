@@ -1,0 +1,3 @@
+command = "./scripts/run-mlpl demos/sigmoid/train.mlpl"
+exit_code = 0
+desc = "The sigmoid neuron's trace: per epoch w, b, ŷ, L and both gradients from a real grad loop through sigmoid."

@@ -1,6 +1,6 @@
 number = 25
 slug = "sigmoid-neuron"
-status = "pending"
+status = "in-progress"
 description = "The sixth stone: the sigmoid neuron, the research's own one-neuron example (s..."
 role = "production"
 context_files = []
