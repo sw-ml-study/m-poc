@@ -1,8 +1,9 @@
 number = 33
 slug = "adam-stone"
-status = "in-progress"
+status = "completed"
 description = "The eighth stone: Adam on the one-neuron loss, showing why the research wants..."
 role = "production"
 context_files = []
 created_at = "2026-09-24T17:45:00"
-commits = []
+completed_at = "2026-09-25T10:11:36"
+commits = ["86d96f88282ec043df37bcc66d10447ab3bf403b"]
