@@ -1,0 +1,8 @@
+number = 27
+slug = "image-normalization"
+status = "pending"
+description = "The second applicative stone, from docs/research2.txt ('Then evolve the same ..."
+role = "production"
+context_files = []
+created_at = "2026-09-24T18:16:58"
+commits = []
