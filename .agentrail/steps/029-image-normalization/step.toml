@@ -1,8 +1,9 @@
 number = 29
 slug = "image-normalization"
-status = "in-progress"
+status = "completed"
 description = "The second applicative stone, from docs/research2.txt ('Then evolve the same ..."
 role = "production"
 context_files = []
 created_at = "2026-09-24T18:16:58"
-commits = []
+completed_at = "2026-09-24T20:22:11"
+commits = ["4e8988aadbe7f587a62db045c318485cddf5f51d"]
