@@ -1,8 +1,9 @@
 number = 27
 slug = "callout-after-turn"
-status = "in-progress"
+status = "completed"
 description = "Callouts fail for a moment after changing faces (reported). Cause: the stone'..."
 role = "production"
 context_files = []
 created_at = "2026-09-24T19:49:56"
-commits = []
+completed_at = "2026-09-24T19:51:48"
+commits = ["2591683a508f5b7e5f99ce02b38dd87bfc75eacc"]

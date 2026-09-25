@@ -1,0 +1,1 @@
+Step 27 done: removed .stone.settling and body.reading transform transitions; measureFlat forces transition:none during its toggle (the switch-back was animating and corrupting anchors after a turn). Added a 'Keys ?' button in the masthead opening the existing help dialog, and a lede hint. just check green.
