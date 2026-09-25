@@ -1,0 +1,8 @@
+number = 30
+slug = "zoom-verb"
+status = "pending"
+description = "The fourth verb, Zoom: show me what is inside (research §40, semantic zoom)...."
+role = "production"
+context_files = []
+created_at = "2026-09-24T17:45:00"
+commits = []
