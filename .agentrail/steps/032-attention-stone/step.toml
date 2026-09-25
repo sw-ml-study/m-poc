@@ -1,6 +1,6 @@
 number = 32
 slug = "attention-stone"
-status = "pending"
+status = "in-progress"
 description = "The seventh stone: attention, composed from the matmul and softmax stones (re..."
 role = "production"
 context_files = []

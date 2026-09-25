@@ -1,0 +1,44 @@
+# The attention stone's equation (docs/research.txt §9 and R10: attention as a composed visualization): scaled dot-product attention in three lines, composed from the matmul and softmax stones. Math face: S_ij = (Q Kᵀ)_ij / √d, P_ij = σ(S_i)_j, A_ik = ∑_j P_ij V_jk, every index its own token. M face: S ← (Q +.× ⍉K) ÷ √d, P ← σ S, A ← P +.× V, where +.× is the matmul stone's inner product, σ the softmax stone's placeholder and ⍉ the transpose. Multiplication is by juxtaposition on the Math face, carried by U+2062 INVISIBLE TIMES. Placeholder glyphs (see docs/plan.md).
+include "../../lib/rosetta/ir.mlpl";
+
+def u:at_equation() {
+  "Build the attention record: three lines per face, every symbol, line and face documented for the page.";
+  ir = u:rs_ir_new("attention", "Attention: every query scores every key, the scores become probabilities, and each output is the values averaged with those probabilities; two matrix products and a softmax.");
+  ir = u:rs_ir_titled(ir, "Attention")?;
+  ir = u:rs_ir_face_doc(ir, "math", "Scores, weights, output: three lines", "Line one scores every query against every key, a dot product scaled by √d. Line two turns each row of scores into probabilities with softmax. Line three mixes the values with those probabilities: row i of A is the average of the rows of V, weighted by how much query i attends to each key. Two matrix products and a softmax, nothing new.")?;
+  ir = u:rs_ir_face_doc(ir, "m", "The same three lines, composed from earlier stones", "+.× is the matmul stone's inner product, σ the softmax stone's placeholder glyph, ⍉ the transpose. Attention needs no primitive of its own; it is the composition the research calls R10, three lines over the stones already in the tour. Placeholder glyphs.")?;
+  ir = u:rs_ir_face_doc(ir, "visual", "Q, K, V as grids; one query at a time", "The three input grids with the current query row lit, that query's score row and probability row as bars, and its output row filling in; the dataflow above is the composition: Q and K into +.×, ÷√d, σ, then +.× with V, into A.")?;
+  ir = u:rs_ir_symbol_doc(ir, "S", "var", "scores", "How well query i matches key j: their dot product, scaled down by √d. One row per query; the row is what softmax sees.")?;
+  ir = u:rs_ir_symbol_doc(ir, "i", "var", "query position", "Which token is asking. The stone's time axis walks the queries one at a time.")?;
+  ir = u:rs_ir_symbol_doc(ir, "j", "var", "key position", "Which token is answering: runs over the keys in a score row, and is summed away in the output.")?;
+  ir = u:rs_ir_symbol_doc(ir, "k", "var", "feature", "Which of the d features of a value: the columns of V and of A.")?;
+  ir = u:rs_ir_symbol_doc(ir, "eq", "op", "definition", "Definition: the left side is computed from the right side.")?;
+  ir = u:rs_ir_symbol_doc(ir, "lp", "punct", "open", "Open parenthesis.")?;
+  ir = u:rs_ir_symbol_doc(ir, "rp", "punct", "close", "Close parenthesis.")?;
+  ir = u:rs_ir_symbol_doc(ir, "Q", "var", "queries", "One row per token, d numbers each: what each token is looking for. Here 3 tokens of width 2.")?;
+  ir = u:rs_ir_symbol_doc(ir, "mul", "op", "multiply", "Multiply paired entries: written by juxtaposition on the Math face, the × of the inner product +.× in the notation.")?;
+  ir = u:rs_ir_symbol_doc(ir, "K", "var", "keys", "One row per token: what each token offers to be matched against. Kᵀ turns those rows into columns so every query meets every key.")?;
+  ir = u:rs_ir_symbol_doc(ir, "T", "op", "transpose", "Transpose: rows become columns. On paper a superscript T, in the notation ⍉.")?;
+  ir = u:rs_ir_symbol_doc(ir, "div", "op", "divide", "Scale the scores down by √d so they do not grow with the width d and drive the softmax to one winner too soon. In the notation, ÷.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sqrt", "op", "square root", "The square root of the width d.")?;
+  ir = u:rs_ir_symbol_doc(ir, "d", "hyper", "width", "How many features each query and key has; here 2. A dot product of d terms grows like √d, which is why the scores are divided by it.")?;
+  ir = u:rs_ir_symbol_doc(ir, "P", "var", "attention weights", "Each row of scores turned into probabilities: how much query i attends to each key j. Every row adds up to one.")?;
+  ir = u:rs_ir_symbol_doc(ir, "softmax", "op", "softmax", "The softmax stone's function, applied to each row: exponentiate every score, divide by the row's sum. The same placeholder glyph σ as on that stone.")?;
+  ir = u:rs_ir_symbol_doc(ir, "A", "var", "output", "Row i is the values mixed by query i's weights: a weighted average of the rows of V, one output per token.")?;
+  ir = u:rs_ir_symbol_doc(ir, "sum", "op", "summation", "Add the weighted values over every key j: on paper a ∑ over j, in the notation the + of +.×.")?;
+  ir = u:rs_ir_symbol_doc(ir, "V", "var", "values", "One row per token: what each token passes on when it is attended to.")?;
+  ir = u:rs_ir_line(ir, "math", "S:S|i:_i|j:_j|eq:=|lp:(|Q:~Q|mul:~⁢|K:~K|T:^T|rp:~)|i:_i|j:_j|div:/|sqrt:√|d:~d")?;
+  ir = u:rs_ir_line(ir, "math", "P:P|i:_i|j:_j|eq:=|softmax:σ|lp:~(|S:~S|i:_i|rp:~)|j:_j")?;
+  ir = u:rs_ir_line(ir, "math", "A:A|i:_i|k:_k|eq:=|sum:!∑|j:<j|P:P|i:_i|j:_j|mul:~⁢|V:~V|j:_j|k:_k")?;
+  ir = u:rs_ir_line(ir, "m", "S:S|eq:←|lp:(|Q:~Q|sum:+.|mul:~×|T:⍉|K:~K|rp:~)|div:÷|sqrt:√|d:~d")?;
+  ir = u:rs_ir_line(ir, "m", "P:P|eq:←|softmax:σ|S:S")?;
+  ir = u:rs_ir_line(ir, "m", "A:A|eq:←|P:P|sum:+.|mul:~×|V:V")?;
+  ir = u:rs_ir_line_doc(ir, "math", 0, "The score of query i against key j: the dot product of row i of Q with row j of K, divided by √d.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 1, "The weights: softmax over row i of the scores, so query i's weights add up to one; entry j is how much it attends to key j.")?;
+  ir = u:rs_ir_line_doc(ir, "math", 2, "The output for query i, feature k: every value row j, weighted by P_ij, added up.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 0, "All the scores at once: the inner product of Q with the transposed K, the matmul stone's +.×, divided by √d.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 1, "All the weights at once: the softmax stone's σ over every row of S.")?;
+  ir = u:rs_ir_line_doc(ir, "m", 2, "All the outputs at once: the inner product of the weights with the values, +.× again.")?;
+  u:rs_ir_validate(ir)?;
+  ok(ir)
+}

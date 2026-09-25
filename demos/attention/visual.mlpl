@@ -1,0 +1,164 @@
+# The Visual face of attention, as a line scene built from the trace. Top, the dataflow: Q and K into +.×, into ÷√d, into σ, into +.× with V, into A. Below left, Q, K and V as grids of labelled cells with the current query row of Q lit. Middle, the current query's score row and probability row as bars. Right, the output A as a grid whose rows fill in with bars one query per step, the current row lit. Every edge and label carries a symbol id of the equation record. Coordinates are scene units, roughly 18 wide by 10 high.
+include "../../lib/rosetta/scene.mlpl";
+include "equation.mlpl";
+
+def u:at_palette() {
+  "The RGBA colours of the face.";
+  {structure: [0.78, 0.8, 0.88, 1], q: [0.4, 0.85, 0.95, 1], k: [0.95, 0.85, 0.4, 1], v: [0.55, 0.9, 0.6, 1], score: [0.95, 0.5, 0.45, 1], prob: [0.72, 0.58, 0.95, 1], output: [0.9, 0.62, 0.9, 1], flow: [0.55, 0.58, 0.68, 1], lit: [1, 0.6, 0.25, 1]}
+}
+
+def u:at_dataflow(scene) {
+  "The structure panel: the composition, left to right, with V joining at the second inner product.";
+  c = u:at_palette();
+  scene = u:rs_scene_box(scene, 0.9, 9.5, 0.9, 0.6, "Q", "Q", c.q)?;
+  scene = u:rs_scene_box(scene, 0.9, 8.5, 0.9, 0.6, "K", "K", c.k)?;
+  scene = u:rs_scene_box(scene, 2.7, 9.0, 1.0, 0.6, "sum", "+.×", c.structure)?;
+  scene = u:rs_scene_box(scene, 4.5, 9.0, 1.0, 0.6, "div", "÷√d", c.structure)?;
+  scene = u:rs_scene_box(scene, 6.3, 9.0, 0.9, 0.6, "softmax", "σ", c.structure)?;
+  scene = u:rs_scene_box(scene, 8.1, 9.0, 1.0, 0.6, "sum", "+.×", c.structure)?;
+  scene = u:rs_scene_box(scene, 8.1, 7.9, 0.9, 0.6, "V", "V", c.v)?;
+  scene = u:rs_scene_box(scene, 9.9, 9.0, 0.9, 0.6, "A", "A", c.output)?;
+  scene = u:rs_scene_segment(scene, 1.35, 9.5, 2.2, 9.1, "Q", c.flow)?;
+  scene = u:rs_scene_segment(scene, 1.35, 8.5, 2.2, 8.9, "K", c.flow)?;
+  scene = u:rs_scene_segment(scene, 3.2, 9.0, 4.0, 9.0, "mul", c.flow)?;
+  scene = u:rs_scene_segment(scene, 5.0, 9.0, 5.85, 9.0, "S", c.flow)?;
+  scene = u:rs_scene_segment(scene, 6.75, 9.0, 7.6, 9.0, "P", c.flow)?;
+  scene = u:rs_scene_segment(scene, 8.1, 8.2, 8.1, 8.7, "V", c.flow)?;
+  u:rs_scene_segment(scene, 8.6, 9.0, 9.45, 9.0, "sum", c.flow)
+}
+
+def u:at_grid(scene, values, rows, cols, x0, y0, id, color) {
+  "A grid of labelled cells for a matrix: row r, column c at (x0 + c·1.0, y0 − r·0.8).";
+  r = 0;
+  while lt(r, rows) {
+    c = 0;
+    while lt(c, cols) {
+      scene = u:rs_scene_box(scene, x0 + c * 1.0, y0 - r * 0.8, 0.9, 0.7, id, to_string(take(take(values, 0, r), 0, c)), color)?;
+      c = c + 1
+    };
+    r = r + 1
+  };
+  ok(scene)
+}
+
+def u:at_bars(scene, values, x0, base_y, height, top, id, color) {
+  "A row of vertical bars from a baseline at x0 + j·1.0, values scaled so that top maps to height; negative values go down.";
+  j = 0;
+  n = len(values);
+  while lt(j, n) {
+    x = x0 + j * 1.0;
+    v = take(values, 0, j) / top * height;
+    scene = u:rs_scene_rect(scene, x - 0.35, base_y, x + 0.35, base_y + v, id, color)?;
+    j = j + 1
+  };
+  ok(scene)
+}
+
+def u:at_inputs(scene, trace, t) {
+  "Q, K and V as grids, the current query row of Q lit, with the index names.";
+  c = u:at_palette();
+  q = reshape(trace.constants.Q.values, trace.constants.Q.shape);
+  k = reshape(trace.constants.K.values, trace.constants.K.shape);
+  v = reshape(trace.constants.V.values, trace.constants.V.shape);
+  n = take(shape(q), 0, 0);
+  d = take(shape(q), 0, 1);
+  i = take(trace.channels.i, 0, t);
+  scene = u:rs_scene_label(scene, [1.7, 7.0, 0], "Q", "Q")?;
+  scene = u:at_grid(scene, q, n, d, 1.2, 6.2, "Q", c.q)?;
+  scene = u:rs_scene_label(scene, [4.7, 7.0, 0], "K", "K")?;
+  scene = u:at_grid(scene, k, n, d, 4.2, 6.2, "K", c.k)?;
+  scene = u:rs_scene_label(scene, [7.7, 7.0, 0], "V", "V")?;
+  scene = u:at_grid(scene, v, n, d, 7.2, 6.2, "V", c.v)?;
+  scene = u:rs_scene_label(scene, [0.4, 6.2 - i * 0.8, 0], "i", "i")?;
+  scene = u:rs_scene_label(scene, [3.5, 5.4, 0], "j", "j")?;
+  scene = u:rs_scene_label(scene, [1.7, 3.9, 0], "k", "k")?;
+  scene = u:rs_scene_label(scene, [6.5, 5.4, 0], "j", "j")?;
+  u:rs_scene_rect(scene, 0.65, 6.2 - i * 0.8 - 0.45, 2.75, 6.2 - i * 0.8 + 0.45, "i", c.lit)
+}
+
+def u:at_rows(scene, trace, t) {
+  "The current query's score row and probability row as bars.";
+  c = u:at_palette();
+  n = trace.axis.count;
+  s = take(reshape(trace.channels.S.values, trace.channels.S.shape), 0, t);
+  p = take(take(reshape(trace.channels.P.values, trace.channels.P.shape), 0, t), 0, t);
+  top_s = reduce(:max, abs(trace.channels.S.values)) + 0.0001;
+  x0 = 11.2;
+  right = x0 + (n - 1) * 1.0 + 0.5;
+  scene = u:rs_scene_label(scene, [x0 - 0.9, 5.0, 0], "S", "S")?;
+  scene = u:rs_scene_segment(scene, x0 - 0.5, 5.0, right, 5.0, "S", c.structure)?;
+  scene = u:at_bars(scene, s, x0, 5.0, 1.6, top_s, "S", c.score)?;
+  scene = u:rs_scene_label(scene, [x0 - 0.9, 2.2, 0], "P", "P")?;
+  scene = u:rs_scene_segment(scene, x0 - 0.5, 2.2, right, 2.2, "P", c.structure)?;
+  scene = u:at_bars(scene, p, x0, 2.2, 1.6, 1, "P", c.prob)?;
+  u:rs_scene_label(scene, [x0 + (n - 1) * 0.5, 1.6, 0], "j", "j")
+}
+
+def u:at_output_grid(scene, trace, t) {
+  "A as a grid of cells; rows up to the current query hold bars, the current row lit.";
+  c = u:at_palette();
+  n = trace.axis.count;
+  a = reshape(trace.channels.A.values, trace.channels.A.shape);
+  d = take(trace.channels.A.shape, 0, 1);
+  top = reduce(:max, abs(trace.channels.A.values)) + 0.0001;
+  i = take(trace.channels.i, 0, t);
+  x0 = 15.4;
+  y0 = 6.2;
+  scene = u:rs_scene_label(scene, [x0 + 0.5, 7.0, 0], "A", "A")?;
+  scene = u:rs_scene_label(scene, [x0 + 0.5, 3.9, 0], "k", "k")?;
+  r = 0;
+  while lt(r, n) {
+    k = 0;
+    while lt(k, d) {
+      cx = x0 + k * 1.0;
+      cy = y0 - r * 0.8;
+      v = if lt(r, t + 1) {
+        take(take(a, 0, r), 0, k)
+      } else {
+        0
+      };
+      scene = u:rs_scene_rect(scene, cx - 0.45, cy - 0.35, cx + 0.45, cy + 0.35, "A", c.output)?;
+      scene = u:rs_scene_segment(scene, cx - 0.4, cy - 0.12, cx - 0.4 + v / top * 0.8, cy - 0.12, "A", c.output)?;
+      scene = u:rs_scene_segment(scene, cx - 0.4, cy + 0.12, cx - 0.4 + v / top * 0.8, cy + 0.12, "A", c.output)?;
+      k = k + 1
+    };
+    r = r + 1
+  };
+  u:rs_scene_rect(scene, x0 - 0.55, y0 - i * 0.8 - 0.45, x0 + (d - 1) * 1.0 + 0.55, y0 - i * 0.8 + 0.45, "i", c.lit)
+}
+
+def u:at_panels(scene) {
+  "Name the four panels for the page's legend and callouts.";
+  c = u:at_palette();
+  scene = u:rs_scene_panel(scene, "dataflow", "Dataflow", "The composition: Q and K meet at the first inner product, the scores are divided by √d, softmax turns each row into weights, and the second inner product mixes the values V into A. Two matmul stones and a softmax stone in a row.", [0.2, 7.5, 10.6, 10.0], c.structure)?;
+  scene = u:rs_scene_panel(scene, "inputs", "Queries, keys, values", "Q, K and V as cells, one row per token, one column per feature. The query row being attended is lit; every key row j is scored against it.", [0.2, 3.5, 9.8, 7.4], c.q)?;
+  scene = u:rs_scene_panel(scene, "rows", "Scores and weights", "The current query's row of scores, one bar per key, and the same row after softmax: probabilities that add up to one, the tallest bar the key this query attends to most.", [10.0, 1.2, 14.4, 7.4], c.prob)?;
+  u:rs_scene_panel(scene, "output", "Output", "A as cells, one row per query; each finished row holds a bar per feature for the weighted average of the value rows. The current row is lit and fills in this step.", [14.6, 3.5, 17.5, 7.4], c.output)
+}
+
+def u:at_visual(trace, t) {
+  "The whole Visual face at step t of a parsed trace record.";
+  scene = u:rs_scene_new(trace.axis.name);
+  scene = u:at_dataflow(scene)?;
+  scene = u:at_inputs(scene, trace, t)?;
+  scene = u:at_rows(scene, trace, t)?;
+  scene = u:at_output_grid(scene, trace, t)?;
+  u:at_panels(scene)
+}
+
+def u:at_scene(trace) {
+  "The Visual face with one frame per query.";
+  scene = u:at_visual(trace, 0)?;
+  t = 0;
+  while lt(t, trace.axis.count) {
+    frame = u:at_visual(trace, t)?;
+    scene = u:rs_scene_frame(scene, reshape(frame.positions, [frame.vertex_count, 3]))?;
+    t = t + 1
+  };
+  ok(scene)
+}
+
+def u:at_read_trace(path) {
+  "The trace record from its fixture.";
+  parse_json(read_text(path)?)
+}

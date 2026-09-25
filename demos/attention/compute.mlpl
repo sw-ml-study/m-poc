@@ -1,0 +1,51 @@
+# The attention stone's computation: three tokens of width two, queries Q, keys K and values V as small integer matrices, computed with MLPL's matmul, transpose, softmax (row-wise) and sqrt: S = Q Kᵀ / √d, P = softmax(S), A = P V. u:at_steps records, per query position i, the score row S_i, the probability row P_i, the output row A_i and P with rows up to i filled; u:at_trace turns the rows into the trace record the page replays, keyed by the equation's symbol ids. The tests check the rows against the builtins and by hand.
+include "../../lib/rosetta/emit.mlpl";
+include "equation.mlpl";
+
+at_q = reshape([2, 0, 0, 2, 2, 2] * 1.0, [3, 2]);
+at_k = reshape([2, 1, 0, 2, 1, 0] * 1.0, [3, 2]);
+at_v = reshape([1, 0, 0, 1, 1, 1] * 1.0, [3, 2]);
+at_d = 2;
+
+def u:at_scores() {
+  "S = Q Kᵀ / √d: every query against every key.";
+  matmul(at_q, transpose(at_k)) / sqrt(at_d)
+}
+
+def u:at_probs() {
+  "P = softmax(S), row by row.";
+  softmax(u:at_scores())
+}
+
+def u:at_output() {
+  "A = P V: the values mixed by the weights.";
+  matmul(u:at_probs(), at_v)
+}
+
+def u:at_steps() {
+  "One row per query i = 0..n−1: the position, the score row, the probability row, the output row, and P with rows up to i filled (zero after).";
+  s = u:at_scores();
+  p = u:at_probs();
+  a = u:at_output();
+  n = take(shape(at_q), 0, 0);
+  index = fill([0], 0);
+  s_rows = fill([0], 0);
+  p_rows = fill([0], 0);
+  a_rows = fill([0], 0);
+  filled = fill([0], 0);
+  t = 0;
+  while lt(t, n) {
+    index = concat(index, t);
+    s_rows = concat(s_rows, take(s, 0, t));
+    p_rows = concat(p_rows, take(p, 0, t));
+    a_rows = concat(a_rows, take(a, 0, t));
+    filled = concat(filled, flatten(p * reshape(lt(range(n), t + 1), [n, 1])));
+    t = t + 1
+  };
+  {n: n, d: at_d, q: at_q, k: at_k, v: at_v, s: s, p: p, a: a, i: index, s_row: reshape(s_rows, [n, n]), p_row: reshape(p_rows, [n, n]), a_row: reshape(a_rows, [n, at_d]), filled: reshape(filled, [n, n, n])}
+}
+
+def u:at_trace(rows, places) {
+  "The trace record: the axis is the query position (n steps), the constants are Q, K, V and d, the channels are the position i, the score row S, the weights P so far and the output row A.";
+  {schema: "sw-ml-study.rosetta.trace", version: 1, equation: "attention", axis: {name: "query", count: rows.n}, constants: {Q: u:rs_array_json(rows.q), K: u:rs_array_json(rows.k), V: u:rs_array_json(rows.v), d: rows.d}, channels: {i: rows.i, S: u:rs_array_json(u:rs_round(rows.s_row, places)), P: u:rs_array_json(u:rs_round(rows.filled, places)), A: u:rs_array_json(u:rs_round(rows.a_row, places))}}
+}

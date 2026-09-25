@@ -1,0 +1,79 @@
+# The attention stone: the scores, weights and output agree with MLPL's matmul, transpose and softmax and with hand arithmetic, every weight row sums to one, each step records its own query and fills P one row at a time, the trace is keyed by the record's symbols, the record's docs are complete, the Visual face's ids are symbols, and the committed fixtures are what the programs emit.
+include "lib/rosetta/faces.mlpl";
+include "demos/attention/compute.mlpl";
+include "demos/attention/visual.mlpl";
+
+def u:t_at_unknown(ir, ids) {
+  "The first id in a string list that is not a symbol of the record, or the empty string.";
+  index = 0;
+  unknown = "";
+  while lt(index, list_len(ids)) {
+    id = unwrap(list_get(ids, index));
+    if eq(u:rs_ir_symbol_index(ir, id), -1) {
+      unknown = id
+    };
+    index = index + 1
+  };
+  unknown
+}
+
+@test {name: "scores by hand, weight rows that sum to one, output equal to the weighted value rows, one query per step", tags: ["attention", "trace"]}
+def u:test_at_rows() {
+  "S_0 = [4, 0, 2] / √2 by hand; P_0 = exp / sum by hand; every row of P sums to one; A_t = ∑_j P_tj V_j by a loop; the steps fill P one row at a time.";
+  s = u:at_scores();
+  p = u:at_probs();
+  a = u:at_output();
+  u:assert_eq(shape(s), [3, 3], "three queries against three keys")?;
+  u:assert_lt(reduce(:max, abs(take(s, 0, 0) - [4, 0, 2] / sqrt(2))), 0.000000001, "the first score row by hand")?;
+  e = exp(take(s, 0, 0));
+  u:assert_lt(reduce(:max, abs(take(p, 0, 0) - e / reduce_add(e))), 0.000000001, "the first weight row by hand")?;
+  u:assert_lt(reduce(:max, abs(reduce_add(p, 1) - 1)), 0.000000001, "every weight row sums to one")?;
+  u:assert_gt(take(take(p, 0, 0), 0, 0), 0.7, "query 0 attends mostly to key 0")?;
+  u:assert_gt(take(take(p, 0, 1), 0, 1), 0.7, "query 1 attends mostly to key 1")?;
+  t = 0;
+  while lt(t, 3) {
+    mixed = fill([2], 0);
+    j = 0;
+    while lt(j, 3) {
+      mixed = mixed + take(take(p, 0, t), 0, j) * take(at_v, 0, j);
+      j = j + 1
+    };
+    u:assert_lt(reduce(:max, abs(take(a, 0, t) - mixed)), 0.000000001, "A row t is the weighted sum of the value rows")?;
+    t = t + 1
+  };
+  rows = u:at_steps();
+  u:assert_eq(rows.i, [0, 1, 2], "one query per step")?;
+  u:assert_lt(reduce(:max, abs(rows.s_row - s)), 0.000000001, "the score rows are the rows of S")?;
+  u:assert_lt(reduce(:max, abs(rows.a_row - a)), 0.000000001, "the output rows are the rows of A")?;
+  u:assert_eq(reduce_add(abs(take(take(rows.filled, 0, 0), 0, 2))), 0, "at step 0 row 2 of P is not yet filled")?;
+  u:assert_lt(reduce(:max, abs(take(rows.filled, 0, 2) - p)), 0.000000001, "at the last step P is complete")
+}
+
+@test {name: "the trace is keyed by the record's symbols; the record is documented; the faces compose the matmul and softmax glyphs; fixtures are fresh", tags: ["attention", "docs", "fixture"]}
+def u:test_at_record() {
+  "Three lines per face; every symbol, line and face documented; +.× and σ on the M face; keys are symbols; fixtures byte for byte.";
+  ir = unwrap(u:at_equation());
+  u:assert_text_eq(ir.title, "Attention", "title")?;
+  u:assert_text_eq(u:rs_ir_undocumented(ir), "", "every symbol")?;
+  u:assert_text_eq(u:rs_ir_undocumented_line(ir), "", "every line")?;
+  u:assert_text_eq(u:rs_ir_undocumented_face(ir), "", "every face")?;
+  u:assert_text_eq(u:rs_ir_math_text(ir), "S_{ij} = (Q⁢K^{T})_{ij} / √d\nP_{ij} = σ(S_{i})_{j}\nA_{ik} = ∑_{j} P_{ij}⁢V_{jk}", "math source")?;
+  u:assert_text_eq(u:rs_ir_m_text(ir), "S ← (Q +.× ⍉K) ÷ √d\nP ← σ S\nA ← P +.× V", "m text: the matmul stone's +.× twice, the softmax stone's σ once")?;
+  u:assert_eq(u:rs_face_uses(ir.faces.m, "T") * u:rs_face_uses(ir.faces.math, "T"), 1, "the transpose is on both faces")?;
+  trace = u:at_trace(u:at_steps(), 6);
+  u:assert_text_eq(u:t_at_unknown(ir, record_keys(trace.channels)), "", "channel keys are symbols")?;
+  u:assert_text_eq(u:t_at_unknown(ir, record_keys(trace.constants)), "", "constant keys are symbols")?;
+  u:assert_eq(trace.channels.P.shape, [3, 3, 3], "P so far per step")?;
+  u:assert_eq(str_eq(read_text("fixtures/attention/trace.json")?, unwrap(u:rs_json(trace))), 1, "trace fresh")?;
+  u:assert_eq(str_eq(read_text("fixtures/attention/faces/math.svg")?, unwrap(u:rs_face_svg(ir, "math"))), 1, "math.svg fresh")?;
+  parsed = unwrap(u:at_read_trace("fixtures/attention/trace.json"));
+  out = unwrap(u:rs_scene_export(unwrap(u:at_visual(parsed, 1)), 4));
+  u:assert_text_eq(u:t_at_unknown(ir, out.ids), "", "edge ids are symbols")?;
+  u:assert_text_eq(u:t_at_unknown(ir, out.labels.ids), "", "label ids are symbols")?;
+  u:assert_eq(out.panels.count, 4, "four panels")?;
+  full = unwrap(u:rs_scene_export(unwrap(u:at_scene(parsed)), 4));
+  u:assert_eq(full.frames.count, 3, "one frame per query")?;
+  u:assert_eq(str_eq(read_text("fixtures/attention/scene.json")?, unwrap(u:rs_json(full))), 1, "scene.json fresh")
+}
+
+u:run_registered_tests()

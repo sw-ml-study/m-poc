@@ -8,9 +8,10 @@ include "image-normalization/equation.mlpl";
 include "cnn/equation.mlpl";
 include "sigmoid/equation.mlpl";
 include "feature-normalization/equation.mlpl";
+include "attention/equation.mlpl";
 
 def u:stones_manifest() {
-  "The manifest record: parallel lists, one entry per stone, in tour order: the headline neuron first, then the notation ladder from pointwise to three nested sums (the image lift between softmax and the CNN), then the variants.";
+  "The manifest record: parallel lists, one entry per stone, in tour order: the headline neuron first, then the notation ladder from pointwise to three nested sums (the image lift between softmax and the CNN), then the variants: the sigmoid neuron, then attention composed from the matmul and softmax stones.";
   neuron = u:on_equation()?;
   dot = u:dp_equation()?;
   mm = u:mm_equation()?;
@@ -19,7 +20,8 @@ def u:stones_manifest() {
   cn = u:cn_equation()?;
   sg = u:sg_equation()?;
   fn = u:fn_equation()?;
-  ok({schema: "sw-ml-study.rosetta.stones", version: 1, ids: [neuron.name, fn.name, dot.name, mm.name, sm.name, im.name, cn.name, sg.name], titles: [neuron.title, fn.title, dot.title, mm.title, sm.title, im.title, cn.title, sg.title], purposes: [neuron.description, fn.description, dot.description, mm.description, sm.description, im.description, cn.description, sg.description], widths: {math: [480, 480, 480, 480, 520, 620, 720, 500], m: [480, 480, 480, 480, 480, 560, 600, 480], visual: [720, 760, 720, 720, 720, 800, 780, 720]}})
+  at = u:at_equation()?;
+  ok({schema: "sw-ml-study.rosetta.stones", version: 1, ids: [neuron.name, fn.name, dot.name, mm.name, sm.name, im.name, cn.name, sg.name, at.name], titles: [neuron.title, fn.title, dot.title, mm.title, sm.title, im.title, cn.title, sg.title, at.title], purposes: [neuron.description, fn.description, dot.description, mm.description, sm.description, im.description, cn.description, sg.description, at.description], widths: {math: [480, 480, 480, 480, 520, 620, 720, 500, 540], m: [480, 480, 480, 480, 480, 560, 600, 480, 480], visual: [720, 760, 720, 720, 720, 800, 780, 720, 780]}})
 }
 
 st_path = if gt(list_len(args()), 0) {
