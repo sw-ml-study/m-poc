@@ -1,8 +1,9 @@
 number = 32
 slug = "attention-stone"
-status = "in-progress"
+status = "completed"
 description = "The seventh stone: attention, composed from the matmul and softmax stones (re..."
 role = "production"
 context_files = []
 created_at = "2026-09-24T17:45:00"
-commits = []
+completed_at = "2026-09-24T22:46:40"
+commits = ["960ec08c58494deb43e727cbeed88c427422caf8"]
