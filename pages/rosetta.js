@@ -85,21 +85,24 @@ function makeGeometry(widths) {
   const r = (lo + hi) / 2;
   // walk the polygon in (x, z): side i's outward normal is at angle phi from
   // +z toward +x (rotateY(phi) sends +z there), its tangent point r along it,
-  // and its ends at phi -/+ the angles its two tangent lengths subtend
+  // and its ends at phi +/- the angles its two tangent lengths subtend. phi
+  // decreases along the list, so that with the spin (yaw decreasing) the
+  // faces come to the front in the reverse of the list order: math, m,
+  // visual, trace
   const dir = (ang) => [Math.sin(ang), Math.cos(ang)];
   const out = {};
   let phi = 0;
   faces.forEach((face, i) => {
     const ti = t[i], tj = t[(i + 1) % n];
     const ai = Math.atan(ti / r), aj = Math.atan(tj / r);
-    const from = dir(phi - ai).map((v) => v * Math.hypot(r, ti));
-    const to = dir(phi + aj).map((v) => v * Math.hypot(r, tj));
+    const from = dir(phi + ai).map((v) => v * Math.hypot(r, ti));
+    const to = dir(phi - aj).map((v) => v * Math.hypot(r, tj));
     const T = [r * Math.sin(phi), r * Math.cos(phi)];
     const M = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
     const tx = [Math.cos(phi), -Math.sin(phi)];                 // the face's local x
     const offset = (M[0] - T[0]) * tx[0] + (M[1] - T[1]) * tx[1];
     out[face] = { width: sides[i], angle: phi * 180 / Math.PI, offset, from, to };
-    phi += 2 * aj;
+    phi -= 2 * aj;
   });
   // turn the whole cross-section so the Math face has its normal at 0: yaw 0
   // then means "Math toward you", and no face sits at exactly 180, which
@@ -142,7 +145,8 @@ function makeStone(stage, stone, geometry, onChange) {
   let spinning = !reducedMotion && fixedYaw === null;
   let dragging = null;
   let reading = null;      // the face being read, or null
-  let before = null;       // the view to restore when reading ends
+  let wide = false;        // the faces side by side, flat
+  let before = null;       // the view to restore when reading or the wide view ends
   let last = performance.now();
 
   function apply() {
@@ -155,7 +159,7 @@ function makeStone(stage, stone, geometry, onChange) {
     onChange(view());
   }
   function view() {
-    return { yaw, pitch, scale, spinning, reading, front: frontFace() };
+    return { yaw, pitch, scale, spinning, reading, wide, front: frontFace() };
   }
   // the face whose normal is closest to the viewer
   function frontFace() {
@@ -167,7 +171,7 @@ function makeStone(stage, stone, geometry, onChange) {
     return best;
   }
   function tick(now) {
-    if (spinning && !dragging && !reading) yaw += (SPEED * (now - last)) / 1000;
+    if (spinning && !dragging && !reading && !wide) yaw += (SPEED * (now - last)) / 1000;
     last = now;
     apply();
     requestAnimationFrame(tick);
@@ -197,8 +201,17 @@ function makeStone(stage, stone, geometry, onChange) {
     const height = Math.max(240, window.innerHeight - 32 - 68);
     return Math.max(0.25, Math.min(width / geometry.faces[face].width, height / geometry.height));
   }
+  // the pixels per unit at which every face, side by side with a 12px gap,
+  // fits the stage's width, height permitting
+  function fitUnitWide() {
+    const width = stage.getBoundingClientRect().width - 16 - 12 * (FACES.length - 1);
+    const height = Math.max(200, window.innerHeight - 32 - 68);
+    const total = FACES.reduce((sum, f) => sum + geometry.faces[f].width, 0);
+    // never below 0.45 px per unit: a narrow window scrolls the row sideways instead
+    return Math.max(0.45, Math.min(width / total, height / geometry.height));
+  }
   stage.addEventListener("pointerdown", (e) => {
-    if (reading || document.body.dataset.mode) return;
+    if (reading || wide || document.body.dataset.mode) return;
     dragging = { x: e.clientX, y: e.clientY, yaw, pitch };
     stage.classList.add("dragging");
     stage.setPointerCapture(e.pointerId);
@@ -242,6 +255,7 @@ function makeStone(stage, stone, geometry, onChange) {
     setSpinning(on) { spinning = on; apply(); },
     get spinning() { return spinning; },
     get reading() { return reading; },
+    get wide() { return wide; },
     front: frontFace,
     scaleBy(steps) {
       const i = SCALES.reduce((best, s, k) => (Math.abs(s - scale) < Math.abs(SCALES[best] - scale) ? k : best), 0);
@@ -251,6 +265,7 @@ function makeStone(stage, stone, geometry, onChange) {
     // read mode: one face flat and enlarged to fill the stage, the others hidden
     read(face) {
       if (!FACE_ANGLE[face]) face = face in FACE_ANGLE ? face : frontFace();
+      if (wide) api.setWide(false);
       if (!reading) before = { yaw, pitch, scale, spinning };
       reading = face;
       spinning = false;
@@ -275,9 +290,35 @@ function makeStone(stage, stone, geometry, onChange) {
       settle(() => { ({ yaw, pitch, scale, spinning } = before); });
       before = null;
     },
+    // the wide view: every face flat, side by side, the stone itself gone
+    setWide(on) {
+      if (on === wide) return;
+      if (on) {
+        if (reading) api.endRead();
+        before = { yaw, pitch, scale, spinning };
+        wide = true;
+        spinning = false;
+        document.body.classList.add("wide");
+        // the stage has its wide layout after the class change; fit to it on the next frame
+        requestAnimationFrame(() => {
+          stone.style.setProperty("--unit", `${fitUnitWide()}px`);
+          apply();
+          stage.scrollIntoView({ block: "start" });
+        });
+      } else {
+        wide = false;
+        document.body.classList.remove("wide");
+        restoreGeometry();
+        settle(() => { ({ yaw, pitch, scale, spinning } = before); });
+        before = null;
+      }
+    },
+    refit() { if (wide) stone.style.setProperty("--unit", `${fitUnitWide()}px`); },
     reset() {
       const wasReading = reading;
       reading = null;
+      wide = false;
+      document.body.classList.remove("wide");
       restoreGeometry();
       document.body.classList.remove("reading");
       for (const el of stone.querySelectorAll(".face")) el.classList.remove("reading-face");
@@ -656,6 +697,91 @@ function makeFocus(caption, clearButton, trace, equation) {
   };
 }
 
+// ------------------------------------------------------------------- walk
+
+// Step through the record in the order the Math face writes it: each line,
+// then each symbol of that line, once. A line step lights every token of
+// the line on both text faces and everything on the other faces that
+// carries one of its ids; a symbol step focuses that id everywhere (the
+// focus verb) with the line kept lit behind it. The caption says what the
+// line or symbol means, from the record.
+function makeWalk({ equation, trace, focus, caption, counter, prevButton, nextButton, stopButton, epochOf }) {
+  const face = equation.faces.math;
+  const mFace = equation.faces.m;
+  const steps = [];
+  for (let line = 0; line < face.line_count; line++) {
+    steps.push({ kind: "line", line });
+    const seen = new Set();
+    face.ids.forEach((id, k) => {
+      if (face.lines[k] !== line || seen.has(id) || isInvisible(face.texts[k])) return;
+      seen.add(id);
+      steps.push({ kind: "symbol", id, line });
+    });
+  }
+  const idle = "Step through the equation: every line, then every symbol, lit on all faces at once (n next, p back).";
+  let at = -1;
+  const clearMarks = () => { for (const el of document.querySelectorAll(".walk")) el.classList.remove("walk"); };
+  function markLine(line) {
+    const ids = new Set(face.ids.filter((id, k) => face.lines[k] === line));
+    for (const el of document.querySelectorAll(".face [data-id]")) if (ids.has(el.dataset.id)) el.classList.add("walk");
+    for (const el of document.querySelectorAll(`.text-face text[data-line="${line}"]`)) el.classList.add("walk");
+  }
+  function show(i) {
+    if (!steps.length) return;
+    at = ((i % steps.length) + steps.length) % steps.length;
+    const step = steps[at];
+    document.body.classList.add("walking");
+    clearMarks();
+    markLine(step.line);
+    caption.replaceChildren();
+    const mathLine = (face.text.split("\n")[step.line] || "");
+    const mLine = (mFace.text.split("\n")[step.line] || "");
+    if (step.kind === "line") {
+      focus.set(null);
+      const b = document.createElement("b"); b.textContent = plainMath(mathLine);
+      caption.append(`Line ${step.line + 1} · `, b, ` ${(face.line_docs || [])[step.line] || ""}`);
+      const m = document.createElement("span"); m.className = "walk-m";
+      const mb = document.createElement("b"); mb.textContent = plainMath(mLine);
+      m.append(" · in M: ", mb, ` ${(mFace.line_docs || [])[step.line] || ""}`);
+      caption.append(m);
+    } else {
+      focus.set(step.id);
+      const k = equation.symbols.ids.indexOf(step.id);
+      const b = document.createElement("b"); b.textContent = labelFor(equation, step.id);
+      caption.append(b, ` ${equation.symbols.names[k]} (${equation.symbols.roles[k]}) · ${equation.symbols.docs[k] || ""}`);
+      const v = valueText(trace, step.id, epochOf());
+      if (v) {
+        const span = document.createElement("span"); span.className = "val"; span.textContent = v;
+        caption.append(step.id in trace.constants ? " · constant: " : ` · at ${trace.axis.name} ${epochOf()}: `, span);
+      }
+    }
+    counter.textContent = `${at + 1} / ${steps.length}`;
+    stopButton.hidden = false;
+  }
+  function stop() {
+    if (at < 0) return;
+    at = -1;
+    document.body.classList.remove("walking");
+    clearMarks();
+    focus.set(null);
+    caption.textContent = idle;
+    counter.textContent = "";
+    stopButton.hidden = true;
+  }
+  caption.textContent = idle;
+  nextButton.addEventListener("click", () => show(at + 1));
+  prevButton.addEventListener("click", () => show(at - 1));
+  stopButton.addEventListener("click", stop);
+  document.addEventListener("keydown", (e) => {
+    if (!document.getElementById("help").hidden || e.target.closest("input, select")) return;
+    const k = e.key.toLowerCase();
+    if (k === "n") { show(at + 1); e.preventDefault(); }
+    else if (k === "p") { show(at - 1); e.preventDefault(); }
+    else if (e.key === "Escape") stop();
+  });
+  return { show, next: () => show(at + 1), prev: () => show(at - 1), stop, get count() { return steps.length; }, refresh() { if (at >= 0) show(at); } };
+}
+
 // --------------------------------------------------------------- callouts
 
 // What the page's own parts are for. Page vocabulary; the symbols' and the
@@ -676,6 +802,10 @@ const CHROME_DOCS = {
   "spin": ["Auto-rotate", "Let the stone turn on its own; dragging or turning to a face stops it (key a)."],
   "view": ["View", "Magnify without changing meaning: read a face flat, scale the stone, or reset."],
   "read": ["Read this face", "The face toward you comes flat and enlarged, never cropped, still live (Enter, or double-click a face). Esc returns."],
+  "wide": ["Side by side", "Every face flat in a row, Math, M, Visual and Trace when there is one, all live (key w, or ?view=wide). The same button, w or Esc returns to the stone at the view you had."],
+  "walk": ["Walk", "Step through the equation in the order it is written: each line, then each of its symbols, lit on every face at once, with what it means and its value now (keys n and p)."],
+  "walk-prev": ["Previous", "One step back through the lines and symbols (key p)."],
+  "walk-next": ["Next", "One step on through the lines and symbols (key n)."],
   "scale": ["View scale", "Grow or shrink the stone (key s, then move the mouse). Not the plan's Zoom, which would change abstraction level."],
   "reset": ["Reset view", "Put the stone back: default angle, size and position, auto-rotating (Home or 0)."],
   "travel": ["Travel", "Show me this at another time: every number on the page is replayed from the recorded trace at the chosen epoch."],
@@ -776,7 +906,8 @@ function makeCallouts({ root, equation, trace, scene, traceScene, valueAt, hints
   }
   function originMatrix(el, flatRect) {
     // the element's CSS transform about its transform-origin (the box centre), in stage coordinates
-    const m = new DOMMatrix(getComputedStyle(el).transform);
+    const tr = getComputedStyle(el).transform;
+    const m = tr && tr !== "none" ? new DOMMatrix(tr) : new DOMMatrix();
     const ox = flatRect.left + flatRect.width / 2, oy = flatRect.top + flatRect.height / 2;
     return new DOMMatrix().translate(ox, oy, 0).multiply(m).multiply(new DOMMatrix().translate(-ox, -oy, 0));
   }
@@ -1243,7 +1374,7 @@ function makeModes({ stone, time, focus, legend, help }) {
     travel: "Travel: left and right scrubs the epoch, ← → step one",
     focus: "Focus: click a symbol on any face; f again or Esc clears",
   };
-  const IDLE = [["g", "grab"], ["r", "rotate"], ["s", "scale"], ["t", "travel"], ["f", "focus"], ["1 2 3 4", "faces"], ["Enter", "read"], ["Space", "play"], ["a", "spin"], ["Home", "reset"], ["?", "help"]];
+  const IDLE = [["g", "grab"], ["r", "rotate"], ["s", "scale"], ["t", "travel"], ["f", "focus"], ["1 2 3 4", "faces"], ["Enter", "read"], ["w", "side by side"], ["n p", "walk"], ["Space", "play"], ["a", "spin"], ["Home", "reset"], ["?", "help"]];
   let mode = null;
   let origin = null;   // mouse position when the mode was armed
   let before = null;   // what to restore on cancel
@@ -1327,6 +1458,7 @@ function makeModes({ stone, time, focus, legend, help }) {
       e.preventDefault(); return;
     }
     if (lower === "a") { stone.setSpinning(!stone.spinning); return; }
+    if (lower === "w") { stone.setWide(!stone.wide); return; }
     if (k === "1" || k === "2" || k === "3" || k === "4") {
       const face = ["math", "m", "visual", "trace"][Number(k) - 1];
       if (!document.querySelector(`.face[data-face="${face}"]`)) return;
@@ -1374,7 +1506,7 @@ async function main() {
   select.addEventListener("change", () => {
     const next = new URLSearchParams(location.search);
     next.set("stone", select.value);
-    for (const p of ["focus", "hover", "near", "read", "then"]) next.delete(p);
+    for (const p of ["focus", "hover", "near", "read", "then", "walk"]) next.delete(p);
     location.search = next.toString();
   });
 
@@ -1393,6 +1525,7 @@ async function main() {
   const stage = document.getElementById("stage");
   const spin = document.getElementById("spin");
   const back = document.getElementById("back");
+  const wideButton = document.getElementById("wide");
   const scaleOut = document.getElementById("scale-out");
   const turnButtons = [...document.querySelectorAll("[data-turn]")];
   const minimapLines = [...document.querySelectorAll("#minimap line")];
@@ -1425,13 +1558,16 @@ async function main() {
     minimapPrism.setAttribute("transform", `rotate(${-v.yaw})`);
     spin.setAttribute("aria-pressed", String(v.spinning));
     scaleOut.value = `${Math.round(v.scale * 100)}%`;
-    back.hidden = !v.reading;
+    wideButton.setAttribute("aria-pressed", String(v.wide));
+    back.hidden = !(v.reading || v.wide);
+    back.textContent = v.wide ? "Back to the stone" : "Back to the stone";
   });
   const projector = makeProjector(document.getElementById("face-visual"), scene);
   const traceProjector = hasTrace ? makeProjector(document.getElementById("face-trace"), traceScene) : null;
   const show = makeReadout(document.getElementById("readout"), trace, equation);
   const focus = makeFocus(document.getElementById("focus-caption"), document.getElementById("unfocus"), trace, equation);
   let epochNow = 0;
+  let walkRef = null;
   const callouts = calloutsRef = makeCallouts({
     root: document.getElementById("callout"), equation, trace, scene, traceScene,
     valueAt: (id) => {
@@ -1461,6 +1597,7 @@ async function main() {
     focus.epoch(t);
     epochNow = t;
     callouts.refresh();
+    if (walkRef) walkRef.refresh();
   }
   range.addEventListener("input", () => setEpoch(Number(range.value)));
 
@@ -1486,15 +1623,23 @@ async function main() {
   document.getElementById("scale-down").addEventListener("click", () => stone.scaleBy(-1));
   document.getElementById("scale-up").addEventListener("click", () => stone.scaleBy(1));
   document.getElementById("reset-view").addEventListener("click", () => stone.reset());
-  back.addEventListener("click", () => stone.endRead());
+  back.addEventListener("click", () => { if (stone.reading) stone.endRead(); else stone.setWide(false); });
+  wideButton.addEventListener("click", () => stone.setWide(!stone.wide));
   for (const face of document.querySelectorAll(".face")) {
     face.addEventListener("dblclick", (e) => { e.preventDefault(); stone.read(face.dataset.face); });
   }
   stage.addEventListener("click", (e) => { if (stone.reading && e.target === stage) stone.endRead(); });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && stone.reading) { stone.endRead(); e.stopImmediatePropagation(); }
+    else if (e.key === "Escape" && stone.wide) { stone.setWide(false); e.stopImmediatePropagation(); }
   }, true);
-  window.addEventListener("resize", () => { if (stone.reading) stone.read(stone.reading); });
+  window.addEventListener("resize", () => { if (stone.reading) stone.read(stone.reading); stone.refit(); });
+  const walk = walkRef = makeWalk({
+    equation, trace, focus,
+    caption: document.getElementById("walk-caption"), counter: document.getElementById("walk-count"),
+    prevButton: document.getElementById("walk-prev"), nextButton: document.getElementById("walk-next"), stopButton: document.getElementById("walk-stop"),
+    epochOf: () => epochNow,
+  });
 
   const help = document.getElementById("help");
   document.getElementById("help-button").addEventListener("click", () => { help.hidden = false; });
@@ -1524,6 +1669,10 @@ async function main() {
   }, 1300);
   if (initialHover) setTimeout(() => callouts.showFor(`[data-id="${initialHover}"], [data-panel="${initialHover}"], [data-doc="${initialHover}"], ${/^line\d$/.test(initialHover) ? `.face[data-face="math"] text[data-line="${initialHover.slice(4)}"]` : "#none"}`), 700);
   if (initialRead) stone.read(initialRead);
+  const viewParam = params.get("view");
+  if (viewParam === "wide" || viewParam === "flat") stone.setWide(true);
+  const walkParam = params.get("walk");
+  if (walkParam !== null) walk.show(Number(walkParam) - 1);
   if (!reducedMotion && fixedEpoch === null) setPlaying(true);
 }
 

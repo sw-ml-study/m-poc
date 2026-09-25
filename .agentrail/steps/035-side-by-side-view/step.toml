@@ -1,6 +1,6 @@
 number = 35
 slug = "side-by-side-view"
-status = "pending"
+status = "in-progress"
 description = "An alternate flat view of the stone (requested): the faces side by side in la..."
 role = "production"
 context_files = []

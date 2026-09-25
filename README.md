@@ -170,6 +170,19 @@ the same projector from
 
 ## The page
 
+Two more ways to look at a stone, both page-only. **Side by side** (the
+View row, key `w`, or `?view=wide`) lays every face flat in a row across
+the window, Math, M, Visual and Trace when there is one, all still live:
+the scrubber, focus and the callouts work on the row as on the stone; the
+same button, `w` or Esc returns to the stone at the view you had. **Walk**
+(the Walk row, keys `n` and `p`, or `?walk=N`) steps through the record in
+the order the Math face writes it, each line and then each of its symbols
+once: a line step lights the whole line on both text faces and everything
+carrying one of its ids on the other faces; a symbol step focuses that
+symbol everywhere, with the line kept lit behind it, and the caption gives
+its meaning from the record and its value at the current step. Both work
+together, and the walk works on the turning stone too.
+
 [`pages/`](pages) is static: `index.html`, `style.css`, `rosetta.js` and,
 under `pages/data/`, a copy of the fixtures made by `just build-site`
 (`scripts/check-site` fails the gate if the copy is stale). No bundler, no
@@ -249,7 +262,7 @@ SHA (`-dirty` when the tree had uncommitted changes), UTC time.
 
 ## Status
 
-Steps 1–34 of [the plan](docs/plan.md) are done: the gate; the equation
+Steps 1–35 of [the plan](docs/plan.md) are done: the gate; the equation
 IR with the one-neuron instance; the training trace; the three faces as
 fixtures; the page; focus; read mode with view scale, orientation cues and
 the face card; the scalene prism with faces sized to their content; the
@@ -267,7 +280,7 @@ captures; callouts in expression order; and, in v1.1 so far, the sigmoid
 neuron, the two applicative stones, feature normalization and image
 normalization, attention composed from the matmul and softmax stones, and
 Adam with its state tuple; the Trace face on five stones and the four-faced
-kite that carries it; and the hover fix: the yaw turns the faces rather than the
+kite that carries it; the side-by-side view and the walk; and the hover fix: the yaw turns the faces rather than the
 stone's box, which Chrome's 3D hit testing let shadow a face turned to
 the front ([`tests/hover-sweep.mjs`](tests/hover-sweep.mjs) checks every
 view of a stone by keys and drags); and the callout fan spaced out: one
@@ -297,8 +310,7 @@ side of the row rather than pile up. Every face header names the stone it shows,
   v1: Rotate, Travel and Focus.
 
 Every fixture is checked fresh by the gate and pinned by a reg-rs baseline.
-Next in v1.1: the side-by-side view with a step-through, and the Zoom verb
-(one level inside).
+Next in v1.1: the Zoom verb (one level inside).
 
 ## License
 

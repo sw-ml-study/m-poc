@@ -80,6 +80,28 @@ body.reading .stage { height: auto; padding: 56px 0 12px; cursor: default; }
 body.reading .minimap { width: 44px; height: 44px; }
 body.reading .face:not(.reading-face) { visibility: hidden; }
 
+/* the wide view: every face flat, side by side, the stone's 3D gone */
+body.wide .stage {
+  /* the row of faces wants the whole window, not the page column */
+  height: auto; padding: 56px 8px 12px; cursor: default;
+  width: 100vw; margin-left: calc(50% - 50vw); overflow-x: auto;
+}
+body.wide .minimap { display: none; }
+body.wide .stone { transform: none; width: max-content; display: flex; gap: 12px; }
+body.wide .face { position: static; transform: none; flex: none; }
+body.wide .face h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 6px 10px; font-size: 0.8rem; }
+body.wide .face h2 small { font-size: 0.9rem; }
+
+/* the walk: the current line's tokens lit on the text faces, its ids lit on the others */
+body.walking .text-face .rs-token:not(.walk):not(.focus) { opacity: 0.35; }
+body.walking .scene line:not(.walk):not(.focus), body.walking .scene text:not(.walk):not(.focus) { opacity: 0.3; }
+.rs-token.walk { fill: var(--accent); }
+body.has-focus .text-face .rs-token.walk:not(.focus) { opacity: 0.8; }
+.scene line.walk { stroke: var(--accent) !important; stroke-width: 3.5; }
+.scene text.walk { fill: var(--accent); }
+.walk-row output { color: var(--dim); font-variant-numeric: tabular-nums; min-width: 4ch; text-align: center; }
+.focus-caption .walk-m { color: var(--dim); }
+
 /* orientation cues: a top-down minimap of the prism with the viewer below it */
 .minimap { position: absolute; top: 8px; right: 8px; width: 64px; height: 64px; z-index: 2; pointer-events: none; }
 .minimap polygon { fill: var(--panel); stroke: none; }

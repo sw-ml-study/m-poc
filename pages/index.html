@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rosetta M</title>
-<link rel="stylesheet" href="style.css?v=32">
+<link rel="stylesheet" href="style.css?v=33">
 </head>
 <body>
 <header>
@@ -22,9 +22,10 @@
     <b>proposed M code</b>, and its <b>Visual</b> (structure and live data),
     with time as the fourth dimension; some stones add a <b>Trace</b> face,
     the time axis itself. Choose a stone above; drag it to
-    rotate; scrub the steps and the numbers move while the equation, the code
-    and the dataflow stay put. Rest the pointer on anything for an explanation;
-    press <kbd>?</kbd> for the keys.</p>
+    rotate, or lay its faces side by side; scrub the steps and the numbers move
+    while the equation, the code and the dataflow stay put; walk the equation
+    symbol by symbol and watch each one light up on every face. Rest the
+    pointer on anything for an explanation; press <kbd>?</kbd> for the keys.</p>
   <p class="note"><b>M is proposed, not run.</b> The M face is notation rendered
     from the same record as the Math face; nothing here parses or evaluates it,
     and its glyphs are placeholders. Every number on the page comes from a real
@@ -85,6 +86,7 @@
     <div class="row view" role="group" aria-label="View">
       <span class="verb" data-doc="view">View</span>
       <button type="button" id="read" data-doc="read">Read this face</button>
+      <button type="button" id="wide" data-doc="wide" aria-pressed="false">Side by side</button>
       <span class="scale-group" data-doc="scale">
         <button type="button" id="scale-down" aria-label="Smaller">−</button>
         <output id="scale-out">100%</output>
@@ -99,6 +101,14 @@
       <input type="range" id="epoch" data-doc="scrubber" min="0" max="0" value="0" step="1">
     </div>
     <dl class="readout" id="readout" data-doc="readout" aria-live="polite"></dl>
+    <div class="row walk-row">
+      <span class="verb" data-doc="walk">Walk</span>
+      <button type="button" id="walk-prev" data-doc="walk-prev" aria-label="Previous step">‹ Prev</button>
+      <output id="walk-count" aria-live="polite"></output>
+      <button type="button" id="walk-next" data-doc="walk-next" aria-label="Next step">Next ›</button>
+      <button type="button" id="walk-stop" hidden>Stop</button>
+      <p class="focus-caption" id="walk-caption" aria-live="polite"></p>
+    </div>
     <div class="row focus-row">
       <span class="verb" data-doc="focus">Focus</span>
       <p class="focus-caption" id="focus-caption" aria-live="polite">Click any symbol on any face, or in the readout, to focus it everywhere. Esc clears.</p>
@@ -125,6 +135,8 @@
         <tr><td><kbd>f</kbd></td><td>focus: the next click picks a symbol; <kbd>f</kbd> again or <kbd>Esc</kbd> clears</td></tr>
         <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></td><td>turn to the Math, M, Visual and Trace faces (4 only on a stone with a Trace face)</td></tr>
         <tr><td><kbd>Enter</kbd></td><td>read the face toward you (and confirm a mode)</td></tr>
+        <tr><td><kbd>w</kbd></td><td>side by side: every face flat in a row; <kbd>w</kbd> or <kbd>Esc</kbd> returns to the stone</td></tr>
+        <tr><td><kbd>n</kbd> <kbd>p</kbd></td><td>walk: the next / previous line or symbol of the equation, lit on every face; <kbd>Esc</kbd> stops</td></tr>
         <tr><td><kbd>Space</kbd></td><td>play / pause the epochs</td></tr>
         <tr><td><kbd>a</kbd></td><td>auto-rotate on / off</td></tr>
         <tr><td><kbd>Home</kbd> <kbd>0</kbd></td><td>reset the view: scale, position, angle</td></tr>
@@ -149,6 +161,6 @@
   <svg class="callout-leader" aria-hidden="true"></svg>
 </div>
 
-<script src="rosetta.js?v=32"></script>
+<script src="rosetta.js?v=33"></script>
 </body>
 </html>
