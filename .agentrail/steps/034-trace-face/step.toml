@@ -1,8 +1,9 @@
 number = 34
 slug = "trace-face"
-status = "in-progress"
+status = "completed"
 description = "A fourth face, the Trace: the stone becomes a box for stones that declare it...."
 role = "production"
 context_files = []
 created_at = "2026-09-24T17:45:00"
-commits = []
+completed_at = "2026-09-25T10:53:01"
+commits = ["c99a93fa8a6c33ba4008d0c44e6b7df7ebfedeaa"]
