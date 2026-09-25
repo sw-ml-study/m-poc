@@ -1,8 +1,9 @@
 number = 35
 slug = "side-by-side-view"
-status = "in-progress"
+status = "completed"
 description = "An alternate flat view of the stone (requested): the faces side by side in la..."
 role = "production"
 context_files = []
 created_at = "2026-09-25T10:37:20"
-commits = []
+completed_at = "2026-09-25T11:28:47"
+commits = ["2dbcba19d3d21bafaa0f6d0ceb5899c451b9c90b"]
